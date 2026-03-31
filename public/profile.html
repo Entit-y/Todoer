@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile — Todoer</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-brand">Todoer</div>
+    <div class="nav-links">
+      <a href="/home" class="nav-link">Tasks</a>
+      <a href="/files" class="nav-link">Files</a>
+      <a href="/profile" class="nav-link active">Profile</a>
+      <span id="navUsername" style="color:var(--amber);font-size:0.8rem;font-weight:500;padding:0 4px;"></span>
+      <button id="logoutBtn" class="btn btn-secondary" style="margin-left:8px;">Logout</button>
+    </div>
+  </nav>
+
+  <main class="container">
+    <div class="profile-header">
+      <div class="profile-avatar">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+      </div>
+      <div class="profile-info">
+        <h1 id="profileEmail">Loading…</h1>
+        <p id="profileUsername" style="color:var(--amber);font-size:0.875rem;font-weight:500;margin-top:2px;margin-bottom:4px;"></p>
+        <p id="profileDate">Member since —</p>
+      </div>
+    </div>
+
+    <div class="profile-sections">
+      <!-- Username -->
+      <section class="profile-section">
+        <h2>Username</h2>
+        <form id="usernameForm" class="profile-form">
+          <div class="form-group">
+            <label for="newUsername">Username</label>
+            <input type="text" id="newUsername" placeholder="e.g. johndoe" autocomplete="username">
+          </div>
+          <div id="usernameMessage" class="message" style="display:none;"></div>
+          <button type="submit" class="btn btn-primary">Update Username</button>
+        </form>
+      </section>
+
+      <!-- Email -->
+      <section class="profile-section">
+        <h2>Update Email</h2>
+        <form id="emailForm" class="profile-form">
+          <div class="form-group">
+            <label for="newEmail">New email address</label>
+            <input type="email" id="newEmail" required placeholder="you@newdomain.com">
+          </div>
+          <div id="emailMessage" class="message" style="display:none;"></div>
+          <button type="submit" class="btn btn-primary">Update Email</button>
+        </form>
+      </section>
+
+      <!-- Password -->
+      <section class="profile-section">
+        <h2>Change Password</h2>
+        <form id="passwordForm" class="profile-form">
+          <div class="form-group">
+            <label for="currentPassword">Current password</label>
+            <input type="password" id="currentPassword" required placeholder="Enter current password">
+          </div>
+          <div class="form-group">
+            <label for="newPassword">New password</label>
+            <input type="password" id="newPassword" required minlength="6" placeholder="At least 6 characters">
+          </div>
+          <div class="form-group">
+            <label for="confirmNewPassword">Confirm new password</label>
+            <input type="password" id="confirmNewPassword" required placeholder="Repeat new password">
+          </div>
+          <div id="passwordMessage" class="message" style="display:none;"></div>
+          <button type="submit" class="btn btn-primary">Change Password</button>
+        </form>
+      </section>
+
+      <!-- Danger Zone -->
+      <section class="profile-section danger-zone">
+        <h2>Danger Zone</h2>
+        <p>Deleting your account is permanent and cannot be undone.</p>
+        <form id="deleteForm" class="profile-form">
+          <div class="form-group">
+            <label for="deletePassword">Enter password to confirm</label>
+            <input type="password" id="deletePassword" required placeholder="Your current password">
+          </div>
+          <div id="deleteMessage" class="message" style="display:none;"></div>
+          <button type="submit" class="btn btn-danger">Delete My Account</button>
+        </form>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    async function checkAuth() {
+      try {
+        const r = await fetch('/api/auth/me');
+        if (!r.ok) { window.location.href = '/'; return; }
+        const data = await r.json();
+        document.getElementById('profileEmail').textContent = data.user.email;
+        document.getElementById('newEmail').value = data.user.email;
+        // VULNERABLE: username rendered with innerHTML — stored XSS if username contains a payload
+        const usernameEl = document.getElementById('profileUsername');
+        const navEl = document.getElementById('navUsername');
+        if (data.user.username) {
+          usernameEl.innerHTML = '@' + data.user.username;
+          navEl.innerHTML = '@' + data.user.username;
+          document.getElementById('newUsername').value = data.user.username;
+        } else {
+          usernameEl.textContent = 'No username set';
+        }
+        loadProfile();
+      } catch { window.location.href = '/'; }
+    }
+
+    async function loadProfile() {
+      try {
+        const r = await fetch('/api/profile');
+        const data = await r.json();
+        document.getElementById('profileDate').textContent = `Member since ${formatDate(data.created_at)}`;
+      } catch (e) { console.error(e); }
+    }
+
+    document.getElementById('usernameForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('usernameMessage');
+      msg.style.display = 'none'; msg.className = 'message';
+      const username = document.getElementById('newUsername').value.trim();
+      if (!username) { msg.textContent = 'Username cannot be empty'; msg.className = 'message error'; msg.style.display = 'block'; return; }
+      try {
+        const r = await fetch('/api/profile/username', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username })
+        });
+        const data = await r.json();
+        if (r.ok) {
+          msg.textContent = 'Username updated.';
+          msg.className = 'message success';
+          // VULNERABLE: innerHTML — if username is a payload this executes it on update too
+          document.getElementById('profileUsername').innerHTML = '@' + data.username;
+        } else {
+          msg.textContent = data.error || 'Failed to update username';
+          msg.className = 'message error';
+        }
+        msg.style.display = 'block';
+      } catch { msg.textContent = 'An error occurred.'; msg.className = 'message error'; msg.style.display = 'block'; }
+    });
+
+    document.getElementById('emailForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('emailMessage');
+      msg.style.display = 'none'; msg.className = 'message';
+      try {
+        const r = await fetch('/api/profile/email', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: document.getElementById('newEmail').value }) });
+        const data = await r.json();
+        if (r.ok) { msg.textContent = 'Email updated.'; msg.className = 'message success'; document.getElementById('profileEmail').textContent = document.getElementById('newEmail').value; }
+        else { msg.textContent = data.error || 'Failed to update email'; msg.className = 'message error'; }
+        msg.style.display = 'block';
+      } catch { msg.textContent = 'An error occurred.'; msg.className = 'message error'; msg.style.display = 'block'; }
+    });
+
+    document.getElementById('passwordForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('passwordMessage');
+      msg.style.display = 'none'; msg.className = 'message';
+      const np = document.getElementById('newPassword').value;
+      const cp = document.getElementById('confirmNewPassword').value;
+      if (np !== cp) { msg.textContent = 'Passwords do not match'; msg.className = 'message error'; msg.style.display = 'block'; return; }
+      try {
+        const r = await fetch('/api/profile/password', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ currentPassword: document.getElementById('currentPassword').value, newPassword: np }) });
+        const data = await r.json();
+        if (r.ok) { msg.textContent = 'Password changed.'; msg.className = 'message success'; document.getElementById('passwordForm').reset(); }
+        else { msg.textContent = data.error || 'Failed to change password'; msg.className = 'message error'; }
+        msg.style.display = 'block';
+      } catch { msg.textContent = 'An error occurred.'; msg.className = 'message error'; msg.style.display = 'block'; }
+    });
+
+    document.getElementById('deleteForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('deleteMessage');
+      msg.style.display = 'none'; msg.className = 'message';
+      if (!confirm('Permanently delete your account? This cannot be undone.')) return;
+      try {
+        const r = await fetch('/api/profile/account', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: document.getElementById('deletePassword').value }) });
+        const data = await r.json();
+        if (r.ok) { alert('Account deleted.'); window.location.href = '/'; }
+        else { msg.textContent = data.error || 'Failed to delete account'; msg.className = 'message error'; msg.style.display = 'block'; }
+      } catch { msg.textContent = 'An error occurred.'; msg.className = 'message error'; msg.style.display = 'block'; }
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      window.location.href = '/';
+    });
+
+    function formatDate(s) {
+      if (!s) return '—';
+      return new Date(s).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    }
+
+    checkAuth();
+  </script>
+</body>
+</html>

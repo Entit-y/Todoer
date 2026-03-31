@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Account — Todoer</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="auth-container">
+    <div class="auth-card">
+      <div style="margin-bottom:32px;">
+        <div style="font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;color:var(--amber);margin-bottom:24px;letter-spacing:-0.02em;">Todoer</div>
+        <h1 style="font-size:2rem;margin-bottom:8px;">Create account</h1>
+        <p class="subtitle">Start managing your tasks today</p>
+      </div>
+
+      <form id="registerForm">
+        <div class="form-group">
+          <label for="username">Username <span style="color:var(--text-3);font-weight:400;font-size:0.75rem;">(optional)</span></label>
+          <input type="text" id="username" name="username" placeholder="e.g. johndoe" autocomplete="username">
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email address</label>
+          <input type="email" id="email" name="email" required placeholder="you@example.com" autocomplete="email">
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" required minlength="6" placeholder="At least 6 characters" autocomplete="new-password">
+        </div>
+
+        <div class="form-group">
+          <label for="confirmPassword">Confirm password</label>
+          <input type="password" id="confirmPassword" name="confirmPassword" required placeholder="Repeat your password" autocomplete="new-password">
+        </div>
+
+        <div id="errorMessage" class="error-message" style="display:none;"></div>
+
+        <button type="submit" class="btn btn-primary btn-full" style="margin-top:8px;padding:13px 20px;font-size:0.9375rem;">
+          Create Account
+        </button>
+      </form>
+
+      <div class="auth-footer">
+        <p>Already have an account? <a href="/">Sign in</a></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const username = document.getElementById('username').value.trim();
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+      const errorMessage = document.getElementById('errorMessage');
+      errorMessage.style.display = 'none';
+      if (password !== confirmPassword) {
+        errorMessage.textContent = 'Passwords do not match';
+        errorMessage.style.display = 'block';
+        return;
+      }
+      try {
+        const response = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password, username: username || undefined })
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          errorMessage.textContent = data.error || 'Registration failed';
+          errorMessage.style.display = 'block';
+          return;
+        }
+        window.location.href = '/home';
+      } catch (error) {
+        errorMessage.textContent = 'An error occurred. Please try again.';
+        errorMessage.style.display = 'block';
+      }
+    });
+  </script>
+</body>
+</html>

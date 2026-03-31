@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign In — Todoer</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="auth-container">
+    <div class="auth-card">
+      <div style="margin-bottom:32px;">
+        <div style="font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;color:var(--amber);margin-bottom:24px;letter-spacing:-0.02em;">Todoer</div>
+        <h1 style="font-size:2rem;margin-bottom:8px;">Welcome back</h1>
+        <p class="subtitle">Sign in to your workspace</p>
+      </div>
+
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="email">Email address</label>
+          <input type="email" id="email" name="email" required placeholder="you@example.com" autocomplete="email">
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" required placeholder="Enter your password" autocomplete="current-password">
+        </div>
+
+        <div id="errorMessage" class="error-message" style="display:none;"></div>
+
+        <button type="submit" class="btn btn-primary btn-full" style="margin-top:8px;padding:13px 20px;font-size:0.9375rem;">
+          Sign In
+        </button>
+      </form>
+
+      <div class="auth-footer">
+        <p>No account yet? <a href="/register">Create one</a></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const errorMessage = document.getElementById('errorMessage');
+      errorMessage.style.display = 'none';
+      try {
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          errorMessage.textContent = data.error || 'Login failed';
+          errorMessage.style.display = 'block';
+          return;
+        }
+        window.location.href = '/home';
+      } catch (error) {
+        errorMessage.textContent = 'An error occurred. Please try again.';
+        errorMessage.style.display = 'block';
+      }
+    });
+  </script>
+</body>
+</html>
