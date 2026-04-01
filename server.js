@@ -11,10 +11,22 @@ const fs = require('fs');
 const zlib = require('zlib');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
+const nodemailer = require('nodemailer');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = 'your-secret-key-change-in-production';
+
+// Brevo SMTP transporter
+const transporter = nodemailer.createTransport({
+  host: 'smtp-relay.brevo.com',
+  port: 587,
+  secure: false,
+  auth: {
+    user: process.env.BREVO_USER,
+    pass: process.env.BREVO_KEY,
+  }
+});
 
 // Middleware
 app.use(cors({ origin: true, credentials: true }));
@@ -27,6 +39,21 @@ const db = new sqlite3.Database('./todoer.db', (err) => {
   if (err) console.error('Database connection error:', err);
   else console.log('Connected to SQLite database');
 });
+
+// VULNERABLE: register accent-insensitive collation that maps unicode lookalikes
+// to their ASCII equivalents — mimics MySQL's default utf8_general_ci behaviour.
+// ａ (U+FF41) → a, ｉ (U+FF49) → i, é → e, etc.
+// This means WHERE email = ? with a punycode lookalike will match the real address.
+db.registerFunction = undefined; // not available in sqlite3 binding
+// We apply normalization in JS before queries — see helper below.
+
+// VULNERABLE helper: normalize email with NFKC before DB lookup.
+// Converts fullwidth/lookalike unicode chars to ASCII equivalents.
+// Used for lookup ONLY — the original un-normalized value is used for email delivery,
+// which is what makes the punycode attack possible.
+function normalizeEmail(email) {
+  return email.normalize('NFKC').toLowerCase();
+}
 
 // Initialize database tables
 db.serialize(() => {
@@ -64,6 +91,15 @@ db.serialize(() => {
     size INTEGER,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     extracted_from TEXT,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS password_resets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    token TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    used INTEGER DEFAULT 0,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   )`);
 });
@@ -524,12 +560,100 @@ app.post('/api/files/create-archive', authenticateToken, (req, res) => {
   });
 });
 
+// ============ PASSWORD RESET ROUTES ============
+
+// VULNERABLE: normalizeEmail() applied to lookup but original email used for delivery.
+// VULNERABLE: distinct 404 when email not found — confirms whether address is registered.
+// VULNERABLE: token is base64(userId:timestamp) — no randomness, predictable.
+// VULNERABLE: old tokens never invalidated when a new one is issued.
+app.post('/api/auth/forgot-password', (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email is required' });
+
+  const normalized = normalizeEmail(email);
+
+  db.get('SELECT id, email FROM users WHERE email = ?', [normalized], (err, user) => {
+    if (err || !user) return res.status(404).json({ error: 'No account with that email' });
+
+    // VULNERABLE: predictable token — base64(userId:timestamp), no random component
+    const token = Buffer.from(`${user.id}:${Date.now()}`).toString('base64');
+
+    db.run('INSERT INTO password_resets (user_id, token) VALUES (?, ?)', [user.id, token], async function(err) {
+      if (err) return res.status(500).json({ error: 'Failed to create reset token' });
+
+      const resetUrl = `${process.env.APP_URL}/reset-password?token=${token}`;
+
+      try {
+        await transporter.sendMail({
+          from: `"Todoer" <${process.env.BREVO_FROM}>`,
+          // VULNERABLE: sending to user-supplied email, not user.email from DB.
+          // attacker submits vｉctim@gmail.com → normalizeEmail finds victim@gmail.com
+          // → token issued for victim's account → email delivered to attacker's inbox.
+          to: email,
+          subject: 'Reset your Todoer password',
+          html: `
+            <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;">
+              <h2 style="color:#e8a020;">Todoer</h2>
+              <p>You requested a password reset. Click the link below to set a new password.</p>
+              <a href="${resetUrl}"
+                 style="display:inline-block;background:#e8a020;color:#141414;
+                        padding:12px 24px;border-radius:6px;text-decoration:none;
+                        font-weight:bold;margin:16px 0;">
+                Reset Password
+              </a>
+              <p style="color:#999;font-size:12px;">
+                If you didn't request this, you can safely ignore this email.<br>
+                This link does not expire.
+              </p>
+            </div>
+          `
+        });
+        res.json({ message: 'If that email is registered, a reset link has been sent.' });
+      } catch (mailErr) {
+        console.error('Mail error:', mailErr);
+        res.status(500).json({ error: 'Failed to send reset email' });
+      }
+    });
+  });
+});
+
+// VULNERABLE: no expiry check — token valid forever.
+// VULNERABLE: no rate limiting — token can be brute-forced.
+app.get('/api/auth/verify-reset-token', (req, res) => {
+  const { token } = req.query;
+  if (!token) return res.status(400).json({ error: 'Token is required' });
+
+  db.get('SELECT * FROM password_resets WHERE token = ? AND used = 0', [token], (err, reset) => {
+    if (err || !reset) return res.status(400).json({ error: 'Invalid or expired token' });
+    res.json({ valid: true });
+  });
+});
+
+app.post('/api/auth/reset-password', async (req, res) => {
+  const { token, newPassword } = req.body;
+  if (!token || !newPassword) return res.status(400).json({ error: 'Token and new password are required' });
+  if (newPassword.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
+
+  db.get('SELECT * FROM password_resets WHERE token = ? AND used = 0', [token], async (err, reset) => {
+    if (err || !reset) return res.status(400).json({ error: 'Invalid or expired token' });
+
+    const hashed = await bcrypt.hash(newPassword, 10);
+    db.run('UPDATE users SET password = ? WHERE id = ?', [hashed, reset.user_id], function(err) {
+      if (err) return res.status(500).json({ error: 'Failed to reset password' });
+      db.run('UPDATE password_resets SET used = 1 WHERE id = ?', [reset.id]);
+      res.json({ message: 'Password reset successfully' });
+    });
+  });
+});
+
 // ============ PAGE ROUTES ============
 
 app.get('/home', (req, res) => res.sendFile(path.join(__dirname, 'public', 'home.html')));
 app.get('/files', (req, res) => res.sendFile(path.join(__dirname, 'public', 'files.html')));
 app.get('/profile', (req, res) => res.sendFile(path.join(__dirname, 'public', 'profile.html')));
 app.get('/register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'register.html')));
+app.get('/forgot-password', (req, res) => res.sendFile(path.join(__dirname, 'public', 'forgot-password.html')));
+app.get('/reset-password', (req, res) => res.sendFile(path.join(__dirname, 'public', 'reset-password.html')));
 app.get('/', (req, res) => {
   const token = req.cookies.token;
   if (token) res.redirect('/home');

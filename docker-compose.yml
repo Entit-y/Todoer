@@ -16,6 +16,9 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
+      - BREVO_USER=${BREVO_USER}
+      - BREVO_KEY=${BREVO_KEY}
+      - BREVO_FROM=${BREVO_FROM}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
