@@ -19,6 +19,7 @@ services:
       - BREVO_USER=${BREVO_USER}
       - BREVO_KEY=${BREVO_KEY}
       - BREVO_FROM=${BREVO_FROM}
+      - APP_URL=${APP_URL}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
