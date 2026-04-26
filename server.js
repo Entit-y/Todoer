@@ -12,6 +12,7 @@ const zlib = require('zlib');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const nodemailer = require('nodemailer');
+const punycode = require('punycode/');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -52,7 +53,10 @@ db.registerFunction = undefined; // not available in sqlite3 binding
 // Used for lookup ONLY — the original un-normalized value is used for email delivery,
 // which is what makes the punycode attack possible.
 function normalizeEmail(email) {
-  return email.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const [local, domain] = email.split('@');
+  if (!domain) return email.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const unicodeDomain = punycode.toUnicode(domain);
+  return (local + '@' + unicodeDomain).normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 }
 
 // Initialize database tables
