@@ -166,6 +166,7 @@ app.post('/api/auth/register', async (req, res) => {
 app.post('/api/auth/login', (req, res) => {
   const { email, password } = req.body;
   const normalized = normalizeEmail(email);
+  console.log('raw:', email, '| normalized:', normalized);
   db.get('SELECT * FROM users WHERE email = ?', [normalized], async (err, user) => {
     if (err || !user) return res.status(401).json({ error: 'Invalid credentials' });
     const validPassword = await bcrypt.compare(password, user.password);
