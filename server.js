@@ -52,7 +52,7 @@ db.registerFunction = undefined; // not available in sqlite3 binding
 // Used for lookup ONLY — the original un-normalized value is used for email delivery,
 // which is what makes the punycode attack possible.
 function normalizeEmail(email) {
-  return email.normalize('NFKC').toLowerCase();
+  return email.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 }
 
 // Initialize database tables
@@ -569,7 +569,7 @@ app.post('/api/files/create-archive', authenticateToken, (req, res) => {
 // VULNERABLE: old tokens never invalidated when a new one is issued.
 app.post('/api/auth/forgot-password', (req, res) => {
   const { email } = req.body;
-  if (!email) return res.status(400).json({ error: 'Email is required' });
+  if (!email) return res.status(400).json({ error: 'Email is required' })
 
   const normalized = normalizeEmail(email);
 
@@ -588,7 +588,7 @@ app.post('/api/auth/forgot-password', (req, res) => {
         await transporter.sendMail({
           from: `"Todoer" <${process.env.BREVO_FROM}>`,
           // VULNERABLE: sending to user-supplied email, not user.email from DB.
-          // attacker submits vｉctim@gmail.com → normalizeEmail finds victim@gmail.com
+          // attacker submits vìctim@gmail.com → normalizeEmail finds victim@gmail.com
           // → token issued for victim's account → email delivered to attacker's inbox.
           to: email,
           subject: 'Reset your Todoer password',
