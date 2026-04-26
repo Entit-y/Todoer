@@ -6,23 +6,21 @@
   <title>Create Account — Todoer</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
-<body>
+<body class="auth">
   <div class="auth-container">
     <div class="auth-card">
-      <div style="margin-bottom:32px;">
-        <div style="font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;color:var(--amber);margin-bottom:24px;letter-spacing:-0.02em;">Todoer</div>
-        <h1 style="font-size:2rem;margin-bottom:8px;">Create account</h1>
-        <p class="subtitle">Start managing your tasks today</p>
-      </div>
+      <span class="auth-logo">Todoer</span>
+      <h1>Create account</h1>
+      <p class="subtitle">Start managing your tasks today</p>
 
       <form id="registerForm">
         <div class="form-group">
-          <label for="username">Username <span style="color:var(--text-3);font-weight:400;font-size:0.75rem;">(optional)</span></label>
-          <input type="text" id="username" name="username" placeholder="e.g. johndoe" autocomplete="username">
+          <label for="username">Username <span class="optional-tag">(optional)</span></label>
+          <input type="text" id="username" name="username" placeholder="johndoe" autocomplete="username">
         </div>
 
         <div class="form-group">
-          <label for="email">Email address</label>
+          <label for="email">Email</label>
           <input type="email" id="email" name="email" required placeholder="you@example.com" autocomplete="email">
         </div>
 
@@ -36,11 +34,9 @@
           <input type="password" id="confirmPassword" name="confirmPassword" required placeholder="Repeat your password" autocomplete="new-password">
         </div>
 
-        <div id="errorMessage" class="error-message" style="display:none;"></div>
+        <div id="errorMessage" class="error-message" style="display:none;margin-bottom:16px;"></div>
 
-        <button type="submit" class="btn btn-primary btn-full" style="margin-top:8px;padding:13px 20px;font-size:0.9375rem;">
-          Create Account
-        </button>
+        <button type="submit" class="btn btn-primary btn-full">Create account</button>
       </form>
 
       <div class="auth-footer">
@@ -57,12 +53,15 @@
       const password = document.getElementById('password').value;
       const confirmPassword = document.getElementById('confirmPassword').value;
       const errorMessage = document.getElementById('errorMessage');
+      const btn = e.target.querySelector('button[type="submit"]');
       errorMessage.style.display = 'none';
       if (password !== confirmPassword) {
         errorMessage.textContent = 'Passwords do not match';
         errorMessage.style.display = 'block';
         return;
       }
+      btn.disabled = true;
+      btn.textContent = 'Creating account…';
       try {
         const response = await fetch('/api/auth/register', {
           method: 'POST',
@@ -73,12 +72,16 @@
         if (!response.ok) {
           errorMessage.textContent = data.error || 'Registration failed';
           errorMessage.style.display = 'block';
+          btn.disabled = false;
+          btn.textContent = 'Create account';
           return;
         }
         window.location.href = '/home';
-      } catch (error) {
+      } catch {
         errorMessage.textContent = 'An error occurred. Please try again.';
         errorMessage.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Create account';
       }
     });
   </script>
