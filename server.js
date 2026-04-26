@@ -12,7 +12,7 @@ const zlib = require('zlib');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const nodemailer = require('nodemailer');
-const punycode = require('punycode/');
+const punycode = require('punycode');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
