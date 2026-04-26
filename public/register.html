@@ -76,7 +76,7 @@
           btn.textContent = 'Create account';
           return;
         }
-        window.location.href = '/home';
+        window.location.href = '/verify-email?email=' + encodeURIComponent(data.email);
       } catch {
         errorMessage.textContent = 'An error occurred. Please try again.';
         errorMessage.style.display = 'block';

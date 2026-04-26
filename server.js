@@ -106,6 +106,20 @@ db.serialize(() => {
     used INTEGER DEFAULT 0,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS email_verifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    code TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  )`);
+
+  // Migration: add verified column if it does not exist
+  db.run(`ALTER TABLE users ADD COLUMN verified INTEGER DEFAULT 0`, () => {
+    // Mark all pre-existing users as verified so they are not locked out
+    db.run(`UPDATE users SET verified = 1 WHERE verified = 0`);
+  });
 });
 
 // File upload configuration
@@ -152,15 +166,40 @@ app.post('/api/auth/register', async (req, res) => {
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
     // VULNERABLE: username stored raw — no sanitization, allows XSS payloads as usernames
-    // e.g. username: "<img src=x onerror=alert(1)>" will be stored and later rendered
-    db.run('INSERT INTO users (email, username, password) VALUES (?, ?, ?)', [email, username || null, hashedPassword], function(err) {
+    db.run('INSERT INTO users (email, username, password, verified) VALUES (?, ?, ?, 0)', [email, username || null, hashedPassword], async function(err) {
       if (err) {
         if (err.message.includes('UNIQUE')) return res.status(400).json({ error: 'Email already exists' });
         return res.status(500).json({ error: 'Registration failed' });
       }
-      const token = jwt.sign({ id: this.lastID, email, username: username || null }, JWT_SECRET, { expiresIn: '7d' });
-      res.cookie('token', token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 });
-      res.json({ message: 'Registration successful', user: { id: this.lastID, email, username: username || null } });
+      const userId = this.lastID;
+      // Generate 6-digit verification code
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      db.run('DELETE FROM email_verifications WHERE user_id = ?', [userId], () => {
+        db.run('INSERT INTO email_verifications (user_id, code) VALUES (?, ?)', [userId, code], async (err) => {
+          if (err) return res.status(500).json({ error: 'Failed to create verification code' });
+          try {
+            await transporter.sendMail({
+              from: `"Todoer" <${process.env.BREVO_FROM}>`,
+              to: email,
+              subject: 'Verify your Todoer account',
+              html: `
+                <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;">
+                  <h2 style="color:#0a0a0a;">Todoer</h2>
+                  <p>Thanks for signing up. Use the code below to verify your email address.</p>
+                  <div style="font-size:32px;font-weight:700;letter-spacing:8px;color:#0a0a0a;margin:24px 0;padding:20px;background:#f4f4f4;border-radius:8px;text-align:center;">
+                    ${code}
+                  </div>
+                  <p style="color:#999;font-size:12px;">This code expires in 15 minutes. If you didn't create an account, you can ignore this email.</p>
+                </div>
+              `
+            });
+            res.json({ message: 'Verification code sent', email });
+          } catch (mailErr) {
+            console.error('Mail error:', mailErr);
+            res.status(500).json({ error: 'Failed to send verification email' });
+          }
+        });
+      });
     });
   } catch (error) {
     res.status(500).json({ error: 'Registration failed' });
@@ -175,6 +214,7 @@ app.post('/api/auth/login', (req, res) => {
     if (err || !user) return res.status(401).json({ error: 'Invalid credentials' });
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) return res.status(401).json({ error: 'Invalid credentials' });
+    if (!user.verified) return res.status(403).json({ error: 'Email not verified', email: user.email, unverified: true });
     const token = jwt.sign({ id: user.id, email: user.email, username: user.username || null }, JWT_SECRET, { expiresIn: '7d' });
     res.cookie('token', token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 });
     res.json({ message: 'Login successful', user: { id: user.id, email: user.email, username: user.username || null } });
@@ -184,6 +224,69 @@ app.post('/api/auth/login', (req, res) => {
 app.post('/api/auth/logout', (req, res) => {
   res.clearCookie('token');
   res.json({ message: 'Logged out successfully' });
+});
+
+app.post('/api/auth/verify-email', (req, res) => {
+  const { email, code } = req.body;
+  if (!email || !code) return res.status(400).json({ error: 'Email and code are required' });
+
+  db.get('SELECT * FROM users WHERE email = ?', [email], (err, user) => {
+    if (err || !user) return res.status(404).json({ error: 'Account not found' });
+    if (user.verified) return res.status(400).json({ error: 'Account already verified' });
+
+    db.get(
+      'SELECT * FROM email_verifications WHERE user_id = ? AND code = ? AND created_at >= datetime("now", "-15 minutes") ORDER BY created_at DESC LIMIT 1',
+      [user.id, code],
+      (err, verification) => {
+        if (err || !verification) return res.status(400).json({ error: 'Invalid or expired code' });
+
+        db.run('UPDATE users SET verified = 1 WHERE id = ?', [user.id], function(err) {
+          if (err) return res.status(500).json({ error: 'Verification failed' });
+          db.run('DELETE FROM email_verifications WHERE user_id = ?', [user.id]);
+          const token = jwt.sign({ id: user.id, email: user.email, username: user.username || null }, JWT_SECRET, { expiresIn: '7d' });
+          res.cookie('token', token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 });
+          res.json({ message: 'Email verified successfully' });
+        });
+      }
+    );
+  });
+});
+
+app.post('/api/auth/resend-verification', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email is required' });
+
+  db.get('SELECT * FROM users WHERE email = ?', [email], async (err, user) => {
+    if (err || !user) return res.status(404).json({ error: 'Account not found' });
+    if (user.verified) return res.status(400).json({ error: 'Account already verified' });
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    db.run('DELETE FROM email_verifications WHERE user_id = ?', [user.id], () => {
+      db.run('INSERT INTO email_verifications (user_id, code) VALUES (?, ?)', [user.id, code], async (err) => {
+        if (err) return res.status(500).json({ error: 'Failed to create verification code' });
+        try {
+          await transporter.sendMail({
+            from: `"Todoer" <${process.env.BREVO_FROM}>`,
+            to: email,
+            subject: 'Your new Todoer verification code',
+            html: `
+              <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;">
+                <h2 style="color:#0a0a0a;">Todoer</h2>
+                <p>Here is your new verification code.</p>
+                <div style="font-size:32px;font-weight:700;letter-spacing:8px;color:#0a0a0a;margin:24px 0;padding:20px;background:#f4f4f4;border-radius:8px;text-align:center;">
+                  ${code}
+                </div>
+                <p style="color:#999;font-size:12px;">This code expires in 15 minutes.</p>
+              </div>
+            `
+          });
+          res.json({ message: 'Verification code resent' });
+        } catch (mailErr) {
+          res.status(500).json({ error: 'Failed to send verification email' });
+        }
+      });
+    });
+  });
 });
 
 app.get('/api/auth/me', authenticateToken, (req, res) => {
@@ -659,6 +762,7 @@ app.get('/files', (req, res) => res.sendFile(path.join(__dirname, 'public', 'fil
 app.get('/profile', (req, res) => res.sendFile(path.join(__dirname, 'public', 'profile.html')));
 app.get('/register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'register.html')));
 app.get('/forgot-password', (req, res) => res.sendFile(path.join(__dirname, 'public', 'forgot-password.html')));
+app.get('/verify-email', (req, res) => res.sendFile(path.join(__dirname, 'public', 'verify-email.html')));
 app.get('/reset-password', (req, res) => res.sendFile(path.join(__dirname, 'public', 'reset-password.html')));
 app.get('/', (req, res) => {
   const token = req.cookies.token;

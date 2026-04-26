@@ -56,6 +56,10 @@
         });
         const data = await response.json();
         if (!response.ok) {
+          if (data.unverified) {
+            window.location.href = '/verify-email?email=' + encodeURIComponent(data.email);
+            return;
+          }
           errorMessage.textContent = data.error || 'Login failed';
           errorMessage.style.display = 'block';
           btn.disabled = false;
