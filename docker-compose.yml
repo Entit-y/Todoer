@@ -1,25 +1,24 @@
-version: '3.8'
-
 services:
   app:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: todoer-app
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"                     # internal port for the proxy
     volumes:
-      # Persist uploads directory
       - ./uploads:/app/uploads
-      # Persist database file
       - ./data:/app/data
     environment:
       - NODE_ENV=production
       - PORT=3000
+      - VIRTUAL_HOST=entityy.site
+      - LETSENCRYPT_HOST=entityy.site
+      - LETSENCRYPT_EMAIL=jonaleece@gmail.com
       - BREVO_USER=${BREVO_USER}
       - BREVO_KEY=${BREVO_KEY}
       - BREVO_FROM=${BREVO_FROM}
-      - APP_URL=${APP_URL}
+      - APP_URL=https://entityy.site
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
@@ -27,3 +26,28 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+
+  nginx-proxy:
+    image: nginxproxy/nginx-proxy
+    container_name: nginx-proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - ./certs:/etc/nginx/certs
+      - ./vhost.d:/etc/nginx/vhost.d
+      - ./html:/usr/share/nginx/html
+    restart: unless-stopped
+
+  letsencrypt-companion:
+    image: nginxproxy/acme-companion
+    container_name: nginx-proxy-acme
+    volumes_from:
+      - nginx-proxy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./certs:/etc/nginx/certs:rw
+    environment:
+      - DEFAULT_EMAIL=jonaleece@gmail.com
+    restart: unless-stopped
