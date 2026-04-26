@@ -8,15 +8,17 @@
   <style>
     .code-inputs {
       display: flex;
-      gap: 10px;
+      gap: 8px;
       margin-bottom: 24px;
+      width: 100%;
     }
 
     .code-input {
-      width: 52px !important;
-      height: 56px;
+      flex: 1;
+      min-width: 0;
+      aspect-ratio: 1;
       text-align: center;
-      font-size: 22px;
+      font-size: 20px;
       font-weight: 600;
       letter-spacing: 0;
       padding: 0 !important;
@@ -26,6 +28,7 @@
       background: #ffffff !important;
       caret-color: #0a0a0a;
       transition: border-color 0.15s;
+      width: 100% !important;
     }
 
     .code-input:focus {
