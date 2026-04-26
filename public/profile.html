@@ -13,56 +13,64 @@
       <a href="/home" class="nav-link">Tasks</a>
       <a href="/files" class="nav-link">Files</a>
       <a href="/profile" class="nav-link active">Profile</a>
-      <span id="navUsername" style="color:var(--amber);font-size:0.8rem;font-weight:500;padding:0 4px;"></span>
-      <button id="logoutBtn" class="btn btn-secondary" style="margin-left:8px;">Logout</button>
+      <span id="navUsername" class="nav-username"></span>
+      <button class="theme-toggle" id="themeToggle" title="Toggle theme">
+        <svg id="iconSun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
+          <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+          <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+        </svg>
+        <svg id="iconMoon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+      </button>
+      <button id="logoutBtn" class="btn btn-secondary" style="margin-left:4px;">Logout</button>
     </div>
   </nav>
 
   <main class="container">
     <div class="profile-header">
       <div class="profile-avatar">
-        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
           <circle cx="12" cy="7" r="4"/>
         </svg>
       </div>
       <div class="profile-info">
         <h1 id="profileEmail">Loading…</h1>
-        <p id="profileUsername" style="color:var(--amber);font-size:0.875rem;font-weight:500;margin-top:2px;margin-bottom:4px;"></p>
+        <p id="profileUsername" class="profile-username"></p>
         <p id="profileDate">Member since —</p>
       </div>
     </div>
 
     <div class="profile-sections">
-      <!-- Username -->
       <section class="profile-section">
         <h2>Username</h2>
         <form id="usernameForm" class="profile-form">
           <div class="form-group">
             <label for="newUsername">Username</label>
-            <input type="text" id="newUsername" placeholder="e.g. johndoe" autocomplete="username">
+            <input type="text" id="newUsername" placeholder="johndoe" autocomplete="username">
           </div>
           <div id="usernameMessage" class="message" style="display:none;"></div>
-          <button type="submit" class="btn btn-primary">Update Username</button>
+          <button type="submit" class="btn btn-primary">Update username</button>
         </form>
       </section>
 
-      <!-- Email -->
       <section class="profile-section">
-        <h2>Update Email</h2>
+        <h2>Email address</h2>
         <form id="emailForm" class="profile-form">
           <div class="form-group">
-            <label for="newEmail">New email address</label>
+            <label for="newEmail">New email</label>
             <input type="email" id="newEmail" required placeholder="you@newdomain.com">
           </div>
           <div id="emailMessage" class="message" style="display:none;"></div>
-          <button type="submit" class="btn btn-primary">Update Email</button>
+          <button type="submit" class="btn btn-primary">Update email</button>
         </form>
       </section>
 
-      <!-- Password -->
       <section class="profile-section">
-        <h2>Change Password</h2>
+        <h2>Password</h2>
         <form id="passwordForm" class="profile-form">
           <div class="form-group">
             <label for="currentPassword">Current password</label>
@@ -77,27 +85,44 @@
             <input type="password" id="confirmNewPassword" required placeholder="Repeat new password">
           </div>
           <div id="passwordMessage" class="message" style="display:none;"></div>
-          <button type="submit" class="btn btn-primary">Change Password</button>
+          <button type="submit" class="btn btn-primary">Change password</button>
         </form>
       </section>
 
-      <!-- Danger Zone -->
       <section class="profile-section danger-zone">
-        <h2>Danger Zone</h2>
+        <h2>Danger zone</h2>
         <p>Deleting your account is permanent and cannot be undone.</p>
         <form id="deleteForm" class="profile-form">
           <div class="form-group">
-            <label for="deletePassword">Enter password to confirm</label>
+            <label for="deletePassword">Confirm with password</label>
             <input type="password" id="deletePassword" required placeholder="Your current password">
           </div>
           <div id="deleteMessage" class="message" style="display:none;"></div>
-          <button type="submit" class="btn btn-danger">Delete My Account</button>
+          <button type="submit" class="btn btn-danger">Delete my account</button>
         </form>
       </section>
     </div>
   </main>
 
   <script>
+    // Theme
+    const saved = localStorage.getItem('theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', saved);
+    updateThemeIcon(saved);
+
+    document.getElementById('themeToggle').addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+      updateThemeIcon(next);
+    });
+
+    function updateThemeIcon(theme) {
+      document.getElementById('iconSun').style.display  = theme === 'light' ? 'block' : 'none';
+      document.getElementById('iconMoon').style.display = theme === 'dark'  ? 'block' : 'none';
+    }
+
     async function checkAuth() {
       try {
         const r = await fetch('/api/auth/me');
@@ -134,16 +159,12 @@
       const username = document.getElementById('newUsername').value.trim();
       if (!username) { msg.textContent = 'Username cannot be empty'; msg.className = 'message error'; msg.style.display = 'block'; return; }
       try {
-        const r = await fetch('/api/profile/username', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username })
-        });
+        const r = await fetch('/api/profile/username', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username }) });
         const data = await r.json();
         if (r.ok) {
           msg.textContent = 'Username updated.';
           msg.className = 'message success';
-          // VULNERABLE: innerHTML — if username is a payload this executes it on update too
+          // VULNERABLE: innerHTML — executes payload on update too
           document.getElementById('profileUsername').innerHTML = '@' + data.username;
         } else {
           msg.textContent = data.error || 'Failed to update username';
