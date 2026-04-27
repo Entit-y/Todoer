@@ -5,6 +5,75 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sign In - Todoer</title>
   <link rel="stylesheet" href="/styles.css">
+  <style>
+    body.auth {
+      background:
+        radial-gradient(circle at 15% 20%, rgba(0, 0, 0, 0.05) 0, transparent 28%),
+        radial-gradient(circle at 85% 25%, rgba(0, 0, 0, 0.04) 0, transparent 24%),
+        radial-gradient(circle at 75% 80%, rgba(0, 0, 0, 0.03) 0, transparent 30%),
+        linear-gradient(135deg, #f8fafc 0%, #f4f4f5 45%, #f8fafc 100%);
+      overflow: hidden;
+    }
+
+    .auth-container {
+      position: relative;
+      isolation: isolate;
+    }
+
+    .auth-container::before,
+    .auth-container::after {
+      content: "";
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(60px);
+      opacity: 0.55;
+      z-index: -1;
+      animation: float 16s ease-in-out infinite;
+    }
+
+    .auth-container::before {
+      width: 280px;
+      height: 280px;
+      background: rgba(59, 130, 246, 0.12);
+      top: 8%;
+      left: 10%;
+    }
+
+    .auth-container::after {
+      width: 320px;
+      height: 320px;
+      background: rgba(168, 85, 247, 0.10);
+      bottom: 6%;
+      right: 8%;
+      animation-delay: -8s;
+    }
+
+    .auth-card {
+      position: relative;
+      backdrop-filter: blur(12px);
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      box-shadow: 0 20px 60px rgba(15, 23, 42, 0.10), 0 8px 24px rgba(15, 23, 42, 0.06);
+    }
+
+    .auth-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 10px;
+      padding: 1px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(255,255,255,0.2));
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0) translateX(0); }
+      50% { transform: translateY(-18px) translateX(12px); }
+    }
+  </style>
 </head>
 <body class="auth">
   <div class="auth-container">
