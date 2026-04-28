@@ -6,13 +6,78 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Files — Todoer</title>
   <link rel="stylesheet" href="/styles.css">
+  <style>
+    /* ── Toast ── */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--surface-3);
+      border: 1px solid var(--border-light);
+      color: var(--text-1);
+      padding: 12px 18px;
+      border-radius: var(--radius-md);
+      font-size: 13.5px;
+      box-shadow: var(--shadow-md);
+      z-index: 3000;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none;
+      max-width: 320px;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.success { border-color: rgba(34,197,94,0.3); color: #22c55e; }
+    .toast.error   { border-color: var(--danger-border); color: var(--danger); }
+
+    /* ── Confirm Modal ── */
+    .confirm-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(4px);
+      justify-content: center;
+      align-items: center;
+      z-index: 1500;
+      padding: 20px;
+    }
+    .confirm-box {
+      background: var(--surface);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      width: 100%;
+      max-width: 380px;
+      box-shadow: var(--shadow-lg);
+      animation: modal-in 0.18s ease;
+    }
+    .confirm-box h3 {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-1);
+      margin-bottom: 8px;
+      letter-spacing: -0.02em;
+    }
+    .confirm-box p {
+      font-size: 13.5px;
+      color: var(--text-2);
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+    .confirm-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+  </style>
 </head>
 <body>
   <nav class="navbar">
     <div class="nav-brand" style="display:flex; align-items:center; gap:8px;">
       <object data="/assets/logo.svg" type="image/svg+xml" style="width:28px; height:28px; pointer-events:none;"></object>
       <span>Todoer</span>
-   </div>
+    </div>
     <div class="nav-links">
       <a href="/home" class="nav-link">Tasks</a>
       <a href="/files" class="nav-link active">Files</a>
@@ -60,6 +125,21 @@
     </div>
   </main>
 
+  <!-- Toast -->
+  <div id="toast" class="toast"></div>
+
+  <!-- Confirm Modal -->
+  <div id="confirmModal" class="confirm-modal">
+    <div class="confirm-box">
+      <h3 id="confirmTitle"></h3>
+      <p id="confirmMessage"></p>
+      <div class="confirm-actions">
+        <button class="btn btn-secondary" id="confirmCancel">Cancel</button>
+        <button class="btn" id="confirmOk">Confirm</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Image Viewer Modal -->
   <div id="imageViewerModal" class="image-viewer-modal">
     <div class="image-viewer-content">
@@ -103,8 +183,8 @@
           <input type="text" id="archiveName" placeholder="my-archive.zip">
         </div>
         <div class="form-group">
-          <label>Selected files (<span id="selectedCount">0</span>)</label>
-          <div id="selectedFilesList" class="selected-files-list"></div>
+          <label>Files (<span id="selectedCount">0</span> selected)</label>
+          <div id="fileCheckboxList" class="selected-files-list"></div>
         </div>
         <div class="modal-actions">
           <button type="button" class="btn btn-secondary" onclick="closeArchiveModal()">Cancel</button>
@@ -122,7 +202,7 @@
 
     const imageExtensions = ['jpg','jpeg','png','gif','bmp','webp','svg','ico','tiff','tif'];
 
-    // Theme
+    // ── Theme ──
     const saved = localStorage.getItem('theme') || 'dark';
     document.documentElement.setAttribute('data-theme', saved);
     updateThemeIcon(saved);
@@ -140,6 +220,41 @@
       document.getElementById('iconMoon').style.display = theme === 'dark'  ? 'block' : 'none';
     }
 
+    // ── Toast ──
+    let toastTimer;
+    function showToast(message, type = '') {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = 'toast' + (type ? ' ' + type : '');
+      requestAnimationFrame(() => toast.classList.add('show'));
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    // ── Confirm modal ──
+    function showConfirm({ title, message, confirmText = 'Confirm', danger = false }) {
+      return new Promise(resolve => {
+        document.getElementById('confirmTitle').textContent = title;
+        document.getElementById('confirmMessage').textContent = message;
+        const okBtn = document.getElementById('confirmOk');
+        okBtn.textContent = confirmText;
+        okBtn.className = 'btn ' + (danger ? 'btn-danger' : 'btn-primary');
+        document.getElementById('confirmModal').style.display = 'flex';
+
+        const cleanup = (result) => {
+          document.getElementById('confirmModal').style.display = 'none';
+          okBtn.removeEventListener('click', onOk);
+          document.getElementById('confirmCancel').removeEventListener('click', onCancel);
+          resolve(result);
+        };
+        const onOk     = () => cleanup(true);
+        const onCancel = () => cleanup(false);
+        okBtn.addEventListener('click', onOk);
+        document.getElementById('confirmCancel').addEventListener('click', onCancel);
+      });
+    }
+
+    // ── Auth ──
     async function checkAuth() {
       try {
         const r = await fetch('/api/auth/me');
@@ -152,6 +267,7 @@
       } catch { window.location.href = '/'; }
     }
 
+    // ── Files ──
     async function loadFiles() {
       const search = document.getElementById('searchInput').value;
       const params = new URLSearchParams();
@@ -190,16 +306,17 @@
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             </button>
             ${isArchive(file.original_name) && !file.extracted_from ? `
-              <button class="btn-icon" onclick="extractArchive(${file.id})" title="Extract">
+              <button class="btn-icon" onclick="extractArchive(${file.id}, '${escapeHtml(file.original_name)}')" title="Extract">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
               </button>` : ''}
-            <button class="btn-icon btn-danger" onclick="deleteFile(${file.id})" title="Delete">
+            <button class="btn-icon btn-danger" onclick="deleteFile(${file.id}, '${escapeHtml(file.original_name)}')" title="Delete">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
             </button>
           </div>
         </div>`).join('');
     }
 
+    // ── Image viewer ──
     function viewImage(fileId) {
       const file = files.find(f => f.id === fileId);
       if (!file) return;
@@ -230,13 +347,18 @@
     }
 
     document.addEventListener('keydown', e => {
-      if (e.key === 'Escape') { closeImageViewer(); closeArchiveModal(); }
+      if (e.key === 'Escape') {
+        closeImageViewer();
+        closeArchiveModal();
+        document.getElementById('confirmModal').style.display = 'none';
+      }
     });
 
     document.getElementById('imageViewerModal').addEventListener('click', e => {
       if (e.target.id === 'imageViewerModal') closeImageViewer();
     });
 
+    // ── File actions ──
     function getFileIcon(filename) {
       const ext = filename.split('.').pop().toLowerCase();
       const color = {
@@ -247,9 +369,9 @@
         png:  ['#a78bfa','#8b5cf6'], gif:  ['#a78bfa','#8b5cf6'],
         webp: ['#a78bfa','#8b5cf6'], svg:  ['#a78bfa','#8b5cf6'],
       };
-      const isImage  = imageExtensions.includes(ext);
-      const isArc    = ['zip','tar','gz','rar','7z'].includes(ext);
-      const c        = color[ext] || ['#6b7280','#4b5563'];
+      const isImage = imageExtensions.includes(ext);
+      const isArc   = ['zip','tar','gz','rar','7z'].includes(ext);
+      const c       = color[ext] || ['#6b7280','#4b5563'];
 
       if (isImage) return `<svg width="44" height="44" viewBox="0 0 24 24" fill="${c[0]}22" stroke="${c[0]}" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`;
       if (isArc)   return `<svg width="44" height="44" viewBox="0 0 24 24" fill="${c[0]}22" stroke="${c[0]}" stroke-width="1.2"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>`;
@@ -266,67 +388,88 @@
       formData.append('file', file);
       try {
         const response = await fetch('/api/files/upload', { method: 'POST', body: formData });
-        if (response.ok) { loadFiles(); } else { alert('Failed to upload file'); }
-      } catch (error) { console.error('Upload failed:', error); alert('Upload failed'); }
+        if (response.ok) { loadFiles(); showToast('File uploaded.', 'success'); }
+        else { showToast('Failed to upload file.', 'error'); }
+      } catch { showToast('Upload failed.', 'error'); }
       document.getElementById('fileInput').value = '';
     }
 
     async function downloadFile(id) { window.location.href = `/api/files/${id}/download`; }
 
-    async function extractArchive(id) {
-      if (!confirm('Extract this archive?')) return;
+    async function extractArchive(id, name) {
+      const confirmed = await showConfirm({
+        title: 'Extract archive',
+        message: `Extract "${name}"? Files will be added to your file list.`,
+        confirmText: 'Extract'
+      });
+      if (!confirmed) return;
       try {
         const response = await fetch(`/api/files/extract/${id}`, { method: 'POST' });
         const data = await response.json();
-        if (response.ok) { alert(`Extracted ${data.files.length} file(s).`); loadFiles(); }
-        else { alert(data.error || 'Extraction failed'); }
-      } catch (error) { console.error('Extraction failed:', error); alert('Extraction failed'); }
+        if (response.ok) { loadFiles(); showToast(`Extracted ${data.files.length} file(s).`, 'success'); }
+        else { showToast(data.error || 'Extraction failed.', 'error'); }
+      } catch { showToast('Extraction failed.', 'error'); }
     }
 
-    async function deleteFile(id) {
-      if (!confirm('Delete this file?')) return;
-      try { await fetch(`/api/files/${id}`, { method: 'DELETE' }); loadFiles(); }
-      catch (error) { console.error('Delete failed:', error); }
+    async function deleteFile(id, name) {
+      const confirmed = await showConfirm({
+        title: 'Delete file',
+        message: `"${name}" will be permanently deleted.`,
+        confirmText: 'Delete',
+        danger: true
+      });
+      if (!confirmed) return;
+      try {
+        await fetch(`/api/files/${id}`, { method: 'DELETE' });
+        loadFiles();
+        showToast('File deleted.', 'success');
+      } catch { showToast('Failed to delete file.', 'error'); }
     }
 
+    // ── Create archive ──
     function showCreateArchiveModal() {
       selectedFiles = [];
-      renderSelectedFiles();
+      renderFileCheckboxes();
       document.getElementById('archiveModal').style.display = 'flex';
     }
 
     function closeArchiveModal() { document.getElementById('archiveModal').style.display = 'none'; }
 
+    function renderFileCheckboxes() {
+      const list = document.getElementById('fileCheckboxList');
+      document.getElementById('selectedCount').textContent = selectedFiles.length;
+      if (!files.length) {
+        list.innerHTML = '<p style="color:var(--text-3);font-size:13px;padding:8px 0;">No files available.</p>';
+        return;
+      }
+      list.innerHTML = files.map(f => `
+        <div class="selected-file-item" style="cursor:pointer;" onclick="toggleFileSelection(${f.id})">
+          <span>${escapeHtml(f.original_name)}</span>
+          <input type="checkbox" ${selectedFiles.includes(f.id) ? 'checked' : ''} style="pointer-events:none;accent-color:var(--accent);flex-shrink:0;">
+        </div>`).join('');
+    }
+
     function toggleFileSelection(id) {
       const index = selectedFiles.indexOf(id);
       if (index === -1) { selectedFiles.push(id); } else { selectedFiles.splice(index, 1); }
-      renderSelectedFiles();
-    }
-
-    function renderSelectedFiles() {
-      const list  = document.getElementById('selectedFilesList');
-      const count = document.getElementById('selectedCount');
-      count.textContent = selectedFiles.length;
-      const selected = files.filter(f => selectedFiles.includes(f.id));
-      list.innerHTML = selected.map(f => `
-        <div class="selected-file-item">
-          <span>${escapeHtml(f.original_name)}</span>
-          <button type="button" onclick="toggleFileSelection(${f.id})">×</button>
-        </div>`).join('');
+      renderFileCheckboxes();
     }
 
     document.getElementById('archiveForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      if (selectedFiles.length === 0) { alert('Select at least one file'); return; }
+      if (selectedFiles.length === 0) { showToast('Select at least one file.', 'error'); return; }
       try {
         const response = await fetch('/api/files/create-archive', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ fileIds: selectedFiles, archiveName: document.getElementById('archiveName').value || `archive-${Date.now()}.zip` })
+          body: JSON.stringify({
+            fileIds: selectedFiles,
+            archiveName: document.getElementById('archiveName').value || `archive-${Date.now()}.zip`
+          })
         });
-        if (response.ok) { closeArchiveModal(); loadFiles(); alert('Archive created.'); }
-        else { alert('Failed to create archive'); }
-      } catch (error) { console.error('Archive creation failed:', error); alert('Failed to create archive'); }
+        if (response.ok) { closeArchiveModal(); loadFiles(); showToast('Archive created.', 'success'); }
+        else { showToast('Failed to create archive.', 'error'); }
+      } catch { showToast('Failed to create archive.', 'error'); }
     });
 
     document.getElementById('searchInput').addEventListener('keypress', e => { if (e.key === 'Enter') loadFiles(); });
