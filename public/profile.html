@@ -6,13 +6,78 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Profile — Todoer</title>
   <link rel="stylesheet" href="/styles.css">
+  <style>
+    /* ── Toast ── */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--surface-3);
+      border: 1px solid var(--border-light);
+      color: var(--text-1);
+      padding: 12px 18px;
+      border-radius: var(--radius-md);
+      font-size: 13.5px;
+      box-shadow: var(--shadow-md);
+      z-index: 3000;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none;
+      max-width: 320px;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.success { border-color: rgba(34,197,94,0.3); color: #22c55e; }
+    .toast.error   { border-color: var(--danger-border); color: var(--danger); }
+
+    /* ── Confirm Modal ── */
+    .confirm-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(4px);
+      justify-content: center;
+      align-items: center;
+      z-index: 1500;
+      padding: 20px;
+    }
+    .confirm-box {
+      background: var(--surface);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      width: 100%;
+      max-width: 380px;
+      box-shadow: var(--shadow-lg);
+      animation: modal-in 0.18s ease;
+    }
+    .confirm-box h3 {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-1);
+      margin-bottom: 8px;
+      letter-spacing: -0.02em;
+    }
+    .confirm-box p {
+      font-size: 13.5px;
+      color: var(--text-2);
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+    .confirm-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+  </style>
 </head>
 <body>
   <nav class="navbar">
     <div class="nav-brand" style="display:flex; align-items:center; gap:8px;">
       <object data="/assets/logo.svg" type="image/svg+xml" style="width:28px; height:28px; pointer-events:none;"></object>
       <span>Todoer</span>
-   </div>
+    </div>
     <div class="nav-links">
       <a href="/home" class="nav-link">Tasks</a>
       <a href="/files" class="nav-link">Files</a>
@@ -108,8 +173,23 @@
     </div>
   </main>
 
+  <!-- Toast -->
+  <div id="toast" class="toast"></div>
+
+  <!-- Confirm Modal -->
+  <div id="confirmModal" class="confirm-modal">
+    <div class="confirm-box">
+      <h3 id="confirmTitle"></h3>
+      <p id="confirmMessage"></p>
+      <div class="confirm-actions">
+        <button class="btn btn-secondary" id="confirmCancel">Cancel</button>
+        <button class="btn" id="confirmOk">Confirm</button>
+      </div>
+    </div>
+  </div>
+
   <script>
-    // Theme
+    // ── Theme ──
     const saved = localStorage.getItem('theme') || 'dark';
     document.documentElement.setAttribute('data-theme', saved);
     updateThemeIcon(saved);
@@ -127,6 +207,45 @@
       document.getElementById('iconMoon').style.display = theme === 'dark'  ? 'block' : 'none';
     }
 
+    // ── Toast ──
+    let toastTimer;
+    function showToast(message, type = '') {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = 'toast' + (type ? ' ' + type : '');
+      requestAnimationFrame(() => toast.classList.add('show'));
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    // ── Confirm modal ──
+    function showConfirm({ title, message, confirmText = 'Confirm', danger = false }) {
+      return new Promise(resolve => {
+        document.getElementById('confirmTitle').textContent = title;
+        document.getElementById('confirmMessage').textContent = message;
+        const okBtn = document.getElementById('confirmOk');
+        okBtn.textContent = confirmText;
+        okBtn.className = 'btn ' + (danger ? 'btn-danger' : 'btn-primary');
+        document.getElementById('confirmModal').style.display = 'flex';
+
+        const cleanup = (result) => {
+          document.getElementById('confirmModal').style.display = 'none';
+          okBtn.removeEventListener('click', onOk);
+          document.getElementById('confirmCancel').removeEventListener('click', onCancel);
+          resolve(result);
+        };
+        const onOk     = () => cleanup(true);
+        const onCancel = () => cleanup(false);
+        okBtn.addEventListener('click', onOk);
+        document.getElementById('confirmCancel').addEventListener('click', onCancel);
+      });
+    }
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') document.getElementById('confirmModal').style.display = 'none';
+    });
+
+    // ── Auth ──
     async function checkAuth() {
       try {
         const r = await fetch('/api/auth/me');
@@ -156,6 +275,7 @@
       } catch (e) { console.error(e); }
     }
 
+    // ── Forms ──
     document.getElementById('usernameForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const msg = document.getElementById('usernameMessage');
@@ -211,12 +331,26 @@
       e.preventDefault();
       const msg = document.getElementById('deleteMessage');
       msg.style.display = 'none'; msg.className = 'message';
-      if (!confirm('Permanently delete your account? This cannot be undone.')) return;
+
+      const confirmed = await showConfirm({
+        title: 'Delete account',
+        message: 'This is permanent and cannot be undone. All your data will be lost.',
+        confirmText: 'Delete my account',
+        danger: true
+      });
+      if (!confirmed) return;
+
       try {
         const r = await fetch('/api/profile/account', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: document.getElementById('deletePassword').value }) });
         const data = await r.json();
-        if (r.ok) { alert('Account deleted.'); window.location.href = '/'; }
-        else { msg.textContent = data.error || 'Failed to delete account'; msg.className = 'message error'; msg.style.display = 'block'; }
+        if (r.ok) {
+          showToast('Account deleted. Redirecting…');
+          setTimeout(() => window.location.href = '/', 1500);
+        } else {
+          msg.textContent = data.error || 'Failed to delete account';
+          msg.className = 'message error';
+          msg.style.display = 'block';
+        }
       } catch { msg.textContent = 'An error occurred.'; msg.className = 'message error'; msg.style.display = 'block'; }
     });
 
