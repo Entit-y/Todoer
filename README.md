@@ -14,119 +14,119 @@ A deliberately vulnerable task management application built with Node.js, Expres
 
 ---
 
-## Vulnerabilities & Weaknesses
+## Vulnerabilities
 
-### V1 — Punycode Email Normalization on Lookup, Raw Input on Delivery
+### V1 — Punycode Zero-Click Account Takeover
 **Location:** `POST /api/auth/forgot-password`
 
-The forgot-password route normalizes the submitted email using NFKD unicode normalization before querying the database, but delivers the reset email to the original un-normalized input. This means a lookalike address like `victim@gmàil.com` matches `victim@gmail.com` in the DB, issues a valid reset token for the victim's account, and delivers it to the attacker-controlled inbox.
+An attacker who controls a unicode lookalike email address (e.g. `victim@gmàil.com`) can trigger a password reset for `victim@gmail.com`. The app normalizes the submitted email for the DB lookup — finding the real account — but delivers the reset link to the attacker-supplied address. The victim never sees anything.
 
 ---
 
-### V2 — Login Normalizes on Lookup
-**Location:** `POST /api/auth/login`
-
-The login route applies the same NFKD normalization before the DB query. Logging in with `victim@gmàil.com` authenticates as `victim@gmail.com`. This is the basis of the punycode probe: register an account, log out, attempt login with a unicode lookalike — successful login confirms the target is vulnerable.
-
----
-
-### V3 — Stored XSS via Username Field
+### V2 — Stored XSS via Username Field
 **Location:** `PUT /api/profile/username` → `profile.html`, `home.html`
 
-The username is stored unsanitized and rendered via `innerHTML` on multiple pages. Setting a username to an XSS payload causes script execution on page load for any user whose browser renders it.
-
-Affected render points: `#profileUsername` and `#navUsername` on `profile.html`, `#navUsername` on `home.html`.
+A user can set their username to an XSS payload. The app stores it unsanitized and renders it with `innerHTML` on the profile and home pages, executing the script on every page load.
 
 ---
 
-### V4 — No CSRF Protection on Login
+### V3 — Zip Slip
+**Location:** `POST /api/files/extract/:id`
+
+A crafted ZIP archive with path traversal entries like `../../target` writes files anywhere on the server the process has write access to.
+
+---
+
+### V4 — TAR Path Traversal
+**Location:** `POST /api/files/extract/:id`
+
+Same as V3 but for TAR archives.
+
+---
+
+### V5 — TAR Symlink Injection
+**Location:** `POST /api/files/extract/:id`
+
+A crafted TAR archive can plant a symlink pointing anywhere on the filesystem. The symlink gets registered in the DB as a regular file. Downloading it through the app serves the symlink target — enabling arbitrary file read.
+
+---
+
+### V6 — TAR Hardlink Injection
+**Location:** `POST /api/files/extract/:id`
+
+A crafted TAR archive can create a hardlink between a controlled file and any target on the filesystem. Writing to the controlled file via a second archive overwrites the target.
+
+---
+
+## Weaknesses
+
+### W1 — Login Has No CSRF Protection
 **Location:** `POST /api/auth/login`
 
-The login endpoint accepts cross-origin form submissions with no CSRF token. An attacker can craft a page that auto-submits the login form with their own credentials, silently logging a victim into the attacker's account.
+The login endpoint has no CSRF token. However, the endpoint only accepts `Content-Type: application/json`, which a plain HTML form cannot send. A cross-origin `fetch` with that header triggers a CORS preflight, which the server will reject for unauthorized origins — so the classic CSRF login attack does not work here. The weakness exists in principle but is not exploitable in practice without an additional same-origin execution primitive.
 
 ---
 
-### V5 — Email Change Requires No Re-authentication
+### W2 — Email Change Has No Re-authentication
 **Location:** `PUT /api/profile/email`
 
-Changing the registered email address requires only a valid session cookie — no password confirmation or re-auth step. Any authenticated context (including one established by XSS) can silently swap the account's email.
+Changing the account email requires no password confirmation. Any script running in an authenticated context can silently swap the email to an attacker-controlled address.
 
 ---
 
-### V6 — Zip Slip (ZIP Path Traversal)
-**Location:** `POST /api/files/extract/:id`
-
-ZIP extraction passes entry paths directly to `path.join()` without sanitization. A crafted archive with entries like `../../target` will write files outside the intended extraction directory.
-
----
-
-### V7 — TAR Path Traversal
-**Location:** `POST /api/files/extract/:id`
-
-Same as V6 but for TAR archives. `header.name` is used unsanitized in `path.join()`.
-
----
-
-### V8 — TAR Symlink Injection
-**Location:** `POST /api/files/extract/:id`
-
-TAR extraction creates symlinks using `header.linkname` directly, with no path sanitization. The resulting symlink is registered in the database as a regular file. Downloading it via the download endpoint follows the symlink and serves the target file — enabling arbitrary file read on the container filesystem.
-
----
-
-### V9 — TAR Hardlink Injection
-**Location:** `POST /api/files/extract/:id`
-
-`header.linkname` is passed directly to `fs.linkSync()` as the hardlink target. An attacker can create a hardlink pointing to any file on the filesystem, then write to it via a second archive — overwriting arbitrary files.
-
----
-
-### V10 — Hardcoded JWT Secret
+### W3 — Hardcoded JWT Secret
 **Location:** `server.js`
 
-The JWT signing secret is hardcoded as `'your-secret-key-change-in-production'`. Anyone who obtains the source can forge valid session tokens for any user ID without needing credentials.
+The JWT secret is hardcoded in source. Anyone who reads the source code can forge valid session tokens for any user ID and authenticate as them without a password.
 
 ---
 
-### V11 — Predictable Password Reset Token
+### W4 — Predictable Password Reset Token
 **Location:** `POST /api/auth/forgot-password`
 
-Reset tokens are generated as `base64(userId:timestamp)` with no random component. Tokens are guessable given a known user ID and approximate request time.
+Password reset tokens are `base64(userId:timestamp)` — no randomness. Knowing a user ID and roughly when the reset was requested is enough to guess the token.
 
 ---
 
-### V12 — Reset Tokens Never Expire
+### W5 — Reset Tokens Never Expire
 **Location:** `GET /api/auth/verify-reset-token`, `POST /api/auth/reset-password`
 
-No expiry check exists anywhere in the reset flow. Issued tokens remain valid indefinitely until used.
+Reset tokens never expire. A token issued months ago is still valid.
 
 ---
 
-### V13 — Old Reset Tokens Never Invalidated
+### W6 — Old Reset Tokens Never Invalidated
 **Location:** `POST /api/auth/forgot-password`
 
-Issuing a new reset token does not invalidate previously issued tokens for the same account. Multiple valid tokens can exist simultaneously.
+Requesting a new reset token doesn't invalidate old ones. Multiple valid tokens for the same account can exist at once.
 
 ---
 
-### V14 — Email Enumeration via Forgot-Password
+### W7 — Email Enumeration via Forgot-Password
 **Location:** `POST /api/auth/forgot-password`
 
-The endpoint returns a distinct `404` when the submitted email is not registered, confirming whether an address has an account.
+Submitting an unregistered email returns a distinct error, confirming whether any email address has an account.
 
 ---
 
-### V15 — Username and Email Enumeration via Registration
+### W8 — Username and Email Enumeration via Registration
 **Location:** `POST /api/auth/register`
 
-Registration returns distinct error messages for a taken username vs a taken email, enabling enumeration of both.
+Registration returns different errors for a taken username vs a taken email, allowing enumeration of both.
+
+---
+
+### W9 — SVG Loaded via `<embed>` Executes JavaScript
+**Location:** `home.html`, `profile.html`, `files.html` navbar
+
+The logo is loaded with `<embed>` instead of `<img>`. Unlike `<img>`, `<embed>` renders SVG as a full document so JavaScript inside it executes in the page context. If the logo file is overwritten with a malicious SVG, every authenticated page becomes a persistent XSS delivery mechanism.
 
 ---
 
 ## Chains
 
 ### Chain 1 — Punycode Zero-Click Account Takeover
-`V1 + V11 + V12`
+`V1 + W4 + W5`
 
 1. Attacker identifies a victim's email address
 2. Submits forgot-password with a unicode lookalike (`victim@gmàil.com`)
@@ -138,34 +138,8 @@ Zero interaction required from the victim.
 
 ---
 
-### Chain 2 — Self-XSS Escalation to Arbitrary XSS (Make Self-XSS Great Again)
-`V3 + V4`
-
-1. Attacker registers an account and sets username to an XSS payload
-2. Attacker crafts a page that auto-submits the login form with their credentials (possible due to V4)
-3. Victim visits the attacker's page — their browser is silently logged into the attacker's account
-4. On redirect to any authenticated page, the stored XSS payload executes in the victim's browser
-
-Converts a self-XSS (normally unexploitable) into arbitrary script execution on the victim.
-
----
-
-### Chain 3 — XSS to Full Account Takeover via Email Swap
-`V3 + V4 + V5 + V1`
-
-Extends Chain 2:
-
-1. XSS executes in victim's browser context (via Chain 2)
-2. XSS payload calls `PUT /api/profile/email` to change the victim's email to an attacker-controlled address (possible due to V5 — no re-auth required)
-3. Attacker initiates forgot-password for the victim's original email
-4. Normalization finds the account (now registered to attacker's email)
-5. Reset token delivered to attacker's inbox
-6. Attacker resets password — full account takeover
-
----
-
-### Chain 4 — Symlink Injection to Source Code Leak to JWT Forgery
-`V8 + V10`
+### Chain 2 — Symlink Injection to Source Code Leak to JWT Forgery
+`V5 + W3`
 
 1. Attacker crafts a TAR archive with a symlink entry: `name=leak.txt`, `linkname=/app/server.js`
 2. Uploads and extracts the archive — symlink registered in DB as a file
@@ -175,20 +149,48 @@ Extends Chain 2:
 
 ---
 
-### Chain 5 — Symlink Injection to Database Dump
-`V8`
+### Chain 3 — Symlink Injection to Database Dump
+`V5`
 
-Same as Chain 4 but targeting `/app/todoer.db`. Serves the entire SQLite database — all user records, emails, and bcrypt password hashes.
+Same as Chain 2 but targeting `/app/todoer.db`. Serves the entire SQLite database — all user records, emails, and bcrypt password hashes.
 
 ---
 
-### Chain 6 — Hardlink Injection to Arbitrary File Overwrite
-`V9`
+### Chain 4 — Hardlink Injection to Arbitrary File Overwrite
+`V6`
 
 1. Attacker crafts TAR with a hardlink entry: `name=link.txt`, `linkname=/app/public/home.html`
 2. Extracts archive — `fs.linkSync` creates a hardlink between `link.txt` and `home.html` (shared inode)
 3. Second archive writes attacker-controlled content to `link.txt`
 4. Because they share an inode, `/app/public/home.html` is overwritten with attacker content
+
+---
+
+### Chain 5 — Zip Slip to Persistent SVG XSS to Zero-Click Account Takeover
+`V3 + W9 + W2 + V1`
+
+The widest blast radius chain in the app. A single archive extraction overwrites the shared logo file, turning every authenticated page into an XSS delivery mechanism that silently takes over any account that loads it.
+
+1. Attacker registers an account and uploads a crafted ZIP or TAR containing a path traversal entry: `name=../../public/assets/logo.svg`
+2. The entry payload is a malicious SVG with an `onload` handler:
+```xml
+<svg xmlns="http://www.w3.org/2000/svg" onload="
+  fetch('/api/auth/me').then(r => r.json()).then(data => {
+    fetch('/api/profile/email', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'attacker+' + data.user.id + '@gmail.com' })
+    });
+  });
+">
+</svg>
+```
+3. Attacker triggers extraction — `public/assets/logo.svg` is overwritten with the payload
+4. Any authenticated user who loads `home.html`, `profile.html`, or `files.html` triggers the `onload` handler via the `<embed>` tag (W9) — silently swapping their registered email to an attacker-controlled address (W2)
+5. Attacker initiates forgot-password for each victim's original email — reset tokens are delivered to attacker-controlled inboxes
+6. Attacker resets each password — full account takeover on every user who loaded any authenticated page after step 3
+
+No interaction required beyond normal app usage. Every user is a victim.
 
 ---
 
