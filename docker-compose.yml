@@ -5,10 +5,11 @@ services:
       dockerfile: Dockerfile
     container_name: todoer-app
     expose:
-      - "3000"                     # internal port for the proxy
+      - "3000"
     volumes:
       - ./uploads:/app/uploads
       - ./data:/app/data
+      - ./todoer.db:/app/todoer.db
     environment:
       - NODE_ENV=production
       - PORT=3000
@@ -22,6 +23,32 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  admin:
+    build:
+      context: ./admin
+      dockerfile: Dockerfile
+    container_name: todoer-admin
+    expose:
+      - "3001"
+    volumes:
+      - ./todoer.db:/app/todoer.db:ro
+      - ./uploads:/app/uploads:ro
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - VIRTUAL_HOST=admin.entityy.site
+      - LETSENCRYPT_HOST=admin.entityy.site
+      - LETSENCRYPT_EMAIL=jonaleece@gmail.com
+      - ADMIN_USERNAME=${ADMIN_USERNAME}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/"]
       interval: 30s
       timeout: 10s
       retries: 3

@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Todoer — Admin</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="dashboard-body">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <embed src="/assets/logo.svg" type="image/svg+xml" width="26" height="26">
+      <span class="sidebar-logo-text">
+        todoer
+        <span class="admin-badge">admin</span>
+      </span>
+    </div>
+    <nav class="sidebar-nav">
+      <button class="nav-item active" onclick="showView('overview')">
+        <span class="nav-icon">◈</span> Overview
+      </button>
+      <button class="nav-item" onclick="showView('users')">
+        <span class="nav-icon">◉</span> Users
+      </button>
+      <button class="nav-item" onclick="showView('tasks')">
+        <span class="nav-icon">◎</span> Tasks
+      </button>
+      <button class="nav-item" onclick="showView('files')">
+        <span class="nav-icon">◫</span> Files
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="/logout" class="nav-item" style="display:flex;color:var(--text-muted);">
+        <span class="nav-icon">⇥</span> Sign out
+      </a>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main-content">
+
+    <!-- Overview -->
+    <section id="view-overview">
+      <h1 class="page-title">Overview</h1>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Total Users</div>
+          <div class="stat-value amber" id="stat-users">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">New This Week</div>
+          <div class="stat-value" id="stat-new">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Total Tasks</div>
+          <div class="stat-value" id="stat-tasks">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Total Files</div>
+          <div class="stat-value" id="stat-files">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Storage Used</div>
+          <div class="stat-value" id="stat-storage">—</div>
+        </div>
+      </div>
+
+      <div class="section-header">
+        <h2 class="section-title">Recent Users</h2>
+        <button class="btn-secondary" onclick="showView('users')">View all</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Email</th>
+              <th>Username</th>
+              <th>Verified</th>
+              <th>Registered</th>
+            </tr>
+          </thead>
+          <tbody id="overview-users-body">
+            <tr><td colspan="5" class="loading">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Users -->
+    <section id="view-users" class="hidden">
+      <h1 class="page-title">Users</h1>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Email</th>
+              <th>Username</th>
+              <th>Verified</th>
+              <th>Tasks</th>
+              <th>Files</th>
+              <th>Registered</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="users-body">
+            <tr><td colspan="8" class="loading">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Tasks -->
+    <section id="view-tasks" class="hidden">
+      <h1 class="page-title">Tasks</h1>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Title</th>
+              <th>User</th>
+              <th>Priority</th>
+              <th>Status</th>
+              <th>Created</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tasks-body">
+            <tr><td colspan="7" class="loading">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Files -->
+    <section id="view-files" class="hidden">
+      <h1 class="page-title">Files</h1>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Filename</th>
+              <th>User</th>
+              <th>Size</th>
+              <th>Uploaded</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="files-body">
+            <tr><td colspan="6" class="loading">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Reset Password Modal -->
+  <div class="modal-overlay hidden" id="reset-modal">
+    <div class="modal">
+      <h2 class="modal-title">Reset Password</h2>
+      <p style="font-size:0.875rem;color:var(--text-dim);margin-bottom:1.25rem;">
+        Set a new password for <strong id="reset-user-email" style="color:var(--text);"></strong>
+      </p>
+      <div class="form-group">
+        <label>New Password</label>
+        <input type="password" id="reset-password-input" placeholder="Min. 6 characters">
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="closeModal('reset-modal')">Cancel</button>
+        <button class="btn-primary" style="width:auto;margin-top:0;" onclick="submitReset()">Reset Password</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Confirm Modal -->
+  <div class="modal-overlay hidden" id="delete-modal">
+    <div class="modal">
+      <h2 class="modal-title">Confirm Delete</h2>
+      <p style="font-size:0.875rem;color:var(--text-dim);margin-bottom:1.25rem;" id="delete-modal-msg"></p>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="closeModal('delete-modal')">Cancel</button>
+        <button class="btn-danger" style="padding:0.6rem 1rem;font-size:0.875rem;" onclick="confirmDelete()">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast"></div>
+
+  <script>
+    // ============ STATE ============
+    let resetTargetId = null;
+    let deleteAction = null;
+
+    // ============ VIEW SWITCHING ============
+    function showView(name) {
+      document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      document.getElementById('view-' + name).classList.remove('hidden');
+      document.querySelectorAll('.nav-item').forEach(n => {
+        if (n.textContent.trim().toLowerCase().startsWith(name === 'overview' ? '◈' : name[0])) {
+          n.classList.add('active');
+        }
+      });
+      // Mark active nav
+      document.querySelectorAll('.nav-item').forEach(n => {
+        const map = { overview: '◈', users: '◉', tasks: '◎', files: '◫' };
+        if (n.textContent.includes(map[name])) n.classList.add('active');
+      });
+      if (name === 'overview') loadOverview();
+      if (name === 'users') loadUsers();
+      if (name === 'tasks') loadTasks();
+      if (name === 'files') loadFiles();
+    }
+
+    // ============ HELPERS ============
+    function fmtDate(d) {
+      if (!d) return '—';
+      return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+
+    function fmtSize(bytes) {
+      if (!bytes) return '0 B';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    function toast(msg, type = '') {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.className = 'show ' + type;
+      setTimeout(() => el.className = '', 2800);
+    }
+
+    function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+    // ============ OVERVIEW ============
+    async function loadOverview() {
+      const stats = await fetch('/api/stats').then(r => r.json());
+      document.getElementById('stat-users').textContent = stats.totalUsers;
+      document.getElementById('stat-new').textContent = stats.newUsersThisWeek;
+      document.getElementById('stat-tasks').textContent = stats.totalTasks;
+      document.getElementById('stat-files').textContent = stats.totalFiles;
+      document.getElementById('stat-storage').textContent = fmtSize(stats.totalStorageBytes);
+
+      const users = await fetch('/api/users').then(r => r.json());
+      const tbody = document.getElementById('overview-users-body');
+      const recent = users.slice(0, 8);
+      if (!recent.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No users yet</td></tr>';
+        return;
+      }
+      tbody.innerHTML = recent.map(u => `
+        <tr>
+          <td class="mono">${u.id}</td>
+          <td class="primary">${u.email}</td>
+          <td>${u.username || '<span style="color:var(--text-muted)">—</span>'}</td>
+          <td>${u.verified
+            ? '<span class="badge badge-verified">Verified</span>'
+            : '<span class="badge badge-unverified">Unverified</span>'}</td>
+          <td class="mono">${fmtDate(u.created_at)}</td>
+        </tr>`).join('');
+    }
+
+    // ============ USERS ============
+    async function loadUsers() {
+      const users = await fetch('/api/users').then(r => r.json());
+      const tbody = document.getElementById('users-body');
+      if (!users.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No users</td></tr>';
+        return;
+      }
+      tbody.innerHTML = users.map(u => `
+        <tr>
+          <td class="mono">${u.id}</td>
+          <td class="primary">${u.email}</td>
+          <td>${u.username || '<span style="color:var(--text-muted)">—</span>'}</td>
+          <td>${u.verified
+            ? '<span class="badge badge-verified">Verified</span>'
+            : '<span class="badge badge-unverified">Unverified</span>'}</td>
+          <td class="mono">${u.task_count}</td>
+          <td class="mono">${u.file_count}</td>
+          <td class="mono">${fmtDate(u.created_at)}</td>
+          <td>
+            <div style="display:flex;gap:0.5rem;justify-content:flex-end;">
+              <button class="btn-secondary" style="font-size:0.78rem;padding:0.4rem 0.7rem;"
+                onclick="openResetModal(${u.id}, '${u.email.replace(/'/g, "\\'")}')">
+                Reset pw
+              </button>
+              <button class="btn-danger"
+                onclick="openDeleteModal('user', ${u.id}, '${u.email.replace(/'/g, "\\'")}')">
+                Delete
+              </button>
+            </div>
+          </td>
+        </tr>`).join('');
+    }
+
+    // ============ TASKS ============
+    async function loadTasks() {
+      const tasks = await fetch('/api/tasks').then(r => r.json());
+      const tbody = document.getElementById('tasks-body');
+      if (!tasks.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No tasks</td></tr>';
+        return;
+      }
+      tbody.innerHTML = tasks.map(t => `
+        <tr>
+          <td class="mono">${t.id}</td>
+          <td class="primary" style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${t.title}</td>
+          <td style="font-size:0.8rem;color:var(--text-muted);">${t.user_email}</td>
+          <td>${priorityBadge(t.priority)}</td>
+          <td>${t.completed
+            ? '<span class="badge badge-done">Done</span>'
+            : '<span style="color:var(--text-muted);font-size:0.8rem;">Open</span>'}</td>
+          <td class="mono">${fmtDate(t.created_at)}</td>
+          <td>
+            <button class="btn-danger"
+              onclick="openDeleteModal('task', ${t.id}, '${t.title.replace(/'/g, "\\'")}')">
+              Delete
+            </button>
+          </td>
+        </tr>`).join('');
+    }
+
+    function priorityBadge(p) {
+      const map = { high: 'badge-high', medium: 'badge-medium', low: 'badge-low' };
+      return `<span class="badge ${map[p] || 'badge-medium'}">${p || 'medium'}</span>`;
+    }
+
+    // ============ FILES ============
+    async function loadFiles() {
+      const files = await fetch('/api/files').then(r => r.json());
+      const tbody = document.getElementById('files-body');
+      if (!files.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No files</td></tr>';
+        return;
+      }
+      tbody.innerHTML = files.map(f => `
+        <tr>
+          <td class="mono">${f.id}</td>
+          <td class="primary" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${f.original_name}</td>
+          <td style="font-size:0.8rem;color:var(--text-muted);">${f.user_email}</td>
+          <td class="mono">${fmtSize(f.size)}</td>
+          <td class="mono">${fmtDate(f.created_at)}</td>
+          <td>
+            <button class="btn-danger"
+              onclick="openDeleteModal('file', ${f.id}, '${f.original_name.replace(/'/g, "\\'")}')">
+              Delete
+            </button>
+          </td>
+        </tr>`).join('');
+    }
+
+    // ============ RESET PASSWORD ============
+    function openResetModal(id, email) {
+      resetTargetId = id;
+      document.getElementById('reset-user-email').textContent = email;
+      document.getElementById('reset-password-input').value = '';
+      openModal('reset-modal');
+    }
+
+    async function submitReset() {
+      const pw = document.getElementById('reset-password-input').value.trim();
+      if (!pw || pw.length < 6) { toast('Password must be at least 6 characters', 'error'); return; }
+      const res = await fetch(`/api/users/${resetTargetId}/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newPassword: pw })
+      });
+      closeModal('reset-modal');
+      if (res.ok) toast('Password reset successfully', 'success');
+      else toast('Failed to reset password', 'error');
+    }
+
+    // ============ DELETE ============
+    function openDeleteModal(type, id, label) {
+      const msgs = {
+        user: `Delete user <strong style="color:var(--text)">${label}</strong>? This will remove their account, tasks, and files.`,
+        task: `Delete task <strong style="color:var(--text)">${label}</strong>?`,
+        file: `Delete file <strong style="color:var(--text)">${label}</strong>?`
+      };
+      document.getElementById('delete-modal-msg').innerHTML = msgs[type];
+      const endpoints = { user: `/api/users/${id}`, task: `/api/tasks/${id}`, file: `/api/files/${id}` };
+      const reloads = { user: loadUsers, task: loadTasks, file: loadFiles };
+      deleteAction = async () => {
+        const res = await fetch(endpoints[type], { method: 'DELETE' });
+        closeModal('delete-modal');
+        if (res.ok) { toast('Deleted successfully', 'success'); reloads[type](); }
+        else toast('Delete failed', 'error');
+      };
+      openModal('delete-modal');
+    }
+
+    async function confirmDelete() {
+      if (deleteAction) await deleteAction();
+    }
+
+    // ============ INIT ============
+    loadOverview();
+  </script>
+
+</body>
+</html>
