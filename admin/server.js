@@ -10,8 +10,8 @@ const PORT = process.env.PORT || 3001;
 
 // VULNERABLE: hardcoded admin credentials — visible to anyone who reads this file.
 // Chain 2 (symlink injection → source read) exposes these directly.
-const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'adminpassword123';
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'Proton';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'gunsgunsguns1234S#';
 const ADMIN_JWT_SECRET = 'admin-secret-do-not-use-in-production';
 
 // Middleware
