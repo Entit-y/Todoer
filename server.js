@@ -118,6 +118,17 @@ db.serialize(() => {
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   )`);
 
+  db.run(`CREATE TABLE IF NOT EXISTS oauth_accounts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    provider TEXT NOT NULL,
+    provider_id TEXT NOT NULL,
+    provider_email TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE(provider, provider_id)
+  )`);
+
   // Migration: add verified column if it does not exist
   db.run(`ALTER TABLE users ADD COLUMN verified INTEGER DEFAULT 0`, () => {
     // Mark all pre-existing users as verified so they are not locked out
@@ -756,6 +767,175 @@ app.post('/api/auth/reset-password', async (req, res) => {
       res.json({ message: 'Password reset successfully' });
     });
   });
+});
+
+// ============ OAUTH ROUTES ============
+ 
+// In-memory state store
+// VULNERABLE: states never expire and are never cleaned up
+const oauthStates = new Map();
+ 
+// Initiate Google OAuth
+app.get('/auth/oauth/google', (req, res) => {
+  const state = Math.random().toString(36).substring(2, 15);
+  oauthStates.set(state, Date.now());
+ 
+  const params = new URLSearchParams({
+    client_id: GOOGLE_CLIENT_ID,
+    redirect_uri: GOOGLE_REDIRECT_URI,
+    response_type: 'code',
+    scope: 'openid email profile',
+    state,
+    access_type: 'online'
+  });
+ 
+  res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
+});
+ 
+// OAuth callback
+// VULNERABLE: state parameter is never validated against stored states.
+// Any state value is accepted — enables CSRF on the OAuth flow (dirty dancing).
+app.get('/auth/oauth/callback', async (req, res) => {
+  const { code, state, error } = req.query;
+ 
+  if (error) {
+    return res.redirect(`/oauth-error?error=${encodeURIComponent(error)}&state=${encodeURIComponent(state || '')}`);
+  }
+ 
+  if (!code) {
+    return res.redirect('/oauth-error?error=missing_code');
+  }
+ 
+  // VULNERABLE: state validation intentionally omitted
+  // A correct implementation would do:
+  // if (!oauthStates.has(state)) return res.redirect('/oauth-error?error=invalid_state');
+  // oauthStates.delete(state);
+ 
+  try {
+    // Exchange code for tokens
+    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: GOOGLE_CLIENT_ID,
+        client_secret: GOOGLE_CLIENT_SECRET,
+        redirect_uri: GOOGLE_REDIRECT_URI,
+        grant_type: 'authorization_code'
+      })
+    });
+ 
+    const tokens = await tokenRes.json();
+    if (!tokens.access_token) {
+      return res.redirect('/oauth-error?error=token_exchange_failed');
+    }
+ 
+    // Get user info from Google
+    const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: `Bearer ${tokens.access_token}` }
+    });
+    const googleUser = await userInfoRes.json();
+ 
+    if (!googleUser.email) {
+      return res.redirect('/oauth-error?error=no_email');
+    }
+ 
+    // VULNERABLE: accounts auto-linked by email with no verification that the
+    // email is actually owned by the person initiating the OAuth flow.
+    // Pre-ATO attack:
+    //   1. Attacker registers with victim@gmail.com via email/password form
+    //   2. Account is usable immediately (unverified email not blocked)
+    //   3. Victim later clicks "Sign in with Google" using victim@gmail.com
+    //   4. Email matches — accounts are merged, victim is logged in
+    //   5. Attacker still has password access — full account takeover
+    db.get('SELECT * FROM users WHERE email = ?', [googleUser.email.toLowerCase()], async (err, existingUser) => {
+      if (existingUser) {
+        // Account exists — link OAuth identity and issue session
+        db.run(
+          'INSERT OR IGNORE INTO oauth_accounts (user_id, provider, provider_id, provider_email) VALUES (?, ?, ?, ?)',
+          [existingUser.id, 'google', googleUser.sub, googleUser.email],
+          () => {
+            const token = jwt.sign({ id: existingUser.id, email: existingUser.email }, JWT_SECRET);
+            res.cookie('token', token, { httpOnly: true });
+            res.redirect('/home');
+          }
+        );
+      } else {
+        // No account — create one, auto-verified, placeholder password
+        const placeholderPassword = await bcrypt.hash(Math.random().toString(36), 10);
+        db.run(
+          'INSERT INTO users (email, username, password, verified) VALUES (?, ?, ?, 1)',
+          [googleUser.email.toLowerCase(), googleUser.name || googleUser.email.split('@')[0], placeholderPassword],
+          function(err) {
+            if (err) return res.redirect('/oauth-error?error=account_creation_failed');
+            const userId = this.lastID;
+            db.run(
+              'INSERT INTO oauth_accounts (user_id, provider, provider_id, provider_email) VALUES (?, ?, ?, ?)',
+              [userId, 'google', googleUser.sub, googleUser.email],
+              () => {
+                const token = jwt.sign({ id: userId, email: googleUser.email.toLowerCase() }, JWT_SECRET);
+                res.cookie('token', token, { httpOnly: true });
+                res.redirect('/home');
+              }
+            );
+          }
+        );
+      }
+    });
+  } catch (err) {
+    console.error('OAuth error:', err);
+    res.redirect('/oauth-error?error=internal_error');
+  }
+});
+ 
+// OAuth error page
+// VULNERABLE: postMessage listener accepts messages from any origin — no origin check.
+// The authorization code and state appear in the URL on this page.
+// This is the dirty dancing gadget: attacker opens this page in an iframe or popup,
+// sends a postMessage from their origin, listener fires and responds with the full URL
+// including the authorization code — which the attacker can then use.
+app.get('/oauth-error', (req, res) => {
+  const error = req.query.error || 'unknown_error';
+  const state = req.query.state || '';
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Authentication Error — Todoer</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="auth-body">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <embed src="/assets/logo.svg" type="image/svg+xml" width="28" height="28">
+      <span class="auth-logo-text">todoer</span>
+    </div>
+    <h1 class="auth-title">Authentication failed</h1>
+    <div class="error-banner">Something went wrong during sign in. Please try again.</div>
+    <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:1.5rem;margin-top:-0.5rem;">Error code: ${error}</p>
+    <a href="/" class="btn-primary" style="display:block;text-align:center;text-decoration:none;padding:0.7rem;">Back to login</a>
+  </div>
+  <script>
+    // VULNERABLE: no origin check on postMessage listener.
+    // Intended use: allow a parent frame to trigger redirect or read error state.
+    // Actual risk: any origin can send a message and receive the full page URL
+    // including any authorization code or state parameter present in the query string.
+    window.addEventListener('message', function(e) {
+      if (e.data && e.data.action === 'redirect') {
+        window.location.href = e.data.url || '/';
+      }
+      if (e.data && e.data.action === 'getState') {
+        e.source.postMessage({
+          error: '${error}',
+          state: '${state}',
+          url: window.location.href
+        }, e.origin);
+      }
+    });
+  </script>
+</body>
+</html>`);
 });
 
 // ============ PAGE ROUTES ============
