@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Feed — Todoer</title>
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    .feed-layout {
+      display: grid;
+      grid-template-columns: 1fr 300px;
+      gap: 24px;
+      align-items: start;
+      padding-bottom: 40px;
+    }
+
+    .feed-main { min-width: 0; }
+
+    /* ── Compose box ── */
+    .compose-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+
+    .compose-row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+
+    .compose-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-2);
+      flex-shrink: 0;
+    }
+
+    .compose-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text-1);
+      font-family: var(--font);
+      font-size: 14px;
+      resize: none;
+      line-height: 1.55;
+      min-height: 56px;
+      max-height: 200px;
+      padding-top: 6px;
+    }
+
+    .compose-input::placeholder { color: var(--text-3); }
+
+    .compose-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+
+    .compose-count {
+      font-size: 12px;
+      color: var(--text-3);
+    }
+
+    .compose-count.warn { color: #f59e0b; }
+    .compose-count.over { color: var(--danger); }
+
+    /* ── Feed messages ── */
+    .feed-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+
+    .feed-message {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 16px;
+      transition: border-color 0.12s;
+      animation: slideIn 0.18s ease;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .feed-message:hover { border-color: var(--border-light); }
+
+    .message-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .message-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-2);
+      flex-shrink: 0;
+    }
+
+    .message-meta {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .message-author {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--text-1);
+    }
+
+    .message-time {
+      font-size: 12px;
+      color: var(--text-3);
+      margin-left: 6px;
+      font-weight: 400;
+    }
+
+    .message-email {
+      font-size: 12px;
+      color: var(--text-3);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .message-delete {
+      background: none;
+      border: none;
+      color: var(--text-3);
+      cursor: pointer;
+      padding: 4px;
+      border-radius: var(--radius-sm);
+      opacity: 0;
+      transition: opacity 0.15s, color 0.15s;
+      flex-shrink: 0;
+    }
+
+    .feed-message:hover .message-delete { opacity: 1; }
+    .message-delete:hover { color: var(--danger); }
+
+    .message-content {
+      font-size: 14px;
+      color: var(--text-1);
+      line-height: 1.6;
+      word-break: break-word;
+      white-space: pre-wrap;
+    }
+
+    .feed-empty {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-3);
+      font-size: 13.5px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+    }
+
+    .feed-load-more {
+      text-align: center;
+      margin-top: 16px;
+    }
+
+    /* ── Sidebar ── */
+    .feed-sidebar {
+      position: sticky;
+      top: 72px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .sidebar-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 18px;
+    }
+
+    .sidebar-card h3 {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-3);
+      margin-bottom: 12px;
+    }
+
+    .sidebar-card p {
+      font-size: 13px;
+      color: var(--text-2);
+      line-height: 1.6;
+    }
+
+    .online-dot {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      background: #22c55e;
+      border-radius: 50%;
+      margin-right: 5px;
+    }
+
+    /* ── Live indicator ── */
+    .live-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #22c55e;
+      letter-spacing: 0.04em;
+    }
+
+    .live-dot {
+      width: 6px;
+      height: 6px;
+      background: #22c55e;
+      border-radius: 50%;
+      animation: pulse 1.8s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.4; transform: scale(0.8); }
+    }
+
+    @media (max-width: 768px) {
+      .feed-layout { grid-template-columns: 1fr; }
+      .feed-sidebar { position: static; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-brand" style="display:flex;align-items:center;gap:8px;">
+      <object data="/assets/logo.svg" type="image/svg+xml" style="width:28px;height:28px;pointer-events:none;"></object>
+      <span>Todoer</span>
+    </div>
+    <div class="nav-links">
+      <a href="/home" class="nav-link">Tasks</a>
+      <a href="/feed" class="nav-link active">Feed</a>
+      <a href="/files" class="nav-link">Files</a>
+      <a href="/profile" class="nav-link">Profile</a>
+      <span id="navUsername" class="nav-username"></span>
+      <button class="theme-toggle" id="themeToggle" title="Toggle theme">
+        <svg id="iconSun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
+          <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+          <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+        </svg>
+        <svg id="iconMoon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+      </button>
+      <button id="logoutBtn" class="btn btn-secondary" style="margin-left:4px;">Logout</button>
+    </div>
+  </nav>
+
+  <main class="container" style="padding-top:24px;">
+    <div class="page-header" style="margin-bottom:20px;">
+      <div>
+        <h1 style="margin-bottom:4px;">Feed</h1>
+        <div class="live-badge"><span class="live-dot"></span> Live</div>
+      </div>
+    </div>
+
+    <div class="feed-layout">
+      <div class="feed-main">
+        <!-- Compose -->
+        <div class="compose-box">
+          <div class="compose-row">
+            <div class="compose-avatar" id="composeAvatar">?</div>
+            <textarea class="compose-input" id="composeInput" placeholder="What's on your mind?"
+              maxlength="280" onkeydown="handleComposeKey(event)" oninput="updateCount()"></textarea>
+          </div>
+          <div class="compose-footer">
+            <span class="compose-count" id="composeCount">280</span>
+            <button class="btn btn-primary" onclick="submitMessage()" id="postBtn" style="padding:7px 18px;">Post</button>
+          </div>
+        </div>
+
+        <!-- Feed -->
+        <div class="feed-list" id="feedList"></div>
+
+        <div class="feed-load-more" id="loadMoreWrap" style="display:none;">
+          <button class="btn btn-secondary" onclick="loadMore()">Load older messages</button>
+        </div>
+      </div>
+
+      <aside class="feed-sidebar">
+        <div class="sidebar-card">
+          <h3>About Feed</h3>
+          <p>A shared space for all Todoer users. Messages are visible to everyone on the platform.</p>
+        </div>
+        <div class="sidebar-card">
+          <h3>Guidelines</h3>
+          <p style="margin-bottom:8px;">Keep it respectful. Messages are limited to 280 characters. You can delete your own messages.</p>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <script>
+    let currentUser = null;
+    let ws = null;
+    let oldestMessageId = null;
+    let hasMore = false;
+
+    // ── Theme ──
+    const saved = localStorage.getItem('theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', saved);
+    updateThemeIcon(saved);
+
+    document.getElementById('themeToggle').addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+      updateThemeIcon(next);
+    });
+
+    function updateThemeIcon(theme) {
+      document.getElementById('iconSun').style.display  = theme === 'light' ? 'block' : 'none';
+      document.getElementById('iconMoon').style.display = theme === 'dark'  ? 'block' : 'none';
+    }
+
+    // ── WebSocket ──
+    function connectWS() {
+      const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+      ws = new WebSocket(`${proto}://${location.host}`);
+
+      ws.onmessage = (e) => {
+        const data = JSON.parse(e.data);
+        if (data.type === 'feed:new') prependMessage(data.message);
+        if (data.type === 'feed:delete') document.getElementById(`msg-${data.messageId}`)?.remove();
+        checkEmpty();
+      };
+
+      ws.onclose = () => setTimeout(connectWS, 3000);
+      ws.onerror = () => ws.close();
+    }
+
+    // ── Auth ──
+    async function checkAuth() {
+      try {
+        const r = await fetch('/api/auth/me');
+        if (!r.ok) { window.location.href = '/'; return; }
+        const data = await r.json();
+        currentUser = data.user;
+        const initials = (data.user.username || data.user.email || '?')[0].toUpperCase();
+        document.getElementById('composeAvatar').textContent = initials;
+        if (data.user.username) {
+          // VULNERABLE: innerHTML — stored XSS if username is a payload
+          document.getElementById('navUsername').innerHTML = '@' + data.user.username;
+        }
+      } catch { window.location.href = '/'; }
+    }
+
+    // ── Feed ──
+    async function loadFeed() {
+      try {
+        const r = await fetch('/api/feed?limit=50');
+        const messages = await r.json();
+        if (messages.length) {
+          oldestMessageId = messages[0].id;
+          hasMore = messages.length === 50;
+        }
+        renderFeed(messages);
+      } catch (e) { console.error(e); }
+    }
+
+    async function loadMore() {
+      if (!oldestMessageId) return;
+      try {
+        const r = await fetch(`/api/feed?limit=50&before=${oldestMessageId}`);
+        const messages = await r.json();
+        if (messages.length) {
+          oldestMessageId = messages[0].id;
+          hasMore = messages.length === 50;
+          const list = document.getElementById('feedList');
+          messages.forEach(m => list.appendChild(buildMessage(m)));
+        } else {
+          hasMore = false;
+        }
+        document.getElementById('loadMoreWrap').style.display = hasMore ? 'block' : 'none';
+      } catch (e) { console.error(e); }
+    }
+
+    function renderFeed(messages) {
+      const list = document.getElementById('feedList');
+      list.innerHTML = '';
+      if (!messages.length) {
+        list.innerHTML = '<div class="feed-empty">No messages yet. Say something.</div>';
+        return;
+      }
+      // Render newest first
+      [...messages].reverse().forEach(m => list.appendChild(buildMessage(m)));
+      document.getElementById('loadMoreWrap').style.display = hasMore ? 'block' : 'none';
+    }
+
+    function prependMessage(message) {
+      const list = document.getElementById('feedList');
+      const empty = list.querySelector('.feed-empty');
+      if (empty) empty.remove();
+      list.prepend(buildMessage(message));
+    }
+
+    function buildMessage(message) {
+      const isOwn = currentUser && message.user_id === currentUser.id;
+      const initials = (message.username || message.email || '?')[0].toUpperCase();
+      const displayName = message.username ? '@' + message.username : message.email;
+
+      const el = document.createElement('div');
+      el.className = 'feed-message';
+      el.id = `msg-${message.id}`;
+      el.innerHTML = `
+        <div class="message-header">
+          <div class="message-avatar">${initials}</div>
+          <div class="message-meta">
+            <span class="message-author">${escapeHtml(displayName)}</span>
+            <span class="message-time">${timeAgo(message.created_at)}</span>
+            ${message.username ? `<div class="message-email">${escapeHtml(message.email)}</div>` : ''}
+          </div>
+          ${isOwn ? `<button class="message-delete" onclick="deleteMessage(${message.id})" title="Delete">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            </svg>
+          </button>` : ''}
+        </div>
+        <div class="message-content">${escapeHtml(message.content)}</div>`;
+      return el;
+    }
+
+    function checkEmpty() {
+      const list = document.getElementById('feedList');
+      if (!list.querySelector('.feed-message')) {
+        list.innerHTML = '<div class="feed-empty">No messages yet. Say something.</div>';
+      }
+    }
+
+    // ── Compose ──
+    function updateCount() {
+      const input = document.getElementById('composeInput');
+      const count = document.getElementById('composeCount');
+      const remaining = 280 - input.value.length;
+      count.textContent = remaining;
+      count.className = 'compose-count' + (remaining <= 20 ? ' warn' : '') + (remaining < 0 ? ' over' : '');
+    }
+
+    function handleComposeKey(e) {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        submitMessage();
+      }
+    }
+
+    async function submitMessage() {
+      const input = document.getElementById('composeInput');
+      const content = input.value.trim();
+      if (!content || content.length > 280) return;
+      const btn = document.getElementById('postBtn');
+      btn.disabled = true;
+      try {
+        await fetch('/api/feed', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content })
+        });
+        input.value = '';
+        updateCount();
+      } catch (e) { console.error(e); }
+      btn.disabled = false;
+      input.focus();
+    }
+
+    async function deleteMessage(id) {
+      await fetch(`/api/feed/${id}`, { method: 'DELETE' });
+    }
+
+    // ── Helpers ──
+    function escapeHtml(t) {
+      const d = document.createElement('div');
+      d.textContent = t;
+      return d.innerHTML;
+    }
+
+    function timeAgo(s) {
+      const diff = (Date.now() - new Date(s).getTime()) / 1000;
+      if (diff < 60) return 'just now';
+      if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+      if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+      return new Date(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      window.location.href = '/';
+    });
+
+    // ── Init ──
+    checkAuth().then(() => {
+      loadFeed();
+      connectWS();
+    });
+  </script>
+</body>
+</html>

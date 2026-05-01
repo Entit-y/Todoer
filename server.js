@@ -16,10 +16,47 @@ const punycode = require('punycode');
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI;
+const http = require('http');
+const WebSocket = require('ws');
 
 const app = express();
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = 'your-secret-key-change-in-production';
+
+// Authenticate WebSocket connections via JWT cookie
+function authenticateWS(req) {
+  const cookieHeader = req.headers.cookie || '';
+  const cookies = Object.fromEntries(cookieHeader.split(';').map(c => {
+    const [k, ...v] = c.trim().split('=');
+    return [k, v.join('=')];
+  }));
+  const token = cookies.token;
+  if (!token) return null;
+  try {
+    return jwt.verify(token, JWT_SECRET);
+  } catch {
+    return null;
+  }
+}
+ 
+// Broadcast to all authenticated clients, optionally filtering by a predicate
+function broadcast(data, filterFn = () => true) {
+  const msg = JSON.stringify(data);
+  wss.clients.forEach(client => {
+    if (client.readyState === WebSocket.OPEN && filterFn(client)) {
+      client.send(msg);
+    }
+  });
+}
+ 
+wss.on('connection', (ws, req) => {
+  const user = authenticateWS(req);
+  if (!user) { ws.close(1008, 'Unauthorized'); return; }
+  ws.user = user;
+  ws.on('error', console.error);
+});
 
 // Brevo SMTP transporter
 const transporter = nodemailer.createTransport({
@@ -127,6 +164,24 @@ db.serialize(() => {
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     UNIQUE(provider, provider_id)
+  )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS task_comments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    task_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    content TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  )`);
+ 
+  db.run(`CREATE TABLE IF NOT EXISTS feed_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    content TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   )`);
 
   // Migration: add verified column if it does not exist
@@ -959,6 +1014,121 @@ app.get('/oauth-error', (req, res) => {
 </html>`);
 });
 
+// ============ COMMENTS ROUTES ============
+ 
+// Get comments for a task
+app.get('/api/tasks/:id/comments', authenticateToken, (req, res) => {
+  // Verify task belongs to user
+  db.get('SELECT id FROM tasks WHERE id = ? AND user_id = ?', [req.params.id, req.user.id], (err, task) => {
+    if (!task) return res.status(404).json({ error: 'Task not found' });
+    db.all(`
+      SELECT tc.id, tc.content, tc.created_at, u.username, u.email
+      FROM task_comments tc
+      JOIN users u ON u.id = tc.user_id
+      WHERE tc.task_id = ?
+      ORDER BY tc.created_at ASC
+    `, [req.params.id], (err, rows) => {
+      if (err) return res.status(500).json({ error: 'Failed to fetch comments' });
+      res.json(rows);
+    });
+  });
+});
+ 
+// Post a comment on a task
+app.post('/api/tasks/:id/comments', authenticateToken, (req, res) => {
+  const { content } = req.body;
+  if (!content || !content.trim()) return res.status(400).json({ error: 'Comment cannot be empty' });
+  // Verify task belongs to user
+  db.get('SELECT id FROM tasks WHERE id = ? AND user_id = ?', [req.params.id, req.user.id], (err, task) => {
+    if (!task) return res.status(404).json({ error: 'Task not found' });
+    db.run(
+      'INSERT INTO task_comments (task_id, user_id, content) VALUES (?, ?, ?)',
+      [req.params.id, req.user.id, content.trim()],
+      function(err) {
+        if (err) return res.status(500).json({ error: 'Failed to post comment' });
+        db.get(`
+          SELECT tc.id, tc.content, tc.created_at, u.username, u.email
+          FROM task_comments tc
+          JOIN users u ON u.id = tc.user_id
+          WHERE tc.id = ?
+        `, [this.lastID], (err, comment) => {
+          // Broadcast to all clients — only the task owner is connected anyway
+          broadcast({ type: 'task_comment:new', taskId: parseInt(req.params.id), comment });
+          res.status(201).json(comment);
+        });
+      }
+    );
+  });
+});
+ 
+// Delete a comment
+app.delete('/api/tasks/:taskId/comments/:commentId', authenticateToken, (req, res) => {
+  db.get('SELECT * FROM task_comments WHERE id = ? AND user_id = ?', [req.params.commentId, req.user.id], (err, comment) => {
+    if (!comment) return res.status(404).json({ error: 'Comment not found' });
+    db.run('DELETE FROM task_comments WHERE id = ?', [req.params.commentId], function(err) {
+      if (err) return res.status(500).json({ error: 'Failed to delete comment' });
+      broadcast({ type: 'task_comment:delete', taskId: parseInt(req.params.taskId), commentId: parseInt(req.params.commentId) });
+      res.json({ message: 'Comment deleted' });
+    });
+  });
+});
+ 
+// ============ FEED ROUTES ============
+ 
+// Get feed messages (paginated, newest first)
+app.get('/api/feed', authenticateToken, (req, res) => {
+  const limit = parseInt(req.query.limit) || 50;
+  const before = req.query.before; // cursor — message id
+  let query = `
+    SELECT fm.id, fm.content, fm.created_at, u.username, u.email, u.id as user_id
+    FROM feed_messages fm
+    JOIN users u ON u.id = fm.user_id
+  `;
+  const params = [];
+  if (before) { query += ' WHERE fm.id < ?'; params.push(before); }
+  query += ' ORDER BY fm.created_at DESC LIMIT ?';
+  params.push(limit);
+  db.all(query, params, (err, rows) => {
+    if (err) return res.status(500).json({ error: 'Failed to fetch feed' });
+    res.json(rows.reverse()); // return oldest-first within the page
+  });
+});
+ 
+// Post a feed message
+app.post('/api/feed', authenticateToken, (req, res) => {
+  const { content } = req.body;
+  if (!content || !content.trim()) return res.status(400).json({ error: 'Message cannot be empty' });
+  if (content.trim().length > 280) return res.status(400).json({ error: 'Message too long (max 280 characters)' });
+  db.run(
+    'INSERT INTO feed_messages (user_id, content) VALUES (?, ?)',
+    [req.user.id, content.trim()],
+    function(err) {
+      if (err) return res.status(500).json({ error: 'Failed to post message' });
+      db.get(`
+        SELECT fm.id, fm.content, fm.created_at, u.username, u.email, u.id as user_id
+        FROM feed_messages fm
+        JOIN users u ON u.id = fm.user_id
+        WHERE fm.id = ?
+      `, [this.lastID], (err, message) => {
+        broadcast({ type: 'feed:new', message });
+        res.status(201).json(message);
+      });
+    }
+  );
+});
+ 
+// Delete a feed message
+app.delete('/api/feed/:id', authenticateToken, (req, res) => {
+  db.get('SELECT * FROM feed_messages WHERE id = ? AND user_id = ?', [req.params.id, req.user.id], (err, message) => {
+    if (!message) return res.status(404).json({ error: 'Message not found' });
+    db.run('DELETE FROM feed_messages WHERE id = ?', [req.params.id], function(err) {
+      if (err) return res.status(500).json({ error: 'Failed to delete message' });
+      broadcast({ type: 'feed:delete', messageId: parseInt(req.params.id) });
+      res.json({ message: 'Message deleted' });
+    });
+  });
+});
+
 // ============ PAGE ROUTES ============
 
 app.get('/home', (req, res) => res.sendFile(path.join(__dirname, 'public', 'home.html')));
@@ -974,4 +1144,4 @@ app.get('/', (req, res) => {
   else res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
-app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+server.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
