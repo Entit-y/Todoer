@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Accept Invitation — Todoer</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="auth">
+
+  <canvas id="bgCanvas"></canvas>
+
+  <div class="auth-container">
+    <div class="auth-card">
+
+      <div class="auth-logo" style="margin-bottom:24px;">
+        <span class="auth-logo-badge">
+          <img src="/assets/logo.svg" alt="Todoer" class="auth-logo-image">
+        </span>
+      </div>
+
+      <!-- Loading state -->
+      <div id="stateLoading">
+        <h1 style="margin-bottom:8px;">Checking invitation…</h1>
+        <p class="subtitle">Please wait while we verify your invite.</p>
+      </div>
+
+      <!-- Valid invite state -->
+      <div id="stateValid" style="display:none;">
+        <h1 style="margin-bottom:8px;">You're invited!</h1>
+        <p class="subtitle" id="inviteSubtitle">You've been invited to join a workspace on Todoer.</p>
+
+        <div class="invite-card" id="inviteCard" style="
+          background: var(--surface-2);
+          border: 1px solid var(--border);
+          border-radius: var(--radius-md);
+          padding: 16px;
+          margin: 20px 0;
+        ">
+          <div style="font-size:12px;color:var(--text-3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">Workspace</div>
+          <div style="font-size:15px;font-weight:600;color:var(--text-1);" id="workspaceName">—</div>
+          <div style="font-size:12px;color:var(--text-3);margin-top:8px;">Invited by <span id="invitedBy" style="color:var(--text-2);">—</span></div>
+        </div>
+
+        <div id="acceptError" class="error-message" style="display:none;margin-bottom:16px;"></div>
+
+        <button class="btn btn-primary btn-full" id="acceptBtn" onclick="acceptInvite()">
+          Accept invitation
+        </button>
+        <p style="font-size:12px;color:var(--text-3);text-align:center;margin-top:12px;">
+          By accepting, you agree to join this workspace and collaborate with its members.
+        </p>
+      </div>
+
+      <!-- Invalid state -->
+      <div id="stateInvalid" style="display:none;">
+        <h1 style="margin-bottom:8px;">Invalid invitation</h1>
+        <p class="subtitle" id="invalidMessage">This invitation link is invalid or has already been used.</p>
+        <a href="/" class="btn btn-secondary btn-full" style="display:block;text-align:center;margin-top:20px;">Back to Todoer</a>
+      </div>
+
+      <!-- Success state -->
+      <div id="stateSuccess" style="display:none;">
+        <h1 style="margin-bottom:8px;">You're in!</h1>
+        <p class="subtitle">You've successfully joined the workspace. Redirecting you now…</p>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    /* ── Background canvas ── */
+    (function () {
+      const canvas = document.getElementById('bgCanvas');
+      const ctx = canvas.getContext('2d');
+      function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+      resize();
+      window.addEventListener('resize', resize);
+      const orbs = Array.from({ length: 6 }, (_, i) => ({
+        x: Math.random() * window.innerWidth, y: Math.random() * window.innerHeight,
+        r: 180 + Math.random() * 160, dx: (Math.random() - 0.5) * 0.35, dy: (Math.random() - 0.5) * 0.35,
+        hue: [220, 240, 260, 200, 250, 230][i], alpha: 0.07 + Math.random() * 0.06,
+      }));
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        orbs.forEach(o => {
+          o.x += o.dx; o.y += o.dy;
+          if (o.x < -o.r) o.x = canvas.width + o.r;
+          if (o.x > canvas.width + o.r) o.x = -o.r;
+          if (o.y < -o.r) o.y = canvas.height + o.r;
+          if (o.y > canvas.height + o.r) o.y = -o.r;
+          const g = ctx.createRadialGradient(o.x, o.y, 0, o.x, o.y, o.r);
+          g.addColorStop(0, `hsla(${o.hue},70%,65%,${o.alpha})`);
+          g.addColorStop(1, `hsla(${o.hue},70%,65%,0)`);
+          ctx.fillStyle = g;
+          ctx.beginPath(); ctx.arc(o.x, o.y, o.r, 0, Math.PI * 2); ctx.fill();
+        });
+        requestAnimationFrame(draw);
+      }
+      draw();
+    })();
+
+    /* ── Theme ── */
+    const saved = localStorage.getItem('theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', saved);
+
+    /* ── Invite logic ── */
+    const params = new URLSearchParams(location.search);
+
+    // VULNERABLE: inviteCode read directly from URL query param with no sanitization.
+    // When interpolated into the fetch URL below, a path traversal payload in the
+    // inviteCode parameter redirects the POST request to an arbitrary endpoint,
+    // carrying the victim's session cookie and content-type header automatically.
+    // Example poisoned link:
+    //   /invite?email=victim@x.com&inviteCode=ABC123/../../../profile/account?a=
+    // Results in:
+    //   POST /api/invites/ABC123/../../../profile/account?a=/accept
+    // Which the browser resolves to:
+    //   POST /api/profile/account?a=/accept
+    // With the victim's session — deleting their account on click.
+    const inviteCode = params.get('inviteCode');
+    const email = params.get('email');
+
+    function setState(name) {
+      ['Loading', 'Valid', 'Invalid', 'Success'].forEach(s => {
+        document.getElementById('state' + s).style.display = s === name ? 'block' : 'none';
+      });
+    }
+
+    async function loadInvite() {
+      if (!inviteCode || !email) {
+        setState('Invalid');
+        document.getElementById('invalidMessage').textContent = 'Missing invite code or email address.';
+        return;
+      }
+
+      try {
+        const r = await fetch(`/api/invites/${inviteCode}?email=${encodeURIComponent(email)}`);
+        const data = await r.json();
+
+        if (!r.ok) {
+          setState('Invalid');
+          document.getElementById('invalidMessage').textContent = data.error || 'This invitation is invalid or has expired.';
+          return;
+        }
+
+        document.getElementById('workspaceName').textContent = data.workspace_name;
+        document.getElementById('invitedBy').textContent = data.invited_by;
+        document.getElementById('inviteSubtitle').textContent =
+          `You've been invited to join "${data.workspace_name}" on Todoer.`;
+        setState('Valid');
+      } catch {
+        setState('Invalid');
+        document.getElementById('invalidMessage').textContent = 'Something went wrong. Please try again later.';
+      }
+    }
+
+    async function acceptInvite() {
+      const btn = document.getElementById('acceptBtn');
+      const errEl = document.getElementById('acceptError');
+      btn.disabled = true;
+      btn.textContent = 'Accepting…';
+      errEl.style.display = 'none';
+
+      try {
+        // VULNERABLE: inviteCode interpolated directly into URL without validation.
+        // A path traversal payload here redirects this POST to any endpoint.
+        const r = await fetch(`/api/invites/${inviteCode}/accept`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        const data = await r.json();
+
+        if (!r.ok) {
+          errEl.textContent = data.error || 'Failed to accept invitation.';
+          errEl.style.display = 'block';
+          btn.disabled = false;
+          btn.textContent = 'Accept invitation';
+          return;
+        }
+
+        setState('Success');
+        setTimeout(() => window.location.href = '/home', 2000);
+      } catch {
+        errEl.textContent = 'Something went wrong. Please try again.';
+        errEl.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Accept invitation';
+      }
+    }
+
+    loadInvite();
+  </script>
+</body>
+</html>

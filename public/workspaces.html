@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Workspaces — Todoer</title>
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    .workspaces-layout {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    /* ── Workspace list sidebar ── */
+    .workspace-list {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .workspace-list-header {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .workspace-list-header h3 {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-3);
+    }
+
+    .workspace-item {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.12s;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .workspace-item:last-child { border-bottom: none; }
+    .workspace-item:hover { background: var(--surface-2); }
+    .workspace-item.active { background: var(--surface-2); border-left: 2px solid var(--accent); }
+
+    .workspace-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-sm);
+      background: var(--surface-3);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-2);
+      flex-shrink: 0;
+    }
+
+    .workspace-item-info { flex: 1; min-width: 0; }
+
+    .workspace-item-name {
+      font-size: 13.5px;
+      font-weight: 500;
+      color: var(--text-1);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .workspace-item-role {
+      font-size: 11px;
+      color: var(--text-3);
+      margin-top: 1px;
+    }
+
+    .workspace-empty {
+      padding: 32px 16px;
+      text-align: center;
+      color: var(--text-3);
+      font-size: 13px;
+    }
+
+    /* ── Workspace detail panel ── */
+    .workspace-detail {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .detail-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .detail-card-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .detail-card-header h3 {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--text-1);
+      letter-spacing: -0.01em;
+    }
+
+    .detail-card-body { padding: 20px; }
+
+    /* ── Members list ── */
+    .member-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .member-row:last-child { border-bottom: none; }
+
+    .member-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-2);
+      flex-shrink: 0;
+    }
+
+    .member-info { flex: 1; min-width: 0; }
+
+    .member-name {
+      font-size: 13.5px;
+      font-weight: 500;
+      color: var(--text-1);
+    }
+
+    .member-email {
+      font-size: 12px;
+      color: var(--text-3);
+    }
+
+    .role-badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .role-owner {
+      background: rgba(234,179,8,0.1);
+      color: #ca8a04;
+      border: 1px solid rgba(234,179,8,0.2);
+    }
+
+    .role-member {
+      background: var(--surface-2);
+      color: var(--text-2);
+      border: 1px solid var(--border);
+    }
+
+    /* ── Invite form ── */
+    .invite-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .invite-row input {
+      flex: 1;
+    }
+
+    /* ── Pending invitations ── */
+    .invite-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      gap: 12px;
+    }
+
+    .invite-item:last-child { border-bottom: none; }
+
+    .invite-email {
+      font-size: 13.5px;
+      color: var(--text-1);
+    }
+
+    .invite-meta {
+      font-size: 12px;
+      color: var(--text-3);
+      margin-top: 2px;
+    }
+
+    .badge-pending {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: rgba(59,130,246,0.1);
+      color: #3b82f6;
+      border: 1px solid rgba(59,130,246,0.2);
+      white-space: nowrap;
+    }
+
+    /* ── No workspace selected ── */
+    .no-selection {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 60px 20px;
+      text-align: center;
+      color: var(--text-3);
+      font-size: 13.5px;
+    }
+
+    /* ── Create workspace modal ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(4px);
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .modal-overlay.open { display: flex; }
+
+    .modal-box {
+      background: var(--surface);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: var(--shadow-lg);
+      animation: modalIn 0.18s ease;
+    }
+
+    @keyframes modalIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .modal-box h2 {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-1);
+      margin-bottom: 20px;
+      letter-spacing: -0.02em;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 20px;
+    }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--surface-3);
+      border: 1px solid var(--border);
+      color: var(--text-1);
+      padding: 12px 18px;
+      border-radius: var(--radius-md);
+      font-size: 13.5px;
+      box-shadow: var(--shadow-md);
+      z-index: 3000;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none;
+    }
+
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.success { border-color: rgba(34,197,94,0.3); color: #22c55e; }
+    .toast.error { border-color: rgba(239,68,68,0.3); color: #ef4444; }
+
+    @media (max-width: 768px) {
+      .workspaces-layout { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-brand" style="display:flex;align-items:center;gap:8px;">
+      <object data="/assets/logo.svg" type="image/svg+xml" style="width:28px;height:28px;pointer-events:none;"></object>
+      <span>Todoer</span>
+    </div>
+    <div class="nav-links">
+      <a href="/home" class="nav-link">Tasks</a>
+      <a href="/feed" class="nav-link">Feed</a>
+      <a href="/files" class="nav-link">Files</a>
+      <a href="/workspaces" class="nav-link active">Workspaces</a>
+      <a href="/profile" class="nav-link">Profile</a>
+      <span id="navUsername" class="nav-username"></span>
+      <button class="theme-toggle" id="themeToggle" title="Toggle theme">
+        <svg id="iconSun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
+          <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+          <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+        </svg>
+        <svg id="iconMoon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+      </button>
+      <button id="logoutBtn" class="btn btn-secondary" style="margin-left:4px;">Logout</button>
+    </div>
+  </nav>
+
+  <main class="container" style="padding-top:24px;">
+    <div class="page-header" style="margin-bottom:24px;">
+      <h1>Workspaces</h1>
+      <button class="btn btn-primary" onclick="openCreateModal()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        New workspace
+      </button>
+    </div>
+
+    <div class="workspaces-layout">
+      <!-- Sidebar -->
+      <div class="workspace-list">
+        <div class="workspace-list-header">
+          <h3>Your workspaces</h3>
+        </div>
+        <div id="workspaceList">
+          <div class="workspace-empty">Loading…</div>
+        </div>
+      </div>
+
+      <!-- Detail panel -->
+      <div id="detailPanel">
+        <div class="no-selection">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:12px;opacity:0.4;">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+          <p>Select a workspace to view details</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Create workspace modal -->
+  <div class="modal-overlay" id="createModal">
+    <div class="modal-box">
+      <h2>Create workspace</h2>
+      <div class="form-group">
+        <label for="workspaceName">Workspace name</label>
+        <input type="text" id="workspaceName" placeholder="e.g. Design Team" maxlength="60">
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="createWorkspace()">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast"></div>
+
+  <script>
+    let currentUser = null;
+    let workspaces = [];
+    let activeWorkspaceId = null;
+    let toastTimer;
+
+    // ── Theme ──
+    const saved = localStorage.getItem('theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', saved);
+    updateThemeIcon(saved);
+
+    document.getElementById('themeToggle').addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+      updateThemeIcon(next);
+    });
+
+    function updateThemeIcon(theme) {
+      document.getElementById('iconSun').style.display  = theme === 'light' ? 'block' : 'none';
+      document.getElementById('iconMoon').style.display = theme === 'dark'  ? 'block' : 'none';
+    }
+
+    function showToast(msg, type = '') {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'toast' + (type ? ' ' + type : '');
+      requestAnimationFrame(() => t.classList.add('show'));
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+    }
+
+    // ── Auth ──
+    async function checkAuth() {
+      try {
+        const r = await fetch('/api/auth/me');
+        if (!r.ok) { window.location.href = '/'; return; }
+        const data = await r.json();
+        currentUser = data.user;
+        if (data.user.username) {
+          document.getElementById('navUsername').innerHTML = '@' + data.user.username;
+        }
+      } catch { window.location.href = '/'; }
+    }
+
+    // ── Workspaces ──
+    async function loadWorkspaces() {
+      try {
+        const r = await fetch('/api/workspaces');
+        workspaces = await r.json();
+        renderWorkspaceList();
+      } catch { showToast('Failed to load workspaces', 'error'); }
+    }
+
+    function renderWorkspaceList() {
+      const list = document.getElementById('workspaceList');
+      if (!workspaces.length) {
+        list.innerHTML = '<div class="workspace-empty">No workspaces yet.<br>Create one to get started.</div>';
+        return;
+      }
+      list.innerHTML = workspaces.map(w => `
+        <div class="workspace-item ${w.id === activeWorkspaceId ? 'active' : ''}"
+          onclick="selectWorkspace(${w.id})">
+          <div class="workspace-icon">${escapeHtml(w.name[0].toUpperCase())}</div>
+          <div class="workspace-item-info">
+            <div class="workspace-item-name">${escapeHtml(w.name)}</div>
+            <div class="workspace-item-role">${w.role}</div>
+          </div>
+        </div>`).join('');
+    }
+
+    async function selectWorkspace(id) {
+      activeWorkspaceId = id;
+      renderWorkspaceList();
+      try {
+        const r = await fetch(`/api/workspaces/${id}`);
+        const data = await r.json();
+        renderDetail(data);
+      } catch { showToast('Failed to load workspace', 'error'); }
+    }
+
+    function renderDetail(data) {
+      const isOwner = data.workspace.owner_id === currentUser.id;
+      document.getElementById('detailPanel').innerHTML = `
+        <div class="workspace-detail">
+
+          <!-- Header card -->
+          <div class="detail-card">
+            <div class="detail-card-header">
+              <div>
+                <h3 style="font-size:16px;">${escapeHtml(data.workspace.name)}</h3>
+                <div style="font-size:12px;color:var(--text-3);margin-top:3px;">
+                  Created ${formatDate(data.workspace.created_at)} · ${data.members.length} member${data.members.length !== 1 ? 's' : ''}
+                </div>
+              </div>
+              ${isOwner ? `<button class="btn btn-secondary" style="font-size:12px;color:var(--danger);border-color:var(--danger-border);"
+                onclick="deleteWorkspace(${data.workspace.id})">Delete</button>` : ''}
+            </div>
+          </div>
+
+          <!-- Members -->
+          <div class="detail-card">
+            <div class="detail-card-header">
+              <h3>Members</h3>
+            </div>
+            <div class="detail-card-body" style="padding:4px 20px;">
+              ${data.members.map(m => `
+                <div class="member-row">
+                  <div class="member-avatar">${(m.username || m.email)[0].toUpperCase()}</div>
+                  <div class="member-info">
+                    <div class="member-name">${escapeHtml(m.username ? '@' + m.username : m.email)}</div>
+                    <div class="member-email">${escapeHtml(m.email)}</div>
+                  </div>
+                  <span class="role-badge ${m.role === 'owner' ? 'role-owner' : 'role-member'}">${m.role}</span>
+                </div>`).join('')}
+            </div>
+          </div>
+
+          ${isOwner ? `
+          <!-- Invite -->
+          <div class="detail-card">
+            <div class="detail-card-header">
+              <h3>Invite member</h3>
+            </div>
+            <div class="detail-card-body">
+              <div class="invite-row">
+                <input type="email" id="inviteEmailInput" placeholder="colleague@example.com">
+                <button class="btn btn-primary" onclick="sendInvite(${data.workspace.id})">Send invite</button>
+              </div>
+              <div id="inviteMsg" style="font-size:13px;margin-top:10px;display:none;"></div>
+            </div>
+          </div>
+
+          <!-- Pending invitations -->
+          <div class="detail-card" id="pendingCard">
+            <div class="detail-card-header">
+              <h3>Pending invitations</h3>
+            </div>
+            <div class="detail-card-body" id="pendingList" style="padding:4px 20px;">
+              ${data.pending_invitations.length ? data.pending_invitations.map(inv => `
+                <div class="invite-item">
+                  <div>
+                    <div class="invite-email">${escapeHtml(inv.invited_email)}</div>
+                    <div class="invite-meta">Sent ${formatDate(inv.created_at)}</div>
+                  </div>
+                  <span class="badge-pending">Pending</span>
+                </div>`).join('') :
+                '<div style="padding:16px 0;font-size:13px;color:var(--text-3);">No pending invitations.</div>'}
+            </div>
+          </div>` : ''}
+
+        </div>`;
+    }
+
+    // ── Create workspace ──
+    function openCreateModal() {
+      document.getElementById('workspaceName').value = '';
+      document.getElementById('createModal').classList.add('open');
+      setTimeout(() => document.getElementById('workspaceName').focus(), 100);
+    }
+
+    function closeCreateModal() {
+      document.getElementById('createModal').classList.remove('open');
+    }
+
+    async function createWorkspace() {
+      const name = document.getElementById('workspaceName').value.trim();
+      if (!name) { showToast('Workspace name is required', 'error'); return; }
+      try {
+        const r = await fetch('/api/workspaces', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name })
+        });
+        const data = await r.json();
+        if (!r.ok) { showToast(data.error || 'Failed to create workspace', 'error'); return; }
+        closeCreateModal();
+        showToast('Workspace created', 'success');
+        await loadWorkspaces();
+        selectWorkspace(data.id);
+      } catch { showToast('Something went wrong', 'error'); }
+    }
+
+    // ── Delete workspace ──
+    async function deleteWorkspace(id) {
+      if (!confirm('Delete this workspace? This cannot be undone.')) return;
+      try {
+        const r = await fetch(`/api/workspaces/${id}`, { method: 'DELETE' });
+        if (!r.ok) { showToast('Failed to delete workspace', 'error'); return; }
+        showToast('Workspace deleted', 'success');
+        activeWorkspaceId = null;
+        document.getElementById('detailPanel').innerHTML = '<div class="no-selection"><p>Select a workspace to view details</p></div>';
+        await loadWorkspaces();
+      } catch { showToast('Something went wrong', 'error'); }
+    }
+
+    // ── Send invite ──
+    async function sendInvite(workspaceId) {
+      const email = document.getElementById('inviteEmailInput').value.trim();
+      const msg = document.getElementById('inviteMsg');
+      if (!email) { showToast('Enter an email address', 'error'); return; }
+      msg.style.display = 'none';
+      try {
+        const r = await fetch(`/api/workspaces/${workspaceId}/invite`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        const data = await r.json();
+        if (r.ok) {
+          msg.textContent = `Invitation sent to ${email}`;
+          msg.style.color = 'var(--text-2)';
+          msg.style.display = 'block';
+          document.getElementById('inviteEmailInput').value = '';
+          showToast('Invitation sent', 'success');
+          // Refresh to show pending invite
+          selectWorkspace(workspaceId);
+        } else {
+          msg.textContent = data.error || 'Failed to send invitation';
+          msg.style.color = 'var(--danger)';
+          msg.style.display = 'block';
+        }
+      } catch { showToast('Something went wrong', 'error'); }
+    }
+
+    // ── Helpers ──
+    function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+
+    function formatDate(s) {
+      if (!s) return '—';
+      return new Date(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') closeCreateModal();
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      window.location.href = '/';
+    });
+
+    // ── Init ──
+    checkAuth().then(loadWorkspaces);
+  </script>
+</body>
+</html>
