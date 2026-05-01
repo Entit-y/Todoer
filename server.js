@@ -1138,6 +1138,7 @@ app.get('/register', (req, res) => res.sendFile(path.join(__dirname, 'public', '
 app.get('/forgot-password', (req, res) => res.sendFile(path.join(__dirname, 'public', 'forgot-password.html')));
 app.get('/verify-email', (req, res) => res.sendFile(path.join(__dirname, 'public', 'verify-email.html')));
 app.get('/reset-password', (req, res) => res.sendFile(path.join(__dirname, 'public', 'reset-password.html')));
+app.get('/feed', (req, res) => res.sendFile(path.join(__dirname, 'public', 'feed.html')));
 app.get('/', (req, res) => {
   const token = req.cookies.token;
   if (token) res.redirect('/home');
