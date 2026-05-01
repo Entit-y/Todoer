@@ -309,10 +309,13 @@ app.get('/api/auth/me', authenticateToken, (req, res) => {
 
 // ============ PROFILE ROUTES ============
 
+// Updated /api/profile — now includes OAuth connection info
 app.get('/api/profile', authenticateToken, (req, res) => {
   db.get('SELECT id, email, username, created_at FROM users WHERE id = ?', [req.user.id], (err, user) => {
     if (err || !user) return res.status(404).json({ error: 'User not found' });
-    res.json(user);
+    db.all('SELECT provider, provider_email FROM oauth_accounts WHERE user_id = ?', [req.user.id], (err, oauthAccounts) => {
+      res.json({ ...user, oauth_accounts: oauthAccounts || [] });
+    });
   });
 });
 
@@ -366,19 +369,37 @@ app.put('/api/profile/password', authenticateToken, async (req, res) => {
   });
 });
 
+app.post('/api/profile/set-password', authenticateToken, async (req, res) => {
+  const { newPassword } = req.body;
+  if (!newPassword || newPassword.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
+  const hashed = await bcrypt.hash(newPassword, 10);
+  db.run('UPDATE users SET password = ? WHERE id = ?', [hashed, req.user.id], function(err) {
+    if (err) return res.status(500).json({ error: 'Failed to set password' });
+    res.json({ message: 'Password set successfully' });
+  });
+});
+
 app.delete('/api/profile/account', authenticateToken, (req, res) => {
   const { password } = req.body;
-  if (!password) return res.status(400).json({ error: 'Password is required to delete account' });
   db.get('SELECT password FROM users WHERE id = ?', [req.user.id], async (err, user) => {
     if (err || !user) return res.status(404).json({ error: 'User not found' });
-    const validPassword = await bcrypt.compare(password, user.password);
-    if (!validPassword) return res.status(401).json({ error: 'Incorrect password' });
-    const userDir = path.join(__dirname, 'uploads', req.user.id.toString());
-    if (fs.existsSync(userDir)) fs.rmSync(userDir, { recursive: true, force: true });
-    db.run('DELETE FROM users WHERE id = ?', [req.user.id], function(err) {
-      if (err) return res.status(500).json({ error: 'Failed to delete account' });
-      res.clearCookie('token');
-      res.json({ message: 'Account deleted successfully' });
+
+    // Check if account has OAuth — if so, skip password check
+    db.get('SELECT id FROM oauth_accounts WHERE user_id = ?', [req.user.id], async (err, oauthAccount) => {
+      if (!oauthAccount) {
+        // Regular account — password required
+        if (!password) return res.status(400).json({ error: 'Password is required to delete account' });
+        const validPassword = await bcrypt.compare(password, user.password);
+        if (!validPassword) return res.status(401).json({ error: 'Incorrect password' });
+      }
+
+      const userDir = path.join(__dirname, 'uploads', req.user.id.toString());
+      if (fs.existsSync(userDir)) fs.rmSync(userDir, { recursive: true, force: true });
+      db.run('DELETE FROM users WHERE id = ?', [req.user.id], function(err) {
+        if (err) return res.status(500).json({ error: 'Failed to delete account' });
+        res.clearCookie('token');
+        res.json({ message: 'Account deleted successfully' });
+      });
     });
   });
 });
