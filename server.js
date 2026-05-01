@@ -184,6 +184,38 @@ db.serialize(() => {
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   )`);
 
+  db.run(`CREATE TABLE IF NOT EXISTS workspaces (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    owner_id INTEGER NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE
+  )`);
+ 
+  db.run(`CREATE TABLE IF NOT EXISTS workspace_members (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    workspace_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    role TEXT DEFAULT 'member',
+    joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE(workspace_id, user_id)
+  )`);
+ 
+  db.run(`CREATE TABLE IF NOT EXISTS workspace_invitations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    workspace_id INTEGER NOT NULL,
+    invite_code TEXT UNIQUE NOT NULL,
+    invited_email TEXT NOT NULL,
+    invited_by INTEGER NOT NULL,
+    status TEXT DEFAULT 'pending',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE,
+    FOREIGN KEY (invited_by) REFERENCES users(id) ON DELETE CASCADE
+  )`);
+
+
   // Migration: add verified column if it does not exist
   db.run(`ALTER TABLE users ADD COLUMN verified INTEGER DEFAULT 0`, () => {
     // Mark all pre-existing users as verified so they are not locked out
@@ -1129,6 +1161,202 @@ app.delete('/api/feed/:id', authenticateToken, (req, res) => {
   });
 });
 
+// ============ WORKSPACE ROUTES ============
+ 
+// Create workspace
+app.post('/api/workspaces', authenticateToken, (req, res) => {
+  const { name } = req.body;
+  if (!name || !name.trim()) return res.status(400).json({ error: 'Workspace name is required' });
+  db.run('INSERT INTO workspaces (name, owner_id) VALUES (?, ?)', [name.trim(), req.user.id], function(err) {
+    if (err) return res.status(500).json({ error: 'Failed to create workspace' });
+    const workspaceId = this.lastID;
+    // Add owner as first member
+    db.run('INSERT INTO workspace_members (workspace_id, user_id, role) VALUES (?, ?, ?)',
+      [workspaceId, req.user.id, 'owner'], (err) => {
+        if (err) return res.status(500).json({ error: 'Failed to add owner as member' });
+        res.status(201).json({ id: workspaceId, name: name.trim() });
+      });
+  });
+});
+ 
+// Get all workspaces for current user
+app.get('/api/workspaces', authenticateToken, (req, res) => {
+  db.all(`
+    SELECT w.id, w.name, w.owner_id, w.created_at, wm.role
+    FROM workspaces w
+    JOIN workspace_members wm ON wm.workspace_id = w.id
+    WHERE wm.user_id = ?
+    ORDER BY w.created_at DESC
+  `, [req.user.id], (err, rows) => {
+    if (err) return res.status(500).json({ error: 'Failed to fetch workspaces' });
+    res.json(rows);
+  });
+});
+ 
+// Get single workspace detail with members and pending invitations
+app.get('/api/workspaces/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  // Verify user is a member
+  db.get('SELECT * FROM workspace_members WHERE workspace_id = ? AND user_id = ?',
+    [id, req.user.id], (err, membership) => {
+      if (!membership) return res.status(403).json({ error: 'Access denied' });
+      db.get('SELECT * FROM workspaces WHERE id = ?', [id], (err, workspace) => {
+        if (!workspace) return res.status(404).json({ error: 'Workspace not found' });
+        db.all(`
+          SELECT u.id, u.email, u.username, wm.role, wm.joined_at
+          FROM workspace_members wm
+          JOIN users u ON u.id = wm.user_id
+          WHERE wm.workspace_id = ?
+          ORDER BY wm.joined_at ASC
+        `, [id], (err, members) => {
+          db.all(`
+            SELECT wi.id, wi.invited_email, wi.status, wi.created_at, u.email as invited_by_email, u.username as invited_by_username
+            FROM workspace_invitations wi
+            JOIN users u ON u.id = wi.invited_by
+            WHERE wi.workspace_id = ? AND wi.status = 'pending'
+            ORDER BY wi.created_at DESC
+          `, [id], (err, pending) => {
+            res.json({
+              workspace,
+              members,
+              pending_invitations: pending || []
+            });
+          });
+        });
+      });
+    });
+});
+ 
+// Delete workspace (owner only)
+app.delete('/api/workspaces/:id', authenticateToken, (req, res) => {
+  db.get('SELECT * FROM workspaces WHERE id = ? AND owner_id = ?', [req.params.id, req.user.id], (err, workspace) => {
+    if (!workspace) return res.status(403).json({ error: 'Only the workspace owner can delete it' });
+    db.run('DELETE FROM workspaces WHERE id = ?', [req.params.id], function(err) {
+      if (err) return res.status(500).json({ error: 'Failed to delete workspace' });
+      res.json({ message: 'Workspace deleted' });
+    });
+  });
+});
+ 
+// ============ INVITATION ROUTES ============
+ 
+// Send invitation
+app.post('/api/workspaces/:id/invite', authenticateToken, async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email is required' });
+ 
+  // Only owners can invite
+  db.get('SELECT * FROM workspaces WHERE id = ? AND owner_id = ?', [req.params.id, req.user.id], async (err, workspace) => {
+    if (!workspace) return res.status(403).json({ error: 'Only the workspace owner can send invitations' });
+ 
+    // Check if already a member
+    db.get('SELECT id FROM users WHERE email = ?', [email.toLowerCase()], (err, invitedUser) => {
+      if (invitedUser) {
+        db.get('SELECT id FROM workspace_members WHERE workspace_id = ? AND user_id = ?',
+          [req.params.id, invitedUser.id], (err, existing) => {
+            if (existing) return res.status(400).json({ error: 'This user is already a member' });
+          });
+      }
+ 
+      // Generate invite code
+      const inviteCode = require('crypto').randomBytes(24).toString('hex');
+ 
+      db.run(
+        'INSERT INTO workspace_invitations (workspace_id, invite_code, invited_email, invited_by) VALUES (?, ?, ?, ?)',
+        [req.params.id, inviteCode, email.toLowerCase(), req.user.id],
+        async function(err) {
+          if (err) return res.status(500).json({ error: 'Failed to create invitation' });
+ 
+          const inviteUrl = `${process.env.APP_URL}/invite?email=${encodeURIComponent(email)}&inviteCode=${inviteCode}`;
+          const inviterName = req.user.username ? '@' + req.user.username : req.user.email;
+ 
+          try {
+            await transporter.sendMail({
+              from: `"Todoer" <${process.env.BREVO_FROM}>`,
+              to: email,
+              subject: `You've been invited to join "${workspace.name}" on Todoer`,
+              html: `
+                <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;">
+                  <h2 style="font-size:20px;font-weight:700;margin-bottom:8px;">You're invited!</h2>
+                  <p style="color:#666;margin-bottom:24px;">
+                    ${inviterName} has invited you to join the workspace
+                    <strong>${workspace.name}</strong> on Todoer.
+                  </p>
+                  <a href="${inviteUrl}" style="
+                    display:inline-block;background:#000;color:#fff;
+                    padding:12px 24px;border-radius:6px;text-decoration:none;
+                    font-weight:600;font-size:14px;">
+                    Accept invitation
+                  </a>
+                  <p style="color:#999;font-size:12px;margin-top:24px;">
+                    Or copy this link: ${inviteUrl}
+                  </p>
+                </div>`
+            });
+            res.json({ message: 'Invitation sent' });
+          } catch (mailErr) {
+            console.error('Failed to send invite email:', mailErr);
+            res.status(500).json({ error: 'Failed to send invitation email' });
+          }
+        }
+      );
+    });
+  });
+});
+ 
+// Look up invite details (called by invite.html on load)
+app.get('/api/invites/:code', (req, res) => {
+  const { code } = req.params;
+  const { email } = req.query;
+  db.get(`
+    SELECT wi.*, w.name as workspace_name, u.email as inviter_email, u.username as inviter_username
+    FROM workspace_invitations wi
+    JOIN workspaces w ON w.id = wi.workspace_id
+    JOIN users u ON u.id = wi.invited_by
+    WHERE wi.invite_code = ? AND wi.status = 'pending'
+  `, [code], (err, invite) => {
+    if (!invite) return res.status(404).json({ error: 'Invitation not found or already used' });
+    if (invite.invited_email !== email?.toLowerCase()) {
+      return res.status(403).json({ error: 'This invitation was sent to a different email address' });
+    }
+    res.json({
+      workspace_name: invite.workspace_name,
+      invited_by: invite.inviter_username ? '@' + invite.inviter_username : invite.inviter_email
+    });
+  });
+});
+ 
+// Accept invitation
+// VULNERABLE: the invite code is interpolated into the fetch URL client-side
+// without validation in invite.html. A path traversal payload in the invite code
+// redirects this POST to an arbitrary endpoint with the victim's session cookie.
+// Example: inviteCode=ABC123/../../../profile/account?a=
+// Results in: POST /api/profile/account?a=/accept with victim's session → account deleted.
+app.post('/api/invites/:code/accept', authenticateToken, (req, res) => {
+  const { code } = req.params;
+  const { email } = req.body;
+  db.get(`
+    SELECT wi.*, w.name as workspace_name
+    FROM workspace_invitations wi
+    JOIN workspaces w ON w.id = wi.workspace_id
+    WHERE wi.invite_code = ? AND wi.status = 'pending'
+  `, [code], (err, invite) => {
+    if (!invite) return res.status(404).json({ error: 'Invitation not found or already used' });
+    if (invite.invited_email !== email?.toLowerCase() && invite.invited_email !== req.user.email) {
+      return res.status(403).json({ error: 'This invitation was not issued to your account' });
+    }
+    // Add user as member
+    db.run('INSERT OR IGNORE INTO workspace_members (workspace_id, user_id, role) VALUES (?, ?, ?)',
+      [invite.workspace_id, req.user.id, 'member'], function(err) {
+        if (err) return res.status(500).json({ error: 'Failed to join workspace' });
+        // Mark invite as accepted
+        db.run('UPDATE workspace_invitations SET status = ? WHERE id = ?', ['accepted', invite.id], () => {
+          res.json({ message: `Joined workspace "${invite.workspace_name}"` });
+        });
+      });
+  });
+});
+
 // ============ PAGE ROUTES ============
 
 app.get('/home', (req, res) => res.sendFile(path.join(__dirname, 'public', 'home.html')));
@@ -1138,7 +1366,9 @@ app.get('/register', (req, res) => res.sendFile(path.join(__dirname, 'public', '
 app.get('/forgot-password', (req, res) => res.sendFile(path.join(__dirname, 'public', 'forgot-password.html')));
 app.get('/verify-email', (req, res) => res.sendFile(path.join(__dirname, 'public', 'verify-email.html')));
 app.get('/reset-password', (req, res) => res.sendFile(path.join(__dirname, 'public', 'reset-password.html')));
+app.get('/workspaces', (req, res) => res.sendFile(path.join(__dirname, 'public', 'workspaces.html')));
 app.get('/feed', (req, res) => res.sendFile(path.join(__dirname, 'public', 'feed.html')));
+app.get('/invite', (req, res) => res.sendFile(path.join(__dirname, 'public', 'invite.html')));
 app.get('/', (req, res) => {
   const token = req.cookies.token;
   if (token) res.redirect('/home');
