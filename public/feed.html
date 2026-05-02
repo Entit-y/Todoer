@@ -9,8 +9,8 @@
   <style>
     .feed-layout {
       display: grid;
-      grid-template-columns: 1fr 300px;
-      gap: 24px;
+      grid-template-columns: 1fr 280px;
+      gap: 20px;
       align-items: start;
       padding-bottom: 40px;
     }
@@ -73,11 +73,7 @@
       border-top: 1px solid var(--border);
     }
 
-    .compose-count {
-      font-size: 12px;
-      color: var(--text-3);
-    }
-
+    .compose-count { font-size: 12px; color: var(--text-3); }
     .compose-count.warn { color: #f59e0b; }
     .compose-count.over { color: var(--danger); }
 
@@ -126,10 +122,7 @@
       flex-shrink: 0;
     }
 
-    .message-meta {
-      flex: 1;
-      min-width: 0;
-    }
+    .message-meta { flex: 1; min-width: 0; }
 
     .message-author {
       font-size: 13.5px;
@@ -190,23 +183,23 @@
       margin-top: 16px;
     }
 
-    /* ── Sidebar ── */
-    .feed-sidebar {
+    /* ── Feed info sidebar (right column) ── */
+    .feed-info-sidebar {
       position: sticky;
-      top: 72px;
+      top: 36px;
       display: flex;
       flex-direction: column;
       gap: 12px;
     }
 
-    .sidebar-card {
+    .info-card {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
       padding: 18px;
     }
 
-    .sidebar-card h3 {
+    .info-card h3 {
       font-size: 12px;
       font-weight: 600;
       text-transform: uppercase;
@@ -215,19 +208,10 @@
       margin-bottom: 12px;
     }
 
-    .sidebar-card p {
+    .info-card p {
       font-size: 13px;
       color: var(--text-2);
       line-height: 1.6;
-    }
-
-    .online-dot {
-      display: inline-block;
-      width: 7px;
-      height: 7px;
-      background: #22c55e;
-      border-radius: 50%;
-      margin-right: 5px;
     }
 
     /* ── Live indicator ── */
@@ -254,83 +238,152 @@
       50%       { opacity: 0.4; transform: scale(0.8); }
     }
 
+    /* ── Mobile sidebar toggle ── */
+    .sidebar-toggle {
+      display: none;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      width: 32px; height: 32px;
+      align-items: center; justify-content: center;
+      color: var(--text-2);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .sidebar-toggle:hover { background: var(--surface-2); color: var(--text-1); }
+
     @media (max-width: 768px) {
+      .sidebar-toggle { display: flex; }
       .feed-layout { grid-template-columns: 1fr; }
-      .feed-sidebar { position: static; }
+      .feed-info-sidebar { position: static; }
     }
   </style>
 </head>
 <body>
-  <nav class="navbar">
-    <div class="nav-brand" style="display:flex;align-items:center;gap:8px;">
-      <object data="/assets/logo.svg" type="image/svg+xml" style="width:28px;height:28px;pointer-events:none;"></object>
-      <span>Todoer</span>
-    </div>
-    <div class="nav-links">
-      <a href="/home" class="nav-link">Tasks</a>
-      <a href="/feed" class="nav-link active">Feed</a>
-      <a href="/files" class="nav-link">Files</a>
-      <a href="/workspaces" class="nav-link">Workspaces</a>
-      <a href="/profile" class="nav-link">Profile</a>
-      <span id="navUsername" class="nav-username"></span>
-      <button class="theme-toggle" id="themeToggle" title="Toggle theme">
-        <svg id="iconSun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
-          <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
-          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-          <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
-          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-        </svg>
-        <svg id="iconMoon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-        </svg>
-      </button>
-      <button id="logoutBtn" class="btn btn-secondary" style="margin-left:4px;">Logout</button>
-    </div>
-  </nav>
+  <div class="app-layout">
 
-  <main class="container" style="padding-top:24px;">
-    <div class="page-header" style="margin-bottom:20px;">
-      <div>
-        <h1 style="margin-bottom:4px;">Feed</h1>
-        <div class="live-badge"><span class="live-dot"></span> Live</div>
-      </div>
-    </div>
-
-    <div class="feed-layout">
-      <div class="feed-main">
-        <!-- Compose -->
-        <div class="compose-box">
-          <div class="compose-row">
-            <div class="compose-avatar" id="composeAvatar">?</div>
-            <textarea class="compose-input" id="composeInput" placeholder="What's on your mind?"
-              maxlength="280" onkeydown="handleComposeKey(event)" oninput="updateCount()"></textarea>
-          </div>
-          <div class="compose-footer">
-            <span class="compose-count" id="composeCount">280</span>
-            <button class="btn btn-primary" onclick="submitMessage()" id="postBtn" style="padding:7px 18px;">Post</button>
-          </div>
-        </div>
-
-        <!-- Feed -->
-        <div class="feed-list" id="feedList"></div>
-
-        <div class="feed-load-more" id="loadMoreWrap" style="display:none;">
-          <button class="btn btn-secondary" onclick="loadMore()">Load older messages</button>
-        </div>
+    <!-- ── Sidebar ── -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <object data="/assets/logo.svg" type="image/svg+xml" style="width:22px; height:22px; pointer-events:none; flex-shrink:0;"></object>
+        <span class="sidebar-brand-text">Todoer</span>
       </div>
 
-      <aside class="feed-sidebar">
-        <div class="sidebar-card">
-          <h3>About Feed</h3>
-          <p>A shared space for all Todoer users. Messages are visible to everyone on the platform.</p>
+      <nav class="sidebar-nav">
+        <span class="sidebar-section-label">Menu</span>
+
+        <a href="/home" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/>
+          </svg>
+          Tasks
+        </a>
+
+        <a href="/feed" class="nav-link active">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.62 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.1a16 16 0 0 0 6 6l.92-.92a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16z"/>
+          </svg>
+          Feed
+        </a>
+
+        <a href="/files" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/>
+          </svg>
+          Files
+        </a>
+
+        <a href="/workspaces" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+          </svg>
+          Workspaces
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <div class="sidebar-user-avatar" id="sidebarAvatar">?</div>
+          <div class="sidebar-user-info">
+            <div class="sidebar-user-name" id="sidebarUsername">—</div>
+            <div class="sidebar-user-email" id="sidebarEmail">—</div>
+          </div>
         </div>
-        <div class="sidebar-card">
-          <h3>Guidelines</h3>
-          <p style="margin-bottom:8px;">Keep it respectful. Messages are limited to 280 characters. You can delete your own messages.</p>
+        <div class="sidebar-footer-actions">
+          <button class="sidebar-logout" id="logoutBtn">Log out</button>
+          <button class="theme-toggle" id="themeToggle" title="Toggle theme">
+            <svg id="iconSun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
+              <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+              <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+            </svg>
+            <svg id="iconMoon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            </svg>
+          </button>
         </div>
-      </aside>
-    </div>
-  </main>
+      </div>
+    </aside>
+
+    <!-- ── Main content ── -->
+    <div class="main-content">
+      <div class="container">
+
+        <div class="page-header" style="margin-bottom:20px;">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/>
+              </svg>
+            </button>
+            <div>
+              <h1 style="margin-bottom:4px;">Feed</h1>
+              <div class="live-badge"><span class="live-dot"></span> Live</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="feed-layout">
+          <div class="feed-main">
+            <!-- Compose -->
+            <div class="compose-box">
+              <div class="compose-row">
+                <div class="compose-avatar" id="composeAvatar">?</div>
+                <textarea class="compose-input" id="composeInput" placeholder="What's on your mind?"
+                  maxlength="280" onkeydown="handleComposeKey(event)" oninput="updateCount()"></textarea>
+              </div>
+              <div class="compose-footer">
+                <span class="compose-count" id="composeCount">280</span>
+                <button class="btn btn-primary" onclick="submitMessage()" id="postBtn" style="padding:7px 18px;">Post</button>
+              </div>
+            </div>
+
+            <!-- Feed -->
+            <div class="feed-list" id="feedList"></div>
+
+            <div class="feed-load-more" id="loadMoreWrap" style="display:none;">
+              <button class="btn btn-secondary" onclick="loadMore()">Load older messages</button>
+            </div>
+          </div>
+
+          <!-- Right info column -->
+          <aside class="feed-info-sidebar">
+            <div class="info-card">
+              <h3>About Feed</h3>
+              <p>A shared space for all Todoer users. Messages are visible to everyone on the platform.</p>
+            </div>
+            <div class="info-card">
+              <h3>Guidelines</h3>
+              <p>Keep it respectful. Messages are limited to 280 characters. You can delete your own messages.</p>
+            </div>
+          </aside>
+        </div>
+
+      </div>
+    </div><!-- /.main-content -->
+
+  </div><!-- /.app-layout -->
 
   <script>
     let currentUser = null;
@@ -355,6 +408,11 @@
       document.getElementById('iconSun').style.display  = theme === 'light' ? 'block' : 'none';
       document.getElementById('iconMoon').style.display = theme === 'dark'  ? 'block' : 'none';
     }
+
+    // ── Mobile sidebar toggle ──
+    document.getElementById('sidebarToggle').addEventListener('click', () => {
+      document.getElementById('sidebar').classList.toggle('open');
+    });
 
     // ── WebSocket ──
     function connectWS() {
@@ -381,10 +439,14 @@
         currentUser = data.user;
         const initials = (data.user.username || data.user.email || '?')[0].toUpperCase();
         document.getElementById('composeAvatar').textContent = initials;
-        if (data.user.username) {
-          // VULNERABLE: innerHTML — stored XSS if username is a payload
-          document.getElementById('navUsername').innerHTML = '@' + data.user.username;
-        }
+
+        // Populate sidebar user info
+        const displayName = data.user.username ? '@' + data.user.username : data.user.email;
+        document.getElementById('sidebarAvatar').textContent = initials;
+        // VULNERABLE: innerHTML — stored XSS if username is a payload
+        document.getElementById('navUsername').innerHTML = '@' + data.user.username;
+        document.getElementById('sidebarUsername').innerHTML = data.user.username ? '@' + data.user.username : escapeHtml(data.user.email);
+        document.getElementById('sidebarEmail').textContent = data.user.email || '';
       } catch { window.location.href = '/'; }
     }
 
@@ -425,7 +487,6 @@
         list.innerHTML = '<div class="feed-empty">No messages yet. Say something.</div>';
         return;
       }
-      // Render newest first
       [...messages].reverse().forEach(m => list.appendChild(buildMessage(m)));
       document.getElementById('loadMoreWrap').style.display = hasMore ? 'block' : 'none';
     }
