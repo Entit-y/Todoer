@@ -7,6 +7,40 @@
   <title>Tasks — Todoer</title>
   <link rel="stylesheet" href="/styles.css">
   <style>
+    .toast {
+      position: fixed; bottom: 24px; right: 24px;
+      background: var(--surface-3); border: 1px solid var(--border-light);
+      color: var(--text-1); padding: 12px 18px;
+      border-radius: var(--radius-md); font-size: 13.5px;
+      box-shadow: var(--shadow-md); z-index: 3000;
+      opacity: 0; transform: translateY(8px);
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none; max-width: 320px;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.success { border-color: rgba(34,197,94,0.3); color: #22c55e; }
+    .toast.error   { border-color: var(--danger-border); color: var(--danger); }
+
+    .confirm-modal {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+      justify-content: center; align-items: center;
+      z-index: 1500; padding: 20px;
+    }
+    .confirm-box {
+      background: var(--surface); border: 1px solid var(--border-light);
+      border-radius: var(--radius-lg); padding: 28px;
+      width: 100%; max-width: 380px;
+      box-shadow: var(--shadow-lg); animation: modal-in 0.18s ease;
+    }
+    @keyframes modal-in {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .confirm-box h3 { font-size: 15px; font-weight: 600; color: var(--text-1); margin-bottom: 8px; letter-spacing: -0.02em; }
+    .confirm-box p  { font-size: 13.5px; color: var(--text-2); margin-bottom: 24px; line-height: 1.5; }
+    .confirm-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
     .comments-overlay {
       display: none; position: fixed; inset: 0;
       background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 900;
@@ -284,6 +318,21 @@
     </div>
   </div>
 
+  <!-- Toast -->
+  <div id="toast" class="toast"></div>
+
+  <!-- Confirm Modal -->
+  <div id="confirmModal" class="confirm-modal">
+    <div class="confirm-box">
+      <h3 id="confirmTitle"></h3>
+      <p id="confirmMessage"></p>
+      <div class="confirm-actions">
+        <button class="btn btn-secondary" id="confirmCancel">Cancel</button>
+        <button class="btn" id="confirmOk">Confirm</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     let tasks = [];
     let currentUser = null;
@@ -494,6 +543,40 @@
       e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
     }
 
+    // ── Toast & Confirm Modal ──
+    let toastTimer = null;
+    function showToast(msg, type = '') {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'toast' + (type ? ' ' + type : '');
+      void t.offsetWidth;
+      t.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+    }
+
+    function showConfirm({ title, message, confirmText = 'Confirm', danger = false }) {
+      return new Promise(resolve => {
+        document.getElementById('confirmTitle').textContent = title;
+        document.getElementById('confirmMessage').textContent = message;
+        const okBtn = document.getElementById('confirmOk');
+        okBtn.textContent = confirmText;
+        okBtn.className = 'btn' + (danger ? ' btn-danger' : ' btn-primary');
+        const modal = document.getElementById('confirmModal');
+        modal.style.display = 'flex';
+        const cleanup = (result) => {
+          modal.style.display = 'none';
+          okBtn.removeEventListener('click', onOk);
+          document.getElementById('confirmCancel').removeEventListener('click', onCancel);
+          resolve(result);
+        };
+        const onOk     = () => cleanup(true);
+        const onCancel = () => cleanup(false);
+        okBtn.addEventListener('click', onOk);
+        document.getElementById('confirmCancel').addEventListener('click', onCancel);
+      });
+    }
+
     // ── Task CRUD ──
     function showTaskModal(task = null) {
       document.getElementById('taskForm').reset();
@@ -524,9 +607,12 @@
     }
 
     async function deleteTask(id) {
-      if (!confirm('Delete this task?')) return;
-      try { await fetch(`/api/tasks/${id}`, { method: 'DELETE' }); loadTasks(); }
-      catch (e) { console.error(e); }
+      const task = tasks.find(t => t.id === id);
+      const name = task ? task.title : 'this task';
+      const confirmed = await showConfirm({ title: 'Delete task', message: `"${name}" will be permanently deleted.`, confirmText: 'Delete', danger: true });
+      if (!confirmed) return;
+      try { await fetch(`/api/tasks/${id}`, { method: 'DELETE' }); loadTasks(); showToast('Task deleted.', 'success'); }
+      catch (e) { console.error(e); showToast('Failed to delete task.', 'error'); }
     }
 
     document.getElementById('taskForm').addEventListener('submit', async (e) => {
@@ -550,6 +636,15 @@
     });
 
     document.getElementById('searchInput').addEventListener('keypress', e => { if (e.key === 'Enter') loadTasks(); });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        const modal = document.getElementById('confirmModal');
+        if (modal.style.display === 'flex') {
+          modal.style.display = 'none';
+          document.getElementById('confirmCancel').click();
+        }
+      }
+    });
     document.getElementById('logoutBtn').addEventListener('click', async () => {
       await fetch('/api/auth/logout', { method: 'POST' });
       window.location.href = '/';
