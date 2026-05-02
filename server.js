@@ -495,16 +495,21 @@ app.delete('/api/profile/account', authenticateToken, (req, res) => {
 
 app.get('/api/tasks', authenticateToken, (req, res) => {
   const { search, priority, completed, sort } = req.query;
-  let query = 'SELECT * FROM tasks WHERE user_id = ?';
+  let query = `
+    SELECT t.*, COUNT(tc.id) as comment_count
+    FROM tasks t
+    LEFT JOIN task_comments tc ON tc.task_id = t.id
+    WHERE t.user_id = ?`;
   const params = [req.user.id];
-  if (search) { query += ' AND (title LIKE ? OR description LIKE ?)'; params.push(`%${search}%`, `%${search}%`); }
-  if (priority && priority !== 'all') { query += ' AND priority = ?'; params.push(priority); }
-  if (completed !== undefined && completed !== '') { query += ' AND completed = ?'; params.push(completed === 'true' ? 1 : 0); }
+  if (search) { query += ' AND (t.title LIKE ? OR t.description LIKE ?)'; params.push(`%${search}%`, `%${search}%`); }
+  if (priority && priority !== 'all') { query += ' AND t.priority = ?'; params.push(priority); }
+  if (completed !== undefined && completed !== '') { query += ' AND t.completed = ?'; params.push(completed === 'true' ? 1 : 0); }
+  query += ' GROUP BY t.id';
   const sortOptions = {
-    'newest': 'ORDER BY created_at DESC',
-    'oldest': 'ORDER BY created_at ASC',
-    'priority': "ORDER BY CASE priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 END",
-    'due_date': 'ORDER BY due_date ASC'
+    'newest':   'ORDER BY t.created_at DESC',
+    'oldest':   'ORDER BY t.created_at ASC',
+    'priority': "ORDER BY CASE t.priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 END",
+    'due_date': 'ORDER BY t.due_date ASC'
   };
   query += ' ' + (sortOptions[sort] || sortOptions['newest']);
   db.all(query, params, (err, tasks) => {
