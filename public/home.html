@@ -68,9 +68,9 @@
       background: var(--surface); border: 1px solid var(--border);
       border-radius: var(--radius-sm); color: var(--text-1);
       font-family: var(--font); font-size: 13px; outline: none;
-      transition: border-color 0.15s;
+      transition: border-color 0.15s, box-shadow 0.15s;
     }
-    .search-input:focus { border-color: var(--border-light); }
+    .search-input:focus { border-color: var(--border-light); box-shadow: 0 0 0 3px var(--accent-dim); }
     .search-input::placeholder { color: var(--text-3); }
 
     .filter-divider {
@@ -83,26 +83,34 @@
 
     .task-card {
       background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--radius-md); padding: 14px 14px 14px 18px;
+      border-radius: var(--radius-md); padding: 16px 16px 16px 20px;
       display: flex; align-items: flex-start; gap: 12px;
-      transition: border-color 0.12s, background 0.12s;
+      transition: border-color 0.12s, background 0.12s, box-shadow 0.12s;
       position: relative; overflow: hidden;
       cursor: default;
     }
     .task-card::before {
       content: ''; position: absolute;
-      left: 0; top: 8px; bottom: 8px;
+      left: 0; top: 10px; bottom: 10px;
       width: 3px; border-radius: 0 3px 3px 0;
       background: var(--border);
+      transition: opacity 0.12s;
     }
-    .task-card:has(.priority-high)::before   { background: rgba(239,68,68,0.6); }
-    .task-card:has(.priority-medium)::before { background: rgba(234,179,8,0.5); }
-    .task-card:has(.priority-low)::before    { background: rgba(34,197,94,0.5); }
+    .task-card:has(.priority-high)::before   { background: rgba(239,68,68,0.7); }
+    .task-card:has(.priority-medium)::before { background: rgba(234,179,8,0.6); }
+    .task-card:has(.priority-low)::before    { background: rgba(34,197,94,0.6); }
 
-    .task-card:hover { border-color: var(--border-light); background: var(--surface-2); }
-    .task-card:hover .task-actions { opacity: 1; }
+    .task-card:hover { border-color: var(--border-light); background: var(--surface-2); box-shadow: 0 2px 8px rgba(0,0,0,0.18); }
+    .task-card:hover .task-actions { opacity: 1; transform: translateX(0); }
+    /* Subtle "this row is interactive" cue — a faint right-edge accent on hover */
+    .task-card:hover::after {
+      content: ''; position: absolute;
+      right: 0; top: 0; bottom: 0; width: 2px;
+      background: var(--border-light); border-radius: 0;
+      opacity: 0.5;
+    }
 
-    .task-card.completed { opacity: 0.55; }
+    .task-card.completed { opacity: 0.72; }
     .task-card.completed .task-title { text-decoration: line-through; color: var(--text-3); }
 
     /* ── Checkbox ── */
@@ -115,15 +123,16 @@
     /* ── Content ── */
     .task-content { flex: 1; min-width: 0; }
     .task-title {
-      font-size: 13.5px; font-weight: 500; color: var(--text-1);
-      margin-bottom: 3px; letter-spacing: -0.01em; line-height: 1.4;
+      font-size: 14.5px; font-weight: 600; color: var(--text-1);
+      margin-bottom: 5px; letter-spacing: -0.02em; line-height: 1.35;
     }
     .task-description {
-      color: var(--text-3); font-size: 12.5px; margin-bottom: 8px; line-height: 1.5;
+      color: var(--text-3); font-size: 12px; margin-bottom: 9px; line-height: 1.55;
+      font-weight: 400;
     }
     .task-meta {
       display: flex; gap: 6px; flex-wrap: wrap;
-      align-items: center; font-size: 11.5px; color: var(--text-3);
+      align-items: center; font-size: 11px; color: var(--text-3);
     }
     .task-priority {
       padding: 1px 6px; border-radius: 4px;
@@ -131,29 +140,39 @@
       text-transform: uppercase; letter-spacing: 0.06em;
     }
     .task-due { color: var(--text-3); }
-    .task-due.overdue { color: #ef4444; font-weight: 500; }
+    .task-due.overdue {
+      color: #ef4444; font-weight: 600;
+      display: inline-flex; align-items: center; gap: 3px;
+    }
+    .task-due.overdue::before {
+      content: ''; display: inline-block;
+      width: 5px; height: 5px; border-radius: 50%;
+      background: #ef4444; flex-shrink: 0;
+    }
     .task-date { color: var(--text-3); }
     .task-sep { color: var(--border-light); }
 
-    /* ── Actions — hidden until hover ── */
+    /* ── Actions — subtle at rest, visible on hover ── */
     .task-actions {
       display: flex; gap: 2px; flex-shrink: 0;
-      opacity: 0; transition: opacity 0.15s;
+      opacity: 0.25; transition: opacity 0.15s, transform 0.15s;
       padding-top: 1px;
+      transform: translateX(4px);
     }
 
     /* ── Empty state ── */
     .empty-state {
-      text-align: center; padding: 64px 20px 56px;
+      text-align: center; padding: 72px 20px 60px;
       color: var(--text-3);
     }
     .empty-state-icon {
-      width: 44px; height: 44px; margin: 0 auto 14px;
+      width: 52px; height: 52px; margin: 0 auto 18px;
       background: var(--surface-2); border: 1px solid var(--border);
-      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center;
     }
-    .empty-state p { font-size: 13.5px; color: var(--text-2); margin-bottom: 4px; font-weight: 500; }
-    .empty-state span { font-size: 12.5px; color: var(--text-3); }
+    .empty-state-icon svg { opacity: 0.45; }
+    .empty-state p { font-size: 14px; color: var(--text-2); margin-bottom: 6px; font-weight: 600; letter-spacing: -0.02em; }
+    .empty-state span { font-size: 12.5px; color: var(--text-3); display: block; margin-bottom: 20px; }
 
     /* ── Comments drawer ── */
     .comments-overlay {
@@ -235,12 +254,13 @@
     .comment-delete:hover { color: var(--danger); }
 
     .comments-empty {
-      text-align: center; padding: 40px 20px; color: var(--text-3); font-size: 13px;
+      text-align: center; padding: 48px 20px 32px; color: var(--text-3);
     }
     .comments-empty-icon {
-      width: 36px; height: 36px; margin: 0 auto 10px;
+      width: 40px; height: 40px; margin: 0 auto 12px;
       background: var(--surface-2); border: 1px solid var(--border);
-      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center;
+      color: var(--text-3);
     }
 
     .comment-input-area { padding: 14px 20px; border-top: 1px solid var(--border); flex-shrink: 0; }
@@ -351,7 +371,10 @@
   <div class="main-content">
     <main class="container">
       <div class="page-header">
-        <h1>My Tasks</h1>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <h1>My Tasks</h1>
+          <span class="task-count-badge" id="taskCountBadge">—</span>
+        </div>
         <button class="btn btn-primary" onclick="showTaskModal()">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
@@ -362,9 +385,12 @@
 
       <div class="filters-bar">
         <div class="search-box">
-          <input type="text" id="searchInput" placeholder="Search tasks…" class="search-input">
-          <button class="btn btn-secondary" onclick="loadTasks()">Search</button>
+          <svg class="search-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input type="text" id="searchInput" placeholder="Search tasks…" class="search-input" oninput="loadTasks()">
         </div>
+        <div class="filter-divider"></div>
         <div class="filter-group">
           <select id="priorityFilter" class="filter-select" onchange="loadTasks()">
             <option value="all">All priorities</option>
@@ -389,10 +415,19 @@
       <div id="tasksList" class="tasks-list"></div>
 
       <div id="emptyState" class="empty-state" style="display:none;">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:12px;opacity:0.3;">
-          <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/>
-        </svg>
-        <p>No tasks yet. Create your first one.</p>
+        <div class="empty-state-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/>
+          </svg>
+        </div>
+        <p>No tasks here</p>
+        <span>Create your first task to get started.</span>
+        <button class="btn btn-primary" onclick="showTaskModal()">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          New task
+        </button>
       </div>
     </main>
   </div>
@@ -404,7 +439,11 @@
     <div class="modal-content">
       <div class="modal-header">
         <h2 id="modalTitle">New task</h2>
-        <button class="modal-close" onclick="closeTaskModal()">×</button>
+        <button class="modal-close" onclick="closeTaskModal()" title="Close">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
       </div>
       <form id="taskForm">
         <input type="hidden" id="taskId">
@@ -446,7 +485,11 @@
         <h3>Comments</h3>
         <div class="drawer-task-title" id="drawerTaskTitle"></div>
       </div>
-      <button class="drawer-close" onclick="closeComments()">×</button>
+      <button class="drawer-close" onclick="closeComments()" title="Close">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
     </div>
     <div class="comments-list" id="commentsList"></div>
     <div class="comment-input-area">
@@ -560,9 +603,20 @@
     function renderTasks() {
       const list  = document.getElementById('tasksList');
       const empty = document.getElementById('emptyState');
-      if (!tasks.length) { list.innerHTML = ''; empty.style.display = 'block'; return; }
+      const badge = document.getElementById('taskCountBadge');
+      if (!tasks.length) {
+        list.innerHTML = '';
+        empty.style.display = 'block';
+        badge.textContent = '0';
+        return;
+      }
       empty.style.display = 'none';
-      list.innerHTML = tasks.map(task => `
+      const pending = tasks.filter(t => !t.completed).length;
+      badge.textContent = pending > 0 ? `${pending} pending` : `${tasks.length} done`;
+      const now = Date.now();
+      list.innerHTML = tasks.map(task => {
+        const isOverdue = task.due_date && !task.completed && new Date(task.due_date).getTime() < now;
+        return `
         <div class="task-card ${task.completed ? 'completed' : ''}" data-id="${task.id}">
           <div class="task-checkbox">
             <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTask(${task.id})">
@@ -572,7 +626,8 @@
             ${task.description ? `<p class="task-description">${escapeHtml(task.description)}</p>` : ''}
             <div class="task-meta">
               <span class="task-priority priority-${task.priority}">${task.priority}</span>
-              ${task.due_date ? `<span class="task-due">Due ${formatDate(task.due_date)}</span>` : ''}
+              ${task.due_date ? `<span class="task-due${isOverdue ? ' overdue' : ''}">Due ${formatDate(task.due_date)}</span>` : ''}
+              <span class="task-sep">·</span>
               <span class="task-date">${formatDate(task.created_at)}</span>
             </div>
           </div>
@@ -589,7 +644,8 @@
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
             </button>
           </div>
-        </div>`).join('');
+        </div>`;
+      }).join('');
     }
 
     // ── Comments ──
@@ -616,7 +672,19 @@
 
     function renderComments(comments) {
       const list = document.getElementById('commentsList');
-      if (!comments.length) { list.innerHTML = '<div class="comments-empty">No comments yet. Be the first.</div>'; return; }
+      if (!comments.length) {
+        list.innerHTML = `
+          <div class="comments-empty">
+            <div class="comments-empty-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+            </div>
+            <p style="font-size:13px;color:var(--text-2);font-weight:500;margin-bottom:4px;">No comments yet</p>
+            <span style="font-size:12px;color:var(--text-3);">Be the first to leave one.</span>
+          </div>`;
+        return;
+      }
       list.innerHTML = '';
       comments.forEach(appendComment);
       list.scrollTop = list.scrollHeight;
@@ -629,11 +697,13 @@
       const isOwn = currentUser && (comment.user_id === currentUser.id || comment.email === currentUser.email);
       const initials = (comment.username || comment.email || '?')[0].toUpperCase();
       const displayName = comment.username ? '@' + comment.username : comment.email;
+      // derive a consistent color from the username/email
+      const colorIdx = (comment.username || comment.email || '').split('').reduce((a,c) => a + c.charCodeAt(0), 0) % 8;
       const el = document.createElement('div');
       el.className = 'comment-item';
       el.id = `comment-${comment.id}`;
       el.innerHTML = `
-        <div class="comment-avatar">${initials}</div>
+        <div class="comment-avatar av-${colorIdx}">${initials}</div>
         <div class="comment-body">
           <div class="comment-meta">
             <span class="comment-author">${escapeHtml(displayName)}</span>
@@ -653,7 +723,16 @@
     function checkCommentsEmpty() {
       const list = document.getElementById('commentsList');
       if (!list.querySelector('.comment-item')) {
-        list.innerHTML = '<div class="comments-empty">No comments yet. Be the first.</div>';
+        list.innerHTML = `
+          <div class="comments-empty">
+            <div class="comments-empty-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+            </div>
+            <p style="font-size:13px;color:var(--text-2);font-weight:500;margin-bottom:4px;">No comments yet</p>
+            <span style="font-size:12px;color:var(--text-3);">Be the first to leave one.</span>
+          </div>`;
       }
     }
 
