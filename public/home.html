@@ -7,88 +7,42 @@
   <title>Tasks — Todoer</title>
   <link rel="stylesheet" href="/styles.css">
   <style>
-    /* ── Comments drawer ── */
     .comments-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.5);
-      backdrop-filter: blur(4px);
-      z-index: 900;
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 900;
     }
     .comments-overlay.open { display: block; }
 
     .comments-drawer {
-      position: fixed;
-      top: 0;
-      right: -440px;
-      width: 440px;
-      max-width: 100vw;
-      height: 100vh;
-      background: var(--surface);
-      border-left: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      z-index: 1000;
-      transition: right 0.25s cubic-bezier(0.22,1,0.36,1);
+      position: fixed; top: 0; right: -440px;
+      width: 440px; max-width: 100vw; height: 100vh;
+      background: var(--surface); border-left: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      z-index: 1000; transition: right 0.25s cubic-bezier(0.22,1,0.36,1);
       box-shadow: var(--shadow-lg);
     }
     .comments-drawer.open { right: 0; }
 
     .drawer-header {
-      padding: 18px 20px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-shrink: 0;
+      padding: 18px 20px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
     }
-
-    .drawer-header h3 {
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--text-1);
-      letter-spacing: -0.02em;
-    }
-
-    .drawer-task-title {
-      font-size: 12px;
-      color: var(--text-3);
-      margin-top: 2px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 320px;
-    }
+    .drawer-header h3 { font-size: 14px; font-weight: 600; color: var(--text-1); letter-spacing: -0.02em; }
+    .drawer-task-title { font-size: 12px; color: var(--text-3); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 320px; }
 
     .drawer-close {
-      background: none;
-      border: none;
-      color: var(--text-3);
-      font-size: 20px;
-      cursor: pointer;
-      padding: 2px 6px;
-      border-radius: var(--radius-sm);
-      line-height: 1;
-      transition: color 0.15s;
-      flex-shrink: 0;
+      background: none; border: none; color: var(--text-3);
+      font-size: 20px; cursor: pointer; padding: 2px 6px;
+      border-radius: var(--radius-sm); line-height: 1; transition: color 0.15s; flex-shrink: 0;
     }
     .drawer-close:hover { color: var(--text-1); }
 
     .comments-list {
-      flex: 1;
-      overflow-y: auto;
-      padding: 16px 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
+      flex: 1; overflow-y: auto; padding: 16px 20px;
+      display: flex; flex-direction: column; gap: 12px;
     }
 
-    .comment-item {
-      display: flex;
-      gap: 10px;
-      animation: fadeIn 0.15s ease;
-    }
+    .comment-item { display: flex; gap: 10px; animation: fadeIn 0.15s ease; }
 
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(4px); }
@@ -96,268 +50,176 @@
     }
 
     .comment-avatar {
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      background: var(--surface-2);
-      border: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--text-2);
-      flex-shrink: 0;
-      margin-top: 2px;
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--surface-2); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 600; color: var(--text-2);
+      flex-shrink: 0; margin-top: 2px;
     }
 
     .comment-body { flex: 1; min-width: 0; }
-
-    .comment-meta {
-      display: flex;
-      align-items: baseline;
-      gap: 6px;
-      margin-bottom: 3px;
-    }
-
-    .comment-author {
-      font-size: 12.5px;
-      font-weight: 600;
-      color: var(--text-1);
-    }
-
-    .comment-time {
-      font-size: 11px;
-      color: var(--text-3);
-    }
-
-    .comment-text {
-      font-size: 13.5px;
-      color: var(--text-2);
-      line-height: 1.55;
-      word-break: break-word;
-    }
+    .comment-meta { display: flex; align-items: baseline; gap: 6px; margin-bottom: 3px; }
+    .comment-author { font-size: 12.5px; font-weight: 600; color: var(--text-1); }
+    .comment-time { font-size: 11px; color: var(--text-3); }
+    .comment-text { font-size: 13.5px; color: var(--text-2); line-height: 1.55; word-break: break-word; }
 
     .comment-delete {
-      background: none;
-      border: none;
-      color: var(--text-3);
-      cursor: pointer;
-      padding: 2px;
-      border-radius: 3px;
-      opacity: 0;
-      transition: opacity 0.15s, color 0.15s;
-      flex-shrink: 0;
-      margin-top: 2px;
+      background: none; border: none; color: var(--text-3);
+      cursor: pointer; padding: 2px; border-radius: 3px;
+      opacity: 0; transition: opacity 0.15s, color 0.15s;
+      flex-shrink: 0; margin-top: 2px;
     }
-
     .comment-item:hover .comment-delete { opacity: 1; }
     .comment-delete:hover { color: var(--danger); }
 
-    .comments-empty {
-      text-align: center;
-      padding: 40px 20px;
-      color: var(--text-3);
-      font-size: 13px;
-    }
+    .comments-empty { text-align: center; padding: 40px 20px; color: var(--text-3); font-size: 13px; }
 
-    .comment-input-area {
-      padding: 14px 20px;
-      border-top: 1px solid var(--border);
-      flex-shrink: 0;
-    }
-
-    .comment-input-row {
-      display: flex;
-      gap: 8px;
-      align-items: flex-end;
-    }
+    .comment-input-area { padding: 14px 20px; border-top: 1px solid var(--border); flex-shrink: 0; }
+    .comment-input-row { display: flex; gap: 8px; align-items: flex-end; }
 
     .comment-input {
-      flex: 1;
-      background: var(--surface-2);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-md);
-      padding: 9px 12px;
-      color: var(--text-1);
-      font-family: var(--font);
-      font-size: 13.5px;
-      resize: none;
-      outline: none;
-      line-height: 1.5;
-      max-height: 120px;
-      min-height: 38px;
-      transition: border-color 0.15s;
+      flex: 1; background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: var(--radius-md); padding: 9px 12px;
+      color: var(--text-1); font-family: var(--font); font-size: 13.5px;
+      resize: none; outline: none; line-height: 1.5;
+      max-height: 120px; min-height: 38px; transition: border-color 0.15s;
     }
-
     .comment-input:focus { border-color: var(--border-light); }
     .comment-input::placeholder { color: var(--text-3); }
 
     .comment-submit {
-      background: var(--accent);
-      border: none;
-      border-radius: var(--radius-sm);
-      width: 34px;
-      height: 34px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      color: var(--accent-text);
-      transition: background 0.15s;
-      flex-shrink: 0;
+      background: var(--accent); border: none; border-radius: var(--radius-sm);
+      width: 34px; height: 34px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; color: var(--accent-text); transition: background 0.15s; flex-shrink: 0;
     }
     .comment-submit:hover { background: var(--accent-hover); }
     .comment-submit:disabled { opacity: 0.4; cursor: not-allowed; }
-
-    /* ── Mobile sidebar toggle ── */
-    .sidebar-toggle {
-      display: none;
-      background: none;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      width: 32px; height: 32px;
-      align-items: center; justify-content: center;
-      color: var(--text-2);
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-    .sidebar-toggle:hover { background: var(--surface-2); color: var(--text-1); }
-
-    @media (max-width: 768px) {
-      .sidebar-toggle { display: flex; }
-    }
   </style>
 </head>
 <body>
-  <div class="app-layout">
+<div class="app-layout">
 
-    <!-- ── Sidebar ── -->
-    <aside class="sidebar" id="sidebar">
-      <div class="sidebar-brand">
-        <object data="/assets/logo.svg" type="image/svg+xml" style="width:22px; height:22px; pointer-events:none; flex-shrink:0;"></object>
-        <span class="sidebar-brand-text">Todoer</span>
-      </div>
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <object data="/assets/logo.svg" type="image/svg+xml" style="width:24px;height:24px;pointer-events:none;flex-shrink:0;"></object>
+      <span class="sidebar-brand-text">Todoer</span>
+    </div>
 
-      <nav class="sidebar-nav">
-        <span class="sidebar-section-label">Menu</span>
+    <nav class="sidebar-nav">
+      <a href="/home" class="nav-link active">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/>
+        </svg>
+        Tasks
+      </a>
+      <a href="/feed" class="nav-link">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+        Feed
+      </a>
+      <a href="/files" class="nav-link">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/>
+        </svg>
+        Files
+      </a>
+      <a href="/workspaces" class="nav-link">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        Workspaces
+      </a>
+      <a href="/profile" class="nav-link">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+        Profile
+      </a>
+    </nav>
 
-        <a href="/home" class="nav-link active">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/>
-          </svg>
-          Tasks
-        </a>
-
-        <a href="/feed" class="nav-link">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.62 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.1a16 16 0 0 0 6 6l.92-.92a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16z"/>
-          </svg>
-          Feed
-        </a>
-
-        <a href="/files" class="nav-link">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/>
-          </svg>
-          Files
-        </a>
-
-        <a href="/workspaces" class="nav-link">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
-          </svg>
-          Workspaces
-        </a>
-      </nav>
-
-      <div class="sidebar-footer">
-        <a href="/profile" class="sidebar-user-link">
-          <div class="sidebar-user">
-            <div class="sidebar-user-avatar" id="sidebarAvatar">?</div>
-            <div class="sidebar-user-info">
-              <div class="sidebar-user-name" id="sidebarUsername">—</div>
-              <div class="sidebar-user-email" id="sidebarEmail">—</div>
-            </div>
-          </div>
-        </a>
-        <div class="sidebar-footer-actions">
-          <button class="sidebar-logout" id="logoutBtn">Log out</button>
-          <button class="theme-toggle" id="themeToggle" title="Toggle theme">
-            <svg id="iconSun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
-              <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
-              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-              <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
-              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-            </svg>
-            <svg id="iconMoon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-            </svg>
-          </button>
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="sidebar-user-avatar" id="sidebarAvatar">?</div>
+        <div class="sidebar-user-info">
+          <div class="sidebar-user-name" id="sidebarName">—</div>
+          <div class="sidebar-user-email" id="sidebarEmail">—</div>
         </div>
       </div>
-    </aside>
-
-    <!-- ── Main content ── -->
-    <div class="main-content">
-      <div class="container">
-
-        <div class="page-header">
-          <div style="display:flex; align-items:center; gap:12px;">
-            <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/>
-              </svg>
-            </button>
-            <h1>My Tasks</h1>
-          </div>
-          <button class="btn btn-primary" onclick="showTaskModal()">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-            </svg>
-            New task
-          </button>
-        </div>
-
-        <div class="filters-bar">
-          <div class="search-box">
-            <input type="text" id="searchInput" placeholder="Search tasks…" class="search-input">
-            <button class="btn btn-secondary" onclick="loadTasks()">Search</button>
-          </div>
-          <div class="filter-group">
-            <select id="priorityFilter" class="filter-select" onchange="loadTasks()">
-              <option value="all">All priorities</option>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
-            </select>
-            <select id="statusFilter" class="filter-select" onchange="loadTasks()">
-              <option value="">All status</option>
-              <option value="false">Pending</option>
-              <option value="true">Completed</option>
-            </select>
-            <select id="sortBy" class="filter-select" onchange="loadTasks()">
-              <option value="newest">Newest first</option>
-              <option value="oldest">Oldest first</option>
-              <option value="priority">By priority</option>
-              <option value="due_date">By due date</option>
-            </select>
-          </div>
-        </div>
-
-        <div id="tasksList" class="tasks-list"></div>
-
-        <div id="emptyState" class="empty-state" style="display:none;">
-          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:14px;">
-            <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/>
+      <div class="sidebar-footer-actions">
+        <button class="sidebar-logout" id="logoutBtn">Sign out</button>
+        <button class="theme-toggle" id="themeToggle" title="Toggle theme">
+          <svg id="iconSun" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
+            <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
           </svg>
-          <p>No tasks yet. Create your first one.</p>
-        </div>
-
+          <svg id="iconMoon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
       </div>
-    </div><!-- /.main-content -->
+    </div>
+  </aside>
 
-  </div><!-- /.app-layout -->
+  <!-- Main -->
+  <div class="main-content">
+    <main class="container">
+      <div class="page-header">
+        <h1>My Tasks</h1>
+        <button class="btn btn-primary" onclick="showTaskModal()">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          New task
+        </button>
+      </div>
+
+      <div class="filters-bar">
+        <div class="search-box">
+          <input type="text" id="searchInput" placeholder="Search tasks…" class="search-input">
+          <button class="btn btn-secondary" onclick="loadTasks()">Search</button>
+        </div>
+        <div class="filter-group">
+          <select id="priorityFilter" class="filter-select" onchange="loadTasks()">
+            <option value="all">All priorities</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+          <select id="statusFilter" class="filter-select" onchange="loadTasks()">
+            <option value="">All status</option>
+            <option value="false">Pending</option>
+            <option value="true">Completed</option>
+          </select>
+          <select id="sortBy" class="filter-select" onchange="loadTasks()">
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="priority">By priority</option>
+            <option value="due_date">By due date</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="tasksList" class="tasks-list"></div>
+
+      <div id="emptyState" class="empty-state" style="display:none;">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:12px;opacity:0.3;">
+          <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/>
+        </svg>
+        <p>No tasks yet. Create your first one.</p>
+      </div>
+    </main>
+  </div>
+
+</div>
 
   <!-- Task Modal -->
   <div id="taskModal" class="modal">
@@ -446,27 +308,18 @@
       document.getElementById('iconMoon').style.display = theme === 'dark'  ? 'block' : 'none';
     }
 
-    // ── Mobile sidebar toggle ──
-    document.getElementById('sidebarToggle').addEventListener('click', () => {
-      document.getElementById('sidebar').classList.toggle('open');
-    });
-
     // ── WebSocket ──
     function connectWS() {
       const proto = location.protocol === 'https:' ? 'wss' : 'ws';
       ws = new WebSocket(`${proto}://${location.host}`);
-
       ws.onmessage = (e) => {
         const data = JSON.parse(e.data);
-        if (data.type === 'task_comment:new' && data.taskId === activeTaskId) {
-          appendComment(data.comment);
-        }
+        if (data.type === 'task_comment:new' && data.taskId === activeTaskId) appendComment(data.comment);
         if (data.type === 'task_comment:delete' && data.taskId === activeTaskId) {
           document.getElementById(`comment-${data.commentId}`)?.remove();
           checkCommentsEmpty();
         }
       };
-
       ws.onclose = () => setTimeout(connectWS, 3000);
       ws.onerror = () => ws.close();
     }
@@ -479,12 +332,17 @@
         const data = await r.json();
         currentUser = data.user;
 
-        // Populate sidebar user info
-        const displayName = data.user.username ? '@' + data.user.username : data.user.email;
-        const initials = (data.user.username || data.user.email || '?')[0].toUpperCase();
-        document.getElementById('sidebarAvatar').textContent = initials;
-        document.getElementById('sidebarUsername').innerHTML = '@' + data.user.username;
-        document.getElementById('sidebarEmail').textContent = data.user.email || '';
+        const name = data.user.username ? '@' + data.user.username : data.user.email;
+        const initial = (data.user.username || data.user.email || '?')[0].toUpperCase();
+
+        document.getElementById('sidebarAvatar').textContent = initial;
+        document.getElementById('sidebarName').textContent = name;
+        document.getElementById('sidebarEmail').textContent = data.user.email;
+
+        // VULNERABLE: innerHTML — stored XSS if username is a payload
+        if (data.user.username) {
+          document.getElementById('sidebarName').innerHTML = '@' + data.user.username;
+        }
       } catch { window.location.href = '/'; }
     }
 
@@ -549,7 +407,6 @@
       document.getElementById('commentsOverlay').classList.add('open');
       document.getElementById('commentsDrawer').classList.add('open');
       document.getElementById('commentInput').focus();
-
       try {
         const r = await fetch(`/api/tasks/${taskId}/comments`);
         const comments = await r.json();
@@ -576,11 +433,9 @@
       const list = document.getElementById('commentsList');
       const empty = list.querySelector('.comments-empty');
       if (empty) empty.remove();
-
       const isOwn = currentUser && (comment.user_id === currentUser.id || comment.email === currentUser.email);
       const initials = (comment.username || comment.email || '?')[0].toUpperCase();
       const displayName = comment.username ? '@' + comment.username : comment.email;
-
       const el = document.createElement('div');
       el.className = 'comment-item';
       el.id = `comment-${comment.id}`;
@@ -634,10 +489,7 @@
     }
 
     function handleCommentKey(e) {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        submitComment();
-      }
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitComment(); }
       e.target.style.height = 'auto';
       e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
     }
@@ -660,11 +512,7 @@
     }
 
     function closeTaskModal() { document.getElementById('taskModal').style.display = 'none'; }
-
-    async function editTask(id) {
-      const task = tasks.find(t => t.id === id);
-      if (task) showTaskModal(task);
-    }
+    async function editTask(id) { const task = tasks.find(t => t.id === id); if (task) showTaskModal(task); }
 
     async function toggleTask(id) {
       const task = tasks.find(t => t.id === id);
@@ -683,7 +531,7 @@
 
     document.getElementById('taskForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const id   = document.getElementById('taskId').value;
+      const id = document.getElementById('taskId').value;
       const data = {
         title:       document.getElementById('taskTitle').value,
         description: document.getElementById('taskDescription').value,
@@ -707,14 +555,11 @@
       window.location.href = '/';
     });
 
-    // ── Helpers ──
     function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
-
     function formatDate(s) {
       if (!s) return '';
       return new Date(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     }
-
     function timeAgo(s) {
       const diff = (Date.now() - new Date(s).getTime()) / 1000;
       if (diff < 60) return 'just now';
@@ -723,11 +568,7 @@
       return formatDate(s);
     }
 
-    // ── Init ──
-    checkAuth().then(() => {
-      loadTasks();
-      connectWS();
-    });
+    checkAuth().then(() => { loadTasks(); connectWS(); });
   </script>
 </body>
 </html>
