@@ -441,11 +441,9 @@
         document.getElementById('composeAvatar').textContent = initials;
 
         // Populate sidebar user info
-        const displayName = data.user.username ? '@' + data.user.username : data.user.email;
         document.getElementById('sidebarAvatar').textContent = initials;
         // VULNERABLE: innerHTML — stored XSS if username is a payload
-        document.getElementById('navUsername').innerHTML = '@' + data.user.username;
-        document.getElementById('sidebarUsername').innerHTML = data.user.username ? '@' + data.user.username : escapeHtml(data.user.email);
+        document.getElementById('sidebarUsername').innerHTML = '@' + data.user.username;
         document.getElementById('sidebarEmail').textContent = data.user.email || '';
       } catch { window.location.href = '/'; }
     }
