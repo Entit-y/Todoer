@@ -911,20 +911,25 @@ app.get('/auth/oauth/google', (req, res) => {
 // Any state value is accepted — enables CSRF on the OAuth flow (dirty dancing).
 app.get('/auth/oauth/callback', async (req, res) => {
   const { code, state, error } = req.query;
- 
+
   if (error) {
     return res.redirect(`/oauth-error?error=${encodeURIComponent(error)}&state=${encodeURIComponent(state || '')}`);
   }
- 
+
   if (!code) {
     return res.redirect('/oauth-error?error=missing_code');
   }
- 
-  // VULNERABLE: state validation intentionally omitted
-  // A correct implementation would do:
-  // if (!oauthStates.has(state)) return res.redirect('/oauth-error?error=invalid_state');
-  // oauthStates.delete(state);
- 
+
+  // VULNERABLE: state is validated, but the error redirect forwards the code —
+  // an attacker can craft a URL with a bogus state, causing the victim's code
+  // to land on /oauth-error where the postMessage gadget leaks it.
+  if (!state || !oauthStates.has(state)) {
+    return res.redirect(
+      `/oauth-error?error=invalid_state&state=${encodeURIComponent(state || '')}&code=${encodeURIComponent(code)}`
+    );
+  }
+  oauthStates.delete(state);
+
   try {
     // Exchange code for tokens
     const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
@@ -938,22 +943,22 @@ app.get('/auth/oauth/callback', async (req, res) => {
         grant_type: 'authorization_code'
       })
     });
- 
+
     const tokens = await tokenRes.json();
     if (!tokens.access_token) {
       return res.redirect('/oauth-error?error=token_exchange_failed');
     }
- 
+
     // Get user info from Google
     const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
       headers: { Authorization: `Bearer ${tokens.access_token}` }
     });
     const googleUser = await userInfoRes.json();
- 
+
     if (!googleUser.email) {
       return res.redirect('/oauth-error?error=no_email');
     }
- 
+
     // VULNERABLE: accounts auto-linked by email with no verification that the
     // email is actually owned by the person initiating the OAuth flow.
     // Pre-ATO attack:
