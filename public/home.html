@@ -285,7 +285,72 @@
     .comment-submit:hover { background: var(--accent-hover); }
     .comment-submit:disabled { opacity: 0.4; cursor: not-allowed; }
 
-    /* ── Modal form focus states ── */
+    /* ── Loading skeleton ── */
+    @keyframes shimmer {
+      0%   { background-position: -600px 0; }
+      100% { background-position: 600px 0; }
+    }
+    .skeleton {
+      background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%);
+      background-size: 600px 100%;
+      animation: shimmer 1.4s infinite linear;
+      border-radius: 4px;
+    }
+    .skeleton-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-md); padding: 16px 16px 16px 20px;
+      display: flex; gap: 12px; align-items: flex-start;
+      position: relative; overflow: hidden;
+    }
+    .skeleton-card::before {
+      content: ''; position: absolute;
+      left: 0; top: 10px; bottom: 10px; width: 3px;
+      border-radius: 0 3px 3px 0; background: var(--border);
+    }
+    .skeleton-check { width: 15px; height: 15px; border-radius: 3px; flex-shrink: 0; margin-top: 2px; }
+    .skeleton-body { flex: 1; display: flex; flex-direction: column; gap: 7px; }
+    .skeleton-title { height: 14px; width: 55%; }
+    .skeleton-desc  { height: 11px; width: 80%; }
+    .skeleton-meta  { height: 10px; width: 30%; }
+
+    /* ── Comment count badge on action button ── */
+    .btn-icon-wrap { position: relative; display: inline-flex; }
+    .comment-count-dot {
+      position: absolute; top: -3px; right: -3px;
+      min-width: 14px; height: 14px; padding: 0 3px;
+      background: var(--accent); color: var(--accent-text);
+      border-radius: 7px; font-size: 9px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      line-height: 1; font-variant-numeric: tabular-nums;
+      pointer-events: none;
+    }
+
+    /* ── Due today amber treatment ── */
+    .task-due.due-today { color: #f59e0b; font-weight: 600; }
+    .task-due.due-today::before {
+      content: ''; display: inline-block;
+      width: 5px; height: 5px; border-radius: 50%;
+      background: #f59e0b; flex-shrink: 0; margin-right: 3px;
+    }
+
+    /* ── Keyboard shortcut hint ── */
+    .kbd-hint {
+      font-size: 10.5px; color: var(--text-3);
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: 4px; padding: 1px 5px;
+      font-family: var(--font); letter-spacing: 0;
+      display: inline-block; line-height: 1.6;
+    }
+
+    /* ── Drawer comment count ── */
+    .drawer-comment-count {
+      font-size: 11px; font-weight: 600; color: var(--text-3);
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 1px 7px;
+      font-variant-numeric: tabular-nums;
+    }
+    .drawer-header-left { display: flex; align-items: center; gap: 8px; }
+
     .modal-content input:focus,
     .modal-content textarea:focus,
     .modal-content select:focus {
@@ -375,12 +440,15 @@
           <h1>My Tasks</h1>
           <span class="task-count-badge" id="taskCountBadge">—</span>
         </div>
-        <button class="btn btn-primary" onclick="showTaskModal()">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
-          New task
-        </button>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button class="btn btn-primary" onclick="showTaskModal()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            New task
+          </button>
+          <span class="kbd-hint" title="Press N to create a new task">N</span>
+        </div>
       </div>
 
       <div class="filters-bar">
@@ -388,7 +456,7 @@
           <svg class="search-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
           </svg>
-          <input type="text" id="searchInput" placeholder="Search tasks…" class="search-input" oninput="loadTasks()">
+          <input type="text" id="searchInput" placeholder="Search tasks…" class="search-input" oninput="debouncedLoad()">
         </div>
         <div class="filter-divider"></div>
         <div class="filter-group">
@@ -482,7 +550,10 @@
   <div class="comments-drawer" id="commentsDrawer">
     <div class="drawer-header">
       <div>
-        <h3>Comments</h3>
+        <div class="drawer-header-left">
+          <h3>Comments</h3>
+          <span class="drawer-comment-count" id="drawerCommentCount" style="display:none"></span>
+        </div>
         <div class="drawer-task-title" id="drawerTaskTitle"></div>
       </div>
       <button class="drawer-close" onclick="closeComments()" title="Close">
@@ -525,6 +596,7 @@
     let currentUser = null;
     let activeTaskId = null;
     let ws = null;
+    let wsActive = true;  // set false on logout to stop reconnect
 
     // ── Theme ──
     const saved = localStorage.getItem('theme') || 'dark';
@@ -550,13 +622,17 @@
       ws = new WebSocket(`${proto}://${location.host}`);
       ws.onmessage = (e) => {
         const data = JSON.parse(e.data);
-        if (data.type === 'task_comment:new' && data.taskId === activeTaskId) appendComment(data.comment);
+        if (data.type === 'task_comment:new' && data.taskId === activeTaskId) {
+          appendComment(data.comment);
+          updateDrawerCommentCount(1);
+        }
         if (data.type === 'task_comment:delete' && data.taskId === activeTaskId) {
           document.getElementById(`comment-${data.commentId}`)?.remove();
           checkCommentsEmpty();
+          updateDrawerCommentCount(-1);
         }
       };
-      ws.onclose = () => setTimeout(connectWS, 3000);
+      ws.onclose = () => { if (wsActive) setTimeout(connectWS, 3000); };
       ws.onerror = () => ws.close();
     }
 
@@ -582,6 +658,13 @@
       } catch { window.location.href = '/'; }
     }
 
+    // ── Debounced search ──
+    let searchTimer = null;
+    function debouncedLoad() {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(loadTasks, 300);
+    }
+
     // ── Tasks ──
     async function loadTasks() {
       const search    = document.getElementById('searchInput').value;
@@ -593,11 +676,33 @@
       if (priority !== 'all') params.append('priority', priority);
       if (completed) params.append('completed', completed);
       params.append('sort', sort);
+
+      // Show skeleton while loading
+      showSkeleton();
+
       try {
         const r = await fetch(`/api/tasks?${params}`);
         tasks = await r.json();
         renderTasks();
-      } catch (e) { console.error('Failed to load tasks:', e); }
+      } catch (e) {
+        console.error('Failed to load tasks:', e);
+        document.getElementById('tasksList').innerHTML = '';
+        showToast('Failed to load tasks.', 'error');
+      }
+    }
+
+    function showSkeleton() {
+      const list = document.getElementById('tasksList');
+      document.getElementById('emptyState').style.display = 'none';
+      list.innerHTML = [1,2,3].map(() => `
+        <div class="skeleton-card">
+          <div class="skeleton skeleton-check"></div>
+          <div class="skeleton-body">
+            <div class="skeleton skeleton-title"></div>
+            <div class="skeleton skeleton-desc"></div>
+            <div class="skeleton skeleton-meta"></div>
+          </div>
+        </div>`).join('');
     }
 
     function renderTasks() {
@@ -614,29 +719,35 @@
       const pending = tasks.filter(t => !t.completed).length;
       badge.textContent = pending > 0 ? `${pending} pending` : `${tasks.length} done`;
       const now = Date.now();
+      const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+      const todayEnd   = new Date(); todayEnd.setHours(23,59,59,999);
       list.innerHTML = tasks.map(task => {
-        const isOverdue = task.due_date && !task.completed && new Date(task.due_date).getTime() < now;
+        const dueTs = task.due_date ? new Date(task.due_date).getTime() : null;
+        const isOverdue  = dueTs && !task.completed && dueTs < todayStart.getTime();
+        const isDueToday = dueTs && !task.completed && dueTs >= todayStart.getTime() && dueTs <= todayEnd.getTime();
         return `
         <div class="task-card ${task.completed ? 'completed' : ''}" data-id="${task.id}">
           <div class="task-checkbox">
-            <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTask(${task.id})">
+            <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTask(${task.id}, this)">
           </div>
           <div class="task-content">
             <div class="task-title">${escapeHtml(task.title)}</div>
             ${task.description ? `<p class="task-description">${escapeHtml(task.description)}</p>` : ''}
             <div class="task-meta">
               <span class="task-priority priority-${task.priority}">${task.priority}</span>
-              ${task.due_date ? `<span class="task-due${isOverdue ? ' overdue' : ''}">Due ${formatDate(task.due_date)}</span>` : ''}
-              <span class="task-sep">·</span>
+              ${task.due_date ? `<span class="task-due${isOverdue ? ' overdue' : isDueToday ? ' due-today' : ''}">Due ${formatDate(task.due_date)}</span><span class="task-sep">·</span>` : ''}
               <span class="task-date">${formatDate(task.created_at)}</span>
             </div>
           </div>
           <div class="task-actions">
-            <button class="btn-icon" onclick="openComments(${task.id}, '${escapeHtml(task.title).replace(/'/g, "\\'")}')" title="Comments">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-              </svg>
-            </button>
+            <div class="btn-icon-wrap">
+              <button class="btn-icon" onclick="openComments(${task.id}, '${escapeHtml(task.title).replace(/'/g, "\\'")}')" title="Comments">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+              </button>
+              ${task.comment_count > 0 ? `<span class="comment-count-dot">${task.comment_count > 9 ? '9+' : task.comment_count}</span>` : ''}
+            </div>
             <button class="btn-icon" onclick="editTask(${task.id})" title="Edit">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
             </button>
@@ -652,6 +763,7 @@
     async function openComments(taskId, taskTitle) {
       activeTaskId = taskId;
       document.getElementById('drawerTaskTitle').textContent = taskTitle;
+      document.getElementById('drawerCommentCount').style.display = 'none';
       document.getElementById('commentsList').innerHTML = '<div class="comments-empty">Loading…</div>';
       document.getElementById('commentsOverlay').classList.add('open');
       document.getElementById('commentsDrawer').classList.add('open');
@@ -660,7 +772,10 @@
         const r = await fetch(`/api/tasks/${taskId}/comments`);
         const comments = await r.json();
         renderComments(comments);
-      } catch { document.getElementById('commentsList').innerHTML = '<div class="comments-empty">Failed to load comments.</div>'; }
+        setDrawerCommentCount(comments.length);
+      } catch {
+        document.getElementById('commentsList').innerHTML = '<div class="comments-empty">Failed to load comments.</div>';
+      }
     }
 
     function closeComments() {
@@ -668,6 +783,18 @@
       document.getElementById('commentsOverlay').classList.remove('open');
       document.getElementById('commentsDrawer').classList.remove('open');
       document.getElementById('commentInput').value = '';
+    }
+
+    function setDrawerCommentCount(n) {
+      const el = document.getElementById('drawerCommentCount');
+      if (n > 0) { el.textContent = n; el.style.display = ''; }
+      else { el.style.display = 'none'; }
+    }
+
+    function updateDrawerCommentCount(delta) {
+      const el = document.getElementById('drawerCommentCount');
+      const current = parseInt(el.textContent) || 0;
+      setDrawerCommentCount(current + delta);
     }
 
     function renderComments(comments) {
@@ -766,6 +893,16 @@
       e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
     }
 
+    // ── Comment input focus ring ──
+    document.getElementById('commentInput').addEventListener('focus', function() {
+      this.style.borderColor = 'var(--border-light)';
+      this.style.boxShadow = '0 0 0 3px var(--accent-dim)';
+    });
+    document.getElementById('commentInput').addEventListener('blur', function() {
+      this.style.borderColor = '';
+      this.style.boxShadow = '';
+    });
+
     // ── Toast & Confirm Modal ──
     let toastTimer = null;
     function showToast(msg, type = '') {
@@ -815,18 +952,41 @@
         document.getElementById('modalTitle').textContent = 'New task';
       }
       document.getElementById('taskModal').style.display = 'flex';
+      // Autofocus title input after animation frame so modal is visible
+      requestAnimationFrame(() => document.getElementById('taskTitle').focus());
     }
 
     function closeTaskModal() { document.getElementById('taskModal').style.display = 'none'; }
     async function editTask(id) { const task = tasks.find(t => t.id === id); if (task) showTaskModal(task); }
 
-    async function toggleTask(id) {
+    async function toggleTask(id, checkbox) {
       const task = tasks.find(t => t.id === id);
       if (!task) return;
+      // Optimistic update — flip the card immediately without a full reload
+      const card = document.querySelector(`.task-card[data-id="${id}"]`);
+      const newCompleted = !task.completed;
+      task.completed = newCompleted;
+      if (card) {
+        card.classList.toggle('completed', newCompleted);
+        const title = card.querySelector('.task-title');
+        if (title) title.style.textDecoration = newCompleted ? 'line-through' : '';
+      }
+      // Update count badge
+      const pending = tasks.filter(t => !t.completed).length;
+      document.getElementById('taskCountBadge').textContent = pending > 0 ? `${pending} pending` : `${tasks.length} done`;
       try {
-        await fetch(`/api/tasks/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ completed: !task.completed }) });
-        loadTasks();
-      } catch (e) { console.error(e); }
+        await fetch(`/api/tasks/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ completed: newCompleted })
+        });
+      } catch (e) {
+        // Revert on failure
+        task.completed = !newCompleted;
+        if (checkbox) checkbox.checked = !newCompleted;
+        if (card) card.classList.toggle('completed', !newCompleted);
+        showToast('Failed to update task.', 'error');
+      }
     }
 
     async function deleteTask(id) {
@@ -834,13 +994,22 @@
       const name = task ? task.title : 'this task';
       const confirmed = await showConfirm({ title: 'Delete task', message: `"${name}" will be permanently deleted.`, confirmText: 'Delete', danger: true });
       if (!confirmed) return;
-      try { await fetch(`/api/tasks/${id}`, { method: 'DELETE' }); loadTasks(); showToast('Task deleted.', 'success'); }
-      catch (e) { console.error(e); showToast('Failed to delete task.', 'error'); }
+      try {
+        await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
+        loadTasks();
+        showToast('Task deleted.', 'success');
+      } catch (e) {
+        console.error(e);
+        showToast('Failed to delete task.', 'error');
+      }
     }
 
     document.getElementById('taskForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const id = document.getElementById('taskId').value;
+      const submitBtn = e.target.querySelector('[type="submit"]');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Saving…';
       const data = {
         title:       document.getElementById('taskTitle').value,
         description: document.getElementById('taskDescription').value,
@@ -850,39 +1019,75 @@
       try {
         if (id) {
           await fetch(`/api/tasks/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+          showToast('Task updated.', 'success');
         } else {
           await fetch('/api/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+          showToast('Task created.', 'success');
         }
         closeTaskModal();
         loadTasks();
-      } catch (e) { console.error(e); }
-    });
-
-    document.getElementById('searchInput').addEventListener('keypress', e => { if (e.key === 'Enter') loadTasks(); });
-    document.addEventListener('keydown', e => {
-      if (e.key === 'Escape') {
-        const modal = document.getElementById('confirmModal');
-        if (modal.style.display === 'flex') {
-          modal.style.display = 'none';
-          document.getElementById('confirmCancel').click();
-        }
+      } catch (e) {
+        console.error(e);
+        showToast('Failed to save task.', 'error');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Save task';
       }
     });
+
+    // ── Global keyboard shortcuts ──
+    document.addEventListener('keydown', e => {
+      // Ignore if typing in an input/textarea
+      const tag = document.activeElement.tagName;
+      const inInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+
+      if (e.key === 'Escape') {
+        // Close whichever layer is topmost
+        const confirmModal = document.getElementById('confirmModal');
+        const taskModal    = document.getElementById('taskModal');
+        const drawer       = document.getElementById('commentsDrawer');
+        if (confirmModal.style.display === 'flex') {
+          confirmModal.style.display = 'none';
+          document.getElementById('confirmCancel').click();
+        } else if (taskModal.style.display === 'flex') {
+          closeTaskModal();
+        } else if (drawer.classList.contains('open')) {
+          closeComments();
+        }
+      }
+
+      // N to open new task modal (only when not typing)
+      if ((e.key === 'n' || e.key === 'N') && !inInput && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        showTaskModal();
+      }
+    });
+
     document.getElementById('logoutBtn').addEventListener('click', async () => {
+      wsActive = false;  // stop WS reconnect
+      if (ws) ws.close();
       await fetch('/api/auth/logout', { method: 'POST' });
       window.location.href = '/';
     });
 
     function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+
     function formatDate(s) {
       if (!s) return '';
-      return new Date(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const d = new Date(s);
+      const now = new Date();
+      // Omit year if it's the current year
+      const opts = { month: 'short', day: 'numeric' };
+      if (d.getFullYear() !== now.getFullYear()) opts.year = 'numeric';
+      return d.toLocaleDateString('en-US', opts);
     }
+
     function timeAgo(s) {
       const diff = (Date.now() - new Date(s).getTime()) / 1000;
-      if (diff < 60) return 'just now';
-      if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
-      if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+      if (diff < 60)     return 'just now';
+      if (diff < 3600)   return Math.floor(diff / 60) + 'm ago';
+      if (diff < 86400)  return Math.floor(diff / 3600) + 'h ago';
+      if (diff < 172800) return 'yesterday';
       return formatDate(s);
     }
 
