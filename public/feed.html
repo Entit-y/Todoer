@@ -9,35 +9,41 @@
   <style>
     .feed-layout {
       display: grid;
-      grid-template-columns: 1fr 260px;
-      gap: 20px;
+      grid-template-columns: 1fr 240px;
+      gap: 24px;
       align-items: start;
       padding-bottom: 40px;
     }
 
     .feed-main { min-width: 0; }
 
+    /* ── Compose box ── */
     .compose-box {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
-      padding: 16px;
-      margin-bottom: 16px;
+      padding: 14px 16px 12px;
+      margin-bottom: 20px;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .compose-box:focus-within {
+      border-color: var(--border-light);
+      box-shadow: 0 0 0 3px var(--accent-dim);
     }
 
-    .compose-row { display: flex; gap: 10px; align-items: flex-start; }
+    .compose-row { display: flex; gap: 11px; align-items: flex-start; }
 
     .compose-avatar {
-      width: 34px; height: 34px; border-radius: 50%;
-      background: var(--surface-2); border: 1px solid var(--border);
+      width: 32px; height: 32px; border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
-      font-size: 13px; font-weight: 600; color: var(--text-2); flex-shrink: 0;
+      font-size: 12px; font-weight: 700; flex-shrink: 0; margin-top: 2px;
+      letter-spacing: -0.01em;
     }
 
     .compose-input {
       flex: 1; background: transparent; border: none; outline: none;
       color: var(--text-1); font-family: var(--font); font-size: 14px;
-      resize: none; line-height: 1.55; min-height: 52px; max-height: 200px; padding-top: 5px;
+      resize: none; line-height: 1.6; min-height: 48px; max-height: 200px; padding-top: 4px;
     }
     .compose-input::placeholder { color: var(--text-3); }
 
@@ -46,92 +52,125 @@
       margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border);
     }
 
-    .compose-count { font-size: 12px; color: var(--text-3); }
+    .compose-count-wrap { display: flex; align-items: center; gap: 8px; }
+
+    .compose-count-ring {
+      width: 20px; height: 20px; flex-shrink: 0;
+    }
+
+    .compose-count {
+      font-size: 11.5px; color: var(--text-3);
+      font-variant-numeric: tabular-nums;
+      transition: color 0.15s;
+    }
     .compose-count.warn { color: #f59e0b; }
     .compose-count.over { color: var(--danger); }
 
-    .feed-list { display: flex; flex-direction: column; gap: 4px; }
+    /* ── Feed list ── */
+    .feed-list { display: flex; flex-direction: column; gap: 2px; }
 
     .feed-message {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--radius-md); padding: 14px 16px;
-      transition: border-color 0.12s; animation: slideIn 0.18s ease;
+      background: var(--surface);
+      border: 1px solid transparent;
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+      transition: background 0.12s, border-color 0.12s;
+      animation: slideIn 0.2s ease;
     }
 
     @keyframes slideIn {
-      from { opacity: 0; transform: translateY(-4px); }
+      from { opacity: 0; transform: translateY(-6px); }
       to   { opacity: 1; transform: translateY(0); }
     }
 
-    .feed-message:hover { border-color: var(--border-light); }
+    .feed-message:hover {
+      background: var(--surface-2);
+      border-color: var(--border);
+    }
 
     .message-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
 
     .message-avatar {
       width: 30px; height: 30px; border-radius: 50%;
-      background: var(--surface-2); border: 1px solid var(--border);
       display: flex; align-items: center; justify-content: center;
-      font-size: 11px; font-weight: 600; color: var(--text-2); flex-shrink: 0;
+      font-size: 11px; font-weight: 700; flex-shrink: 0;
+      letter-spacing: -0.01em;
     }
 
-    .message-meta { flex: 1; min-width: 0; }
-    .message-author { font-size: 13px; font-weight: 600; color: var(--text-1); }
-    .message-time { font-size: 11.5px; color: var(--text-3); margin-left: 6px; font-weight: 400; }
-    .message-email { font-size: 11.5px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .message-meta { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap; }
+    .message-author { font-size: 13px; font-weight: 600; color: var(--text-1); white-space: nowrap; }
+    .message-email  { font-size: 11.5px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .message-time   { font-size: 11.5px; color: var(--text-3); white-space: nowrap; margin-left: auto; }
 
     .message-delete {
       background: none; border: none; color: var(--text-3);
       cursor: pointer; padding: 4px; border-radius: var(--radius-sm);
-      opacity: 0; transition: opacity 0.15s, color 0.15s; flex-shrink: 0;
+      opacity: 0; transition: opacity 0.15s, color 0.15s, background 0.15s; flex-shrink: 0;
     }
     .feed-message:hover .message-delete { opacity: 1; }
-    .message-delete:hover { color: var(--danger); }
+    .message-delete:hover { color: var(--danger); background: var(--danger-dim); }
 
     .message-content {
-      font-size: 13.5px; color: var(--text-1);
-      line-height: 1.6; word-break: break-word; white-space: pre-wrap;
+      font-size: 13.5px; color: var(--text-2);
+      line-height: 1.65; word-break: break-word; white-space: pre-wrap;
+      padding-left: 40px;
     }
 
+    /* ── Empty & load more ── */
     .feed-empty {
-      text-align: center; padding: 60px 20px; color: var(--text-3);
-      font-size: 13.5px; background: var(--surface);
-      border: 1px solid var(--border); border-radius: var(--radius-lg);
+      text-align: center; padding: 64px 20px; color: var(--text-3);
+      font-size: 13.5px;
     }
 
-    .feed-load-more { text-align: center; margin-top: 16px; }
+    .feed-load-more { text-align: center; margin-top: 20px; }
+    .feed-load-more .btn { color: var(--text-3); font-size: 12.5px; }
 
+    /* ── Info sidebar ── */
     .feed-info-sidebar {
       position: sticky; top: 36px;
-      display: flex; flex-direction: column; gap: 10px;
+      display: flex; flex-direction: column; gap: 8px;
     }
 
     .info-card {
       background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--radius-lg); padding: 16px;
+      border-radius: var(--radius-lg); padding: 14px 16px;
     }
 
     .info-card h3 {
-      font-size: 11px; font-weight: 600;
+      font-size: 10.5px; font-weight: 600;
       text-transform: uppercase; letter-spacing: 0.08em;
-      color: var(--text-3); margin-bottom: 10px;
+      color: var(--text-3); margin-bottom: 8px;
     }
 
-    .info-card p { font-size: 12.5px; color: var(--text-2); line-height: 1.6; }
+    .info-card p { font-size: 12.5px; color: var(--text-2); line-height: 1.65; }
 
+    /* ── Live badge ── */
     .live-badge {
-      display: inline-flex; align-items: center; gap: 5px;
-      font-size: 11px; font-weight: 600; color: #22c55e; letter-spacing: 0.04em;
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 11px; font-weight: 600; color: #22c55e; letter-spacing: 0.06em;
+      background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.18);
+      border-radius: 20px; padding: 3px 9px;
     }
 
     .live-dot {
-      width: 6px; height: 6px; background: #22c55e;
-      border-radius: 50%; animation: pulse 1.8s infinite;
+      width: 5px; height: 5px; background: #22c55e;
+      border-radius: 50%; animation: pulse 2s infinite; flex-shrink: 0;
     }
 
     @keyframes pulse {
       0%, 100% { opacity: 1; transform: scale(1); }
-      50%       { opacity: 0.4; transform: scale(0.8); }
+      50%       { opacity: 0.35; transform: scale(0.75); }
     }
+
+    /* ── Avatar colors ── */
+    .av-0 { background: rgba(99,102,241,0.18);  color: #818cf8; }
+    .av-1 { background: rgba(236,72,153,0.15);  color: #f472b6; }
+    .av-2 { background: rgba(20,184,166,0.15);  color: #2dd4bf; }
+    .av-3 { background: rgba(245,158,11,0.15);  color: #fbbf24; }
+    .av-4 { background: rgba(239,68,68,0.12);   color: #f87171; }
+    .av-5 { background: rgba(34,197,94,0.12);   color: #4ade80; }
+    .av-6 { background: rgba(249,115,22,0.15);  color: #fb923c; }
+    .av-7 { background: rgba(168,85,247,0.15);  color: #c084fc; }
 
     @media (max-width: 900px) {
       .feed-layout { grid-template-columns: 1fr; }
@@ -215,8 +254,8 @@
   <div class="main-content">
     <main class="container">
       <div class="page-header" style="margin-bottom:24px;">
-        <div>
-          <h1 style="margin-bottom:4px;">Feed</h1>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <h1>Feed</h1>
           <div class="live-badge"><span class="live-dot"></span> Live</div>
         </div>
       </div>
@@ -230,8 +269,17 @@
                 maxlength="280" onkeydown="handleComposeKey(event)" oninput="updateCount()"></textarea>
             </div>
             <div class="compose-footer">
-              <span class="compose-count" id="composeCount">280</span>
-              <button class="btn btn-primary" onclick="submitMessage()" id="postBtn" style="padding:7px 18px;">Post</button>
+              <div class="compose-count-wrap">
+                <svg class="compose-count-ring" id="composeRing" viewBox="0 0 20 20" fill="none">
+                  <circle cx="10" cy="10" r="8" stroke="var(--border)" stroke-width="2"/>
+                  <circle cx="10" cy="10" r="8" stroke="var(--border-light)" stroke-width="2"
+                    stroke-dasharray="50.27" stroke-dashoffset="50.27"
+                    stroke-linecap="round" transform="rotate(-90 10 10)"
+                    id="composeRingFill" style="transition: stroke-dashoffset 0.15s, stroke 0.15s;"/>
+                </svg>
+                <span class="compose-count" id="composeCount">280</span>
+              </div>
+              <button class="btn btn-primary" onclick="submitMessage()" id="postBtn" style="padding:6px 18px; font-size:13px;">Post</button>
             </div>
           </div>
 
@@ -281,6 +329,12 @@
       document.getElementById('iconMoon').style.display = theme === 'dark'  ? 'block' : 'none';
     }
 
+    function avatarClass(str) {
+      let h = 0;
+      for (let i = 0; i < (str || '').length; i++) h = (h * 31 + str.charCodeAt(i)) & 0xffffffff;
+      return 'av-' + (Math.abs(h) % 8);
+    }
+
     function connectWS() {
       const proto = location.protocol === 'https:' ? 'wss' : 'ws';
       ws = new WebSocket(`${proto}://${location.host}`);
@@ -301,7 +355,9 @@
         const data = await r.json();
         currentUser = data.user;
         const initials = (data.user.username || data.user.email || '?')[0].toUpperCase();
-        document.getElementById('composeAvatar').textContent = initials;
+        const av = document.getElementById('composeAvatar');
+        av.textContent = initials;
+        av.className = 'compose-avatar ' + avatarClass(data.user.username || data.user.email || '');
         document.getElementById('sidebarAvatar').textContent = initials;
         document.getElementById('sidebarEmail').textContent = data.user.email || '';
         // VULNERABLE: innerHTML — stored XSS if username is a payload
@@ -356,16 +412,17 @@
       const isOwn = currentUser && message.user_id === currentUser.id;
       const initials = (message.username || message.email || '?')[0].toUpperCase();
       const displayName = message.username ? '@' + message.username : message.email;
+      const avClass = avatarClass(message.username || message.email || '');
       const el = document.createElement('div');
       el.className = 'feed-message';
       el.id = `msg-${message.id}`;
       el.innerHTML = `
         <div class="message-header">
-          <div class="message-avatar">${initials}</div>
+          <div class="message-avatar ${avClass}">${initials}</div>
           <div class="message-meta">
             <span class="message-author">${escapeHtml(displayName)}</span>
+            ${message.username ? `<span class="message-email">${escapeHtml(message.email)}</span>` : ''}
             <span class="message-time">${timeAgo(message.created_at)}</span>
-            ${message.username ? `<div class="message-email">${escapeHtml(message.email)}</div>` : ''}
           </div>
           ${isOwn ? `<button class="message-delete" onclick="deleteMessage(${message.id})" title="Delete">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -387,9 +444,16 @@
     function updateCount() {
       const input = document.getElementById('composeInput');
       const count = document.getElementById('composeCount');
-      const remaining = 280 - input.value.length;
-      count.textContent = remaining;
-      count.className = 'compose-count' + (remaining <= 20 ? ' warn' : '') + (remaining < 0 ? ' over' : '');
+      const ring  = document.getElementById('composeRingFill');
+      const used  = input.value.length;
+      const remaining = 280 - used;
+      const circumference = 50.27;
+      const filled = Math.min(used / 280, 1);
+      const offset = circumference * (1 - filled);
+      ring.style.strokeDashoffset = offset;
+      ring.style.stroke = remaining < 0 ? 'var(--danger)' : remaining <= 20 ? '#f59e0b' : 'var(--accent)';
+      count.textContent = remaining <= 20 ? remaining : '';
+      count.className = 'compose-count' + (remaining <= 20 ? (remaining < 0 ? ' over' : ' warn') : '');
     }
 
     function handleComposeKey(e) {
