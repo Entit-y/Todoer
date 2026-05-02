@@ -7,198 +7,146 @@
   <title>Files — Todoer</title>
   <link rel="stylesheet" href="/styles.css">
   <style>
-    /* ── Toast ── */
     .toast {
-      position: fixed;
-      bottom: 24px;
-      right: 24px;
-      background: var(--surface-3);
-      border: 1px solid var(--border-light);
-      color: var(--text-1);
-      padding: 12px 18px;
-      border-radius: var(--radius-md);
-      font-size: 13.5px;
-      box-shadow: var(--shadow-md);
-      z-index: 3000;
-      opacity: 0;
-      transform: translateY(8px);
+      position: fixed; bottom: 24px; right: 24px;
+      background: var(--surface-3); border: 1px solid var(--border-light);
+      color: var(--text-1); padding: 12px 18px;
+      border-radius: var(--radius-md); font-size: 13.5px;
+      box-shadow: var(--shadow-md); z-index: 3000;
+      opacity: 0; transform: translateY(8px);
       transition: opacity 0.2s, transform 0.2s;
-      pointer-events: none;
-      max-width: 320px;
+      pointer-events: none; max-width: 320px;
     }
     .toast.show { opacity: 1; transform: translateY(0); }
     .toast.success { border-color: rgba(34,197,94,0.3); color: #22c55e; }
     .toast.error   { border-color: var(--danger-border); color: var(--danger); }
 
-    /* ── Confirm Modal ── */
     .confirm-modal {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.6);
-      backdrop-filter: blur(4px);
-      justify-content: center;
-      align-items: center;
-      z-index: 1500;
-      padding: 20px;
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+      justify-content: center; align-items: center;
+      z-index: 1500; padding: 20px;
     }
     .confirm-box {
-      background: var(--surface);
-      border: 1px solid var(--border-light);
-      border-radius: var(--radius-lg);
-      padding: 28px;
-      width: 100%;
-      max-width: 380px;
-      box-shadow: var(--shadow-lg);
-      animation: modal-in 0.18s ease;
+      background: var(--surface); border: 1px solid var(--border-light);
+      border-radius: var(--radius-lg); padding: 28px;
+      width: 100%; max-width: 380px;
+      box-shadow: var(--shadow-lg); animation: modal-in 0.18s ease;
     }
-    .confirm-box h3 {
-      font-size: 15px;
-      font-weight: 600;
-      color: var(--text-1);
-      margin-bottom: 8px;
-      letter-spacing: -0.02em;
+    @keyframes modal-in {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
-    .confirm-box p {
-      font-size: 13.5px;
-      color: var(--text-2);
-      margin-bottom: 24px;
-      line-height: 1.5;
-    }
-    .confirm-actions {
-      display: flex;
-      gap: 8px;
-      justify-content: flex-end;
-    }
-
-    /* ── Mobile sidebar toggle ── */
-    .sidebar-toggle {
-      display: none;
-      background: none;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      width: 32px; height: 32px;
-      align-items: center; justify-content: center;
-      color: var(--text-2);
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-    .sidebar-toggle:hover { background: var(--surface-2); color: var(--text-1); }
-
-    @media (max-width: 768px) {
-      .sidebar-toggle { display: flex; }
-    }
+    .confirm-box h3 { font-size: 15px; font-weight: 600; color: var(--text-1); margin-bottom: 8px; letter-spacing: -0.02em; }
+    .confirm-box p  { font-size: 13.5px; color: var(--text-2); margin-bottom: 24px; line-height: 1.5; }
+    .confirm-actions { display: flex; gap: 8px; justify-content: flex-end; }
   </style>
 </head>
 <body>
-  <div class="app-layout">
+<div class="app-layout">
 
-    <!-- ── Sidebar ── -->
-    <aside class="sidebar" id="sidebar">
-      <div class="sidebar-brand">
-        <object data="/assets/logo.svg" type="image/svg+xml" style="width:22px; height:22px; pointer-events:none; flex-shrink:0;"></object>
-        <span class="sidebar-brand-text">Todoer</span>
-      </div>
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <object data="/assets/logo.svg" type="image/svg+xml" style="width:24px;height:24px;pointer-events:none;flex-shrink:0;"></object>
+      <span class="sidebar-brand-text">Todoer</span>
+    </div>
 
-      <nav class="sidebar-nav">
-        <span class="sidebar-section-label">Menu</span>
+    <nav class="sidebar-nav">
+      <a href="/home" class="nav-link">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/>
+        </svg>
+        Tasks
+      </a>
+      <a href="/feed" class="nav-link">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+        Feed
+      </a>
+      <a href="/files" class="nav-link active">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/>
+        </svg>
+        Files
+      </a>
+      <a href="/workspaces" class="nav-link">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        Workspaces
+      </a>
+      <a href="/profile" class="nav-link">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+        Profile
+      </a>
+    </nav>
 
-        <a href="/home" class="nav-link">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/>
-          </svg>
-          Tasks
-        </a>
-
-        <a href="/feed" class="nav-link">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.62 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.1a16 16 0 0 0 6 6l.92-.92a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16z"/>
-          </svg>
-          Feed
-        </a>
-
-        <a href="/files" class="nav-link active">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/>
-          </svg>
-          Files
-        </a>
-
-        <a href="/workspaces" class="nav-link">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
-          </svg>
-          Workspaces
-        </a>
-      </nav>
-
-      <div class="sidebar-footer">
-        <a href="/profile" class="sidebar-user-link">
-          <div class="sidebar-user">
-            <div class="sidebar-user-avatar" id="sidebarAvatar">?</div>
-            <div class="sidebar-user-info">
-              <div class="sidebar-user-name" id="sidebarUsername">—</div>
-              <div class="sidebar-user-email" id="sidebarEmail">—</div>
-            </div>
-          </div>
-        </a>
-        <div class="sidebar-footer-actions">
-          <button class="sidebar-logout" id="logoutBtn">Log out</button>
-          <button class="theme-toggle" id="themeToggle" title="Toggle theme">
-            <svg id="iconSun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
-              <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
-              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-              <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
-              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-            </svg>
-            <svg id="iconMoon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-            </svg>
-          </button>
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="sidebar-user-avatar" id="sidebarAvatar">?</div>
+        <div class="sidebar-user-info">
+          <div class="sidebar-user-name" id="sidebarName">—</div>
+          <div class="sidebar-user-email" id="sidebarEmail">—</div>
         </div>
       </div>
-    </aside>
-
-    <!-- ── Main content ── -->
-    <div class="main-content">
-      <div class="container">
-
-        <div class="page-header">
-          <div style="display:flex; align-items:center; gap:12px;">
-            <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/>
-              </svg>
-            </button>
-            <h1>My Files</h1>
-          </div>
-          <div class="header-actions">
-            <button class="btn btn-secondary" onclick="showCreateArchiveModal()">Create archive</button>
-            <label class="btn btn-primary upload-btn">
-              Upload file
-              <input type="file" id="fileInput" style="display:none;" onchange="uploadFile(this.files[0])">
-            </label>
-          </div>
-        </div>
-
-        <div class="search-bar">
-          <input type="text" id="searchInput" placeholder="Search files…" class="search-input">
-          <button class="btn btn-secondary" onclick="loadFiles()">Search</button>
-        </div>
-
-        <div id="filesList" class="files-grid"></div>
-
-        <div id="emptyState" class="empty-state" style="display:none;">
-          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:14px;">
-            <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/>
+      <div class="sidebar-footer-actions">
+        <button class="sidebar-logout" id="logoutBtn">Sign out</button>
+        <button class="theme-toggle" id="themeToggle" title="Toggle theme">
+          <svg id="iconSun" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
+            <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
           </svg>
-          <p>No files yet. Upload your first one.</p>
-        </div>
-
+          <svg id="iconMoon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
       </div>
-    </div><!-- /.main-content -->
+    </div>
+  </aside>
 
-  </div><!-- /.app-layout -->
+  <!-- Main -->
+  <div class="main-content">
+    <div class="container">
+
+      <div class="page-header">
+        <h1>My Files</h1>
+        <div class="header-actions">
+          <button class="btn btn-secondary" onclick="showCreateArchiveModal()">Create archive</button>
+          <label class="btn btn-primary upload-btn">
+            Upload file
+            <input type="file" id="fileInput" style="display:none;" onchange="uploadFile(this.files[0])">
+          </label>
+        </div>
+      </div>
+
+      <div class="search-bar">
+        <input type="text" id="searchInput" placeholder="Search files…" class="search-input">
+        <button class="btn btn-secondary" onclick="loadFiles()">Search</button>
+      </div>
+
+      <div id="filesList" class="files-grid"></div>
+
+      <div id="emptyState" class="empty-state" style="display:none;">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:12px;opacity:0.3;">
+          <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/>
+        </svg>
+        <p>No files yet. Upload your first one.</p>
+      </div>
+
+    </div>
+  </div>
+
+</div>
 
   <!-- Toast -->
   <div id="toast" class="toast"></div>
@@ -277,7 +225,6 @@
 
     const imageExtensions = ['jpg','jpeg','png','gif','bmp','webp','svg','ico','tiff','tif'];
 
-    // ── Theme ──
     const saved = localStorage.getItem('theme') || 'dark';
     document.documentElement.setAttribute('data-theme', saved);
     updateThemeIcon(saved);
@@ -295,12 +242,6 @@
       document.getElementById('iconMoon').style.display = theme === 'dark'  ? 'block' : 'none';
     }
 
-    // ── Mobile sidebar toggle ──
-    document.getElementById('sidebarToggle').addEventListener('click', () => {
-      document.getElementById('sidebar').classList.toggle('open');
-    });
-
-    // ── Toast ──
     let toastTimer;
     function showToast(message, type = '') {
       const toast = document.getElementById('toast');
@@ -311,7 +252,6 @@
       toastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
     }
 
-    // ── Confirm modal ──
     function showConfirm({ title, message, confirmText = 'Confirm', danger = false }) {
       return new Promise(resolve => {
         document.getElementById('confirmTitle').textContent = title;
@@ -320,21 +260,19 @@
         okBtn.textContent = confirmText;
         okBtn.className = 'btn ' + (danger ? 'btn-danger' : 'btn-primary');
         document.getElementById('confirmModal').style.display = 'flex';
-
         const cleanup = (result) => {
           document.getElementById('confirmModal').style.display = 'none';
           okBtn.removeEventListener('click', onOk);
           document.getElementById('confirmCancel').removeEventListener('click', onCancel);
           resolve(result);
         };
-        const onOk     = () => cleanup(true);
+        const onOk = () => cleanup(true);
         const onCancel = () => cleanup(false);
         okBtn.addEventListener('click', onOk);
         document.getElementById('confirmCancel').addEventListener('click', onCancel);
       });
     }
 
-    // ── Auth ──
     async function checkAuth() {
       try {
         const r = await fetch('/api/auth/me');
@@ -342,13 +280,16 @@
         const data = await r.json();
         const initials = (data.user.username || data.user.email || '?')[0].toUpperCase();
         document.getElementById('sidebarAvatar').textContent = initials;
-        // VULNERABLE: innerHTML — XSS vector
-        document.getElementById('sidebarUsername').innerHTML = '@' + data.user.username;
         document.getElementById('sidebarEmail').textContent = data.user.email || '';
+        // VULNERABLE: innerHTML — XSS vector
+        if (data.user.username) {
+          document.getElementById('sidebarName').innerHTML = '@' + data.user.username;
+        } else {
+          document.getElementById('sidebarName').textContent = data.user.email;
+        }
       } catch { window.location.href = '/'; }
     }
 
-    // ── Files ──
     async function loadFiles() {
       const search = document.getElementById('searchInput').value;
       const params = new URLSearchParams();
@@ -397,12 +338,10 @@
         </div>`).join('');
     }
 
-    // ── Image viewer ──
     function viewImage(fileId) {
       const file = files.find(f => f.id === fileId);
       if (!file) return;
-      currentImageFile = file;
-      currentZoom = 100;
+      currentImageFile = file; currentZoom = 100;
       document.getElementById('imageViewerTitle').textContent = file.original_name;
       document.getElementById('imageFileName').textContent = formatFileSize(file.size);
       const img = document.getElementById('imageViewerImg');
@@ -439,7 +378,6 @@
       if (e.target.id === 'imageViewerModal') closeImageViewer();
     });
 
-    // ── File actions ──
     function getFileIcon(filename) {
       const ext = filename.split('.').pop().toLowerCase();
       const color = {
@@ -453,7 +391,6 @@
       const isImage = imageExtensions.includes(ext);
       const isArc   = ['zip','tar','gz','rar','7z'].includes(ext);
       const c       = color[ext] || ['#6b7280','#4b5563'];
-
       if (isImage) return `<svg width="44" height="44" viewBox="0 0 24 24" fill="${c[0]}22" stroke="${c[0]}" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`;
       if (isArc)   return `<svg width="44" height="44" viewBox="0 0 24 24" fill="${c[0]}22" stroke="${c[0]}" stroke-width="1.2"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>`;
       return `<svg width="44" height="44" viewBox="0 0 24 24" fill="${c[0]}22" stroke="${c[0]}" stroke-width="1.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`;
@@ -478,11 +415,7 @@
     async function downloadFile(id) { window.location.href = `/api/files/${id}/download`; }
 
     async function extractArchive(id, name) {
-      const confirmed = await showConfirm({
-        title: 'Extract archive',
-        message: `Extract "${name}"? Files will be added to your file list.`,
-        confirmText: 'Extract'
-      });
+      const confirmed = await showConfirm({ title: 'Extract archive', message: `Extract "${name}"? Files will be added to your file list.`, confirmText: 'Extract' });
       if (!confirmed) return;
       try {
         const response = await fetch(`/api/files/extract/${id}`, { method: 'POST' });
@@ -493,21 +426,14 @@
     }
 
     async function deleteFile(id, name) {
-      const confirmed = await showConfirm({
-        title: 'Delete file',
-        message: `"${name}" will be permanently deleted.`,
-        confirmText: 'Delete',
-        danger: true
-      });
+      const confirmed = await showConfirm({ title: 'Delete file', message: `"${name}" will be permanently deleted.`, confirmText: 'Delete', danger: true });
       if (!confirmed) return;
       try {
         await fetch(`/api/files/${id}`, { method: 'DELETE' });
-        loadFiles();
-        showToast('File deleted.', 'success');
+        loadFiles(); showToast('File deleted.', 'success');
       } catch { showToast('Failed to delete file.', 'error'); }
     }
 
-    // ── Create archive ──
     function showCreateArchiveModal() {
       selectedFiles = [];
       renderFileCheckboxes();
@@ -519,10 +445,7 @@
     function renderFileCheckboxes() {
       const list = document.getElementById('fileCheckboxList');
       document.getElementById('selectedCount').textContent = selectedFiles.length;
-      if (!files.length) {
-        list.innerHTML = '<p style="color:var(--text-3);font-size:13px;padding:8px 0;">No files available.</p>';
-        return;
-      }
+      if (!files.length) { list.innerHTML = '<p style="color:var(--text-3);font-size:13px;padding:8px 0;">No files available.</p>'; return; }
       list.innerHTML = files.map(f => `
         <div class="selected-file-item" style="cursor:pointer;" onclick="toggleFileSelection(${f.id})">
           <span>${escapeHtml(f.original_name)}</span>
@@ -543,10 +466,7 @@
         const response = await fetch('/api/files/create-archive', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            fileIds: selectedFiles,
-            archiveName: document.getElementById('archiveName').value || `archive-${Date.now()}.zip`
-          })
+          body: JSON.stringify({ fileIds: selectedFiles, archiveName: document.getElementById('archiveName').value || `archive-${Date.now()}.zip` })
         });
         if (response.ok) { closeArchiveModal(); loadFiles(); showToast('Archive created.', 'success'); }
         else { showToast('Failed to create archive.', 'error'); }
@@ -560,14 +480,12 @@
     });
 
     function escapeHtml(text) { const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
-
     function formatFileSize(bytes) {
       if (!bytes) return '0 B';
       const k = 1024, sizes = ['B','KB','MB','GB'];
       const i = Math.floor(Math.log(bytes) / Math.log(k));
       return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
-
     function formatDate(dateStr) {
       if (!dateStr) return '';
       return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });

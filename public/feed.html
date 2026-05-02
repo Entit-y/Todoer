@@ -9,7 +9,7 @@
   <style>
     .feed-layout {
       display: grid;
-      grid-template-columns: 1fr 280px;
+      grid-template-columns: 1fr 260px;
       gap: 20px;
       align-items: start;
       padding-bottom: 40px;
@@ -17,220 +17,115 @@
 
     .feed-main { min-width: 0; }
 
-    /* ── Compose box ── */
     .compose-box {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
       padding: 16px;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
     }
 
-    .compose-row {
-      display: flex;
-      gap: 10px;
-      align-items: flex-start;
-    }
+    .compose-row { display: flex; gap: 10px; align-items: flex-start; }
 
     .compose-avatar {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      background: var(--surface-2);
-      border: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text-2);
-      flex-shrink: 0;
+      width: 34px; height: 34px; border-radius: 50%;
+      background: var(--surface-2); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 600; color: var(--text-2); flex-shrink: 0;
     }
 
     .compose-input {
-      flex: 1;
-      background: transparent;
-      border: none;
-      outline: none;
-      color: var(--text-1);
-      font-family: var(--font);
-      font-size: 14px;
-      resize: none;
-      line-height: 1.55;
-      min-height: 56px;
-      max-height: 200px;
-      padding-top: 6px;
+      flex: 1; background: transparent; border: none; outline: none;
+      color: var(--text-1); font-family: var(--font); font-size: 14px;
+      resize: none; line-height: 1.55; min-height: 52px; max-height: 200px; padding-top: 5px;
     }
-
     .compose-input::placeholder { color: var(--text-3); }
 
     .compose-footer {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-top: 10px;
-      padding-top: 10px;
-      border-top: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border);
     }
 
     .compose-count { font-size: 12px; color: var(--text-3); }
     .compose-count.warn { color: #f59e0b; }
     .compose-count.over { color: var(--danger); }
 
-    /* ── Feed messages ── */
-    .feed-list {
-      display: flex;
-      flex-direction: column;
-      gap: 1px;
-    }
+    .feed-list { display: flex; flex-direction: column; gap: 4px; }
 
     .feed-message {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: 16px;
-      transition: border-color 0.12s;
-      animation: slideIn 0.18s ease;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-md); padding: 14px 16px;
+      transition: border-color 0.12s; animation: slideIn 0.18s ease;
     }
 
     @keyframes slideIn {
-      from { opacity: 0; transform: translateY(-6px); }
+      from { opacity: 0; transform: translateY(-4px); }
       to   { opacity: 1; transform: translateY(0); }
     }
 
     .feed-message:hover { border-color: var(--border-light); }
 
-    .message-header {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 8px;
-    }
+    .message-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
 
     .message-avatar {
-      width: 34px;
-      height: 34px;
-      border-radius: 50%;
-      background: var(--surface-2);
-      border: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--text-2);
-      flex-shrink: 0;
+      width: 30px; height: 30px; border-radius: 50%;
+      background: var(--surface-2); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 600; color: var(--text-2); flex-shrink: 0;
     }
 
     .message-meta { flex: 1; min-width: 0; }
-
-    .message-author {
-      font-size: 13.5px;
-      font-weight: 600;
-      color: var(--text-1);
-    }
-
-    .message-time {
-      font-size: 12px;
-      color: var(--text-3);
-      margin-left: 6px;
-      font-weight: 400;
-    }
-
-    .message-email {
-      font-size: 12px;
-      color: var(--text-3);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
+    .message-author { font-size: 13px; font-weight: 600; color: var(--text-1); }
+    .message-time { font-size: 11.5px; color: var(--text-3); margin-left: 6px; font-weight: 400; }
+    .message-email { font-size: 11.5px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
     .message-delete {
-      background: none;
-      border: none;
-      color: var(--text-3);
-      cursor: pointer;
-      padding: 4px;
-      border-radius: var(--radius-sm);
-      opacity: 0;
-      transition: opacity 0.15s, color 0.15s;
-      flex-shrink: 0;
+      background: none; border: none; color: var(--text-3);
+      cursor: pointer; padding: 4px; border-radius: var(--radius-sm);
+      opacity: 0; transition: opacity 0.15s, color 0.15s; flex-shrink: 0;
     }
-
     .feed-message:hover .message-delete { opacity: 1; }
     .message-delete:hover { color: var(--danger); }
 
     .message-content {
-      font-size: 14px;
-      color: var(--text-1);
-      line-height: 1.6;
-      word-break: break-word;
-      white-space: pre-wrap;
+      font-size: 13.5px; color: var(--text-1);
+      line-height: 1.6; word-break: break-word; white-space: pre-wrap;
     }
 
     .feed-empty {
-      text-align: center;
-      padding: 60px 20px;
-      color: var(--text-3);
-      font-size: 13.5px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
+      text-align: center; padding: 60px 20px; color: var(--text-3);
+      font-size: 13.5px; background: var(--surface);
+      border: 1px solid var(--border); border-radius: var(--radius-lg);
     }
 
-    .feed-load-more {
-      text-align: center;
-      margin-top: 16px;
-    }
+    .feed-load-more { text-align: center; margin-top: 16px; }
 
-    /* ── Feed info sidebar (right column) ── */
     .feed-info-sidebar {
-      position: sticky;
-      top: 36px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
+      position: sticky; top: 36px;
+      display: flex; flex-direction: column; gap: 10px;
     }
 
     .info-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: 18px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 16px;
     }
 
     .info-card h3 {
-      font-size: 12px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--text-3);
-      margin-bottom: 12px;
+      font-size: 11px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--text-3); margin-bottom: 10px;
     }
 
-    .info-card p {
-      font-size: 13px;
-      color: var(--text-2);
-      line-height: 1.6;
-    }
+    .info-card p { font-size: 12.5px; color: var(--text-2); line-height: 1.6; }
 
-    /* ── Live indicator ── */
     .live-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 11px;
-      font-weight: 600;
-      color: #22c55e;
-      letter-spacing: 0.04em;
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 11px; font-weight: 600; color: #22c55e; letter-spacing: 0.04em;
     }
 
     .live-dot {
-      width: 6px;
-      height: 6px;
-      background: #22c55e;
-      border-radius: 50%;
-      animation: pulse 1.8s infinite;
+      width: 6px; height: 6px; background: #22c55e;
+      border-radius: 50%; animation: pulse 1.8s infinite;
     }
 
     @keyframes pulse {
@@ -238,154 +133,130 @@
       50%       { opacity: 0.4; transform: scale(0.8); }
     }
 
-    /* ── Mobile sidebar toggle ── */
-    .sidebar-toggle {
-      display: none;
-      background: none;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      width: 32px; height: 32px;
-      align-items: center; justify-content: center;
-      color: var(--text-2);
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-    .sidebar-toggle:hover { background: var(--surface-2); color: var(--text-1); }
-
-    @media (max-width: 768px) {
-      .sidebar-toggle { display: flex; }
+    @media (max-width: 900px) {
       .feed-layout { grid-template-columns: 1fr; }
       .feed-info-sidebar { position: static; }
     }
   </style>
 </head>
 <body>
-  <div class="app-layout">
+<div class="app-layout">
 
-    <!-- ── Sidebar ── -->
-    <aside class="sidebar" id="sidebar">
-      <div class="sidebar-brand">
-        <object data="/assets/logo.svg" type="image/svg+xml" style="width:22px; height:22px; pointer-events:none; flex-shrink:0;"></object>
-        <span class="sidebar-brand-text">Todoer</span>
-      </div>
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <object data="/assets/logo.svg" type="image/svg+xml" style="width:24px;height:24px;pointer-events:none;flex-shrink:0;"></object>
+      <span class="sidebar-brand-text">Todoer</span>
+    </div>
 
-      <nav class="sidebar-nav">
-        <span class="sidebar-section-label">Menu</span>
+    <nav class="sidebar-nav">
+      <a href="/home" class="nav-link">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/>
+        </svg>
+        Tasks
+      </a>
+      <a href="/feed" class="nav-link active">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+        Feed
+      </a>
+      <a href="/files" class="nav-link">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/>
+        </svg>
+        Files
+      </a>
+      <a href="/workspaces" class="nav-link">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        Workspaces
+      </a>
+      <a href="/profile" class="nav-link">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+        Profile
+      </a>
+    </nav>
 
-        <a href="/home" class="nav-link">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/>
-          </svg>
-          Tasks
-        </a>
-
-        <a href="/feed" class="nav-link active">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.62 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.1a16 16 0 0 0 6 6l.92-.92a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16z"/>
-          </svg>
-          Feed
-        </a>
-
-        <a href="/files" class="nav-link">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/>
-          </svg>
-          Files
-        </a>
-
-        <a href="/workspaces" class="nav-link">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
-          </svg>
-          Workspaces
-        </a>
-      </nav>
-
-      <div class="sidebar-footer">
-        <a href="/profile" class="sidebar-user-link">
-          <div class="sidebar-user">
-            <div class="sidebar-user-avatar" id="sidebarAvatar">?</div>
-            <div class="sidebar-user-info">
-              <div class="sidebar-user-name" id="sidebarUsername">—</div>
-              <div class="sidebar-user-email" id="sidebarEmail">—</div>
-            </div>
-          </div>
-        </a>
-        <div class="sidebar-footer-actions">
-          <button class="sidebar-logout" id="logoutBtn">Log out</button>
-          <button class="theme-toggle" id="themeToggle" title="Toggle theme">
-            <svg id="iconSun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
-              <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
-              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-              <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
-              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-            </svg>
-            <svg id="iconMoon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-            </svg>
-          </button>
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="sidebar-user-avatar" id="sidebarAvatar">?</div>
+        <div class="sidebar-user-info">
+          <div class="sidebar-user-name" id="sidebarName">—</div>
+          <div class="sidebar-user-email" id="sidebarEmail">—</div>
         </div>
       </div>
-    </aside>
+      <div class="sidebar-footer-actions">
+        <button class="sidebar-logout" id="logoutBtn">Sign out</button>
+        <button class="theme-toggle" id="themeToggle" title="Toggle theme">
+          <svg id="iconSun" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
+            <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </svg>
+          <svg id="iconMoon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </aside>
 
-    <!-- ── Main content ── -->
-    <div class="main-content">
-      <div class="container">
-
-        <div class="page-header" style="margin-bottom:20px;">
-          <div style="display:flex; align-items:center; gap:12px;">
-            <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/>
-              </svg>
-            </button>
-            <div>
-              <h1 style="margin-bottom:4px;">Feed</h1>
-              <div class="live-badge"><span class="live-dot"></span> Live</div>
-            </div>
-          </div>
+  <!-- Main -->
+  <div class="main-content">
+    <main class="container">
+      <div class="page-header" style="margin-bottom:24px;">
+        <div>
+          <h1 style="margin-bottom:4px;">Feed</h1>
+          <div class="live-badge"><span class="live-dot"></span> Live</div>
         </div>
+      </div>
 
-        <div class="feed-layout">
-          <div class="feed-main">
-            <!-- Compose -->
-            <div class="compose-box">
-              <div class="compose-row">
-                <div class="compose-avatar" id="composeAvatar">?</div>
-                <textarea class="compose-input" id="composeInput" placeholder="What's on your mind?"
-                  maxlength="280" onkeydown="handleComposeKey(event)" oninput="updateCount()"></textarea>
-              </div>
-              <div class="compose-footer">
-                <span class="compose-count" id="composeCount">280</span>
-                <button class="btn btn-primary" onclick="submitMessage()" id="postBtn" style="padding:7px 18px;">Post</button>
-              </div>
+      <div class="feed-layout">
+        <div class="feed-main">
+          <div class="compose-box">
+            <div class="compose-row">
+              <div class="compose-avatar" id="composeAvatar">?</div>
+              <textarea class="compose-input" id="composeInput" placeholder="What's on your mind?"
+                maxlength="280" onkeydown="handleComposeKey(event)" oninput="updateCount()"></textarea>
             </div>
-
-            <!-- Feed -->
-            <div class="feed-list" id="feedList"></div>
-
-            <div class="feed-load-more" id="loadMoreWrap" style="display:none;">
-              <button class="btn btn-secondary" onclick="loadMore()">Load older messages</button>
+            <div class="compose-footer">
+              <span class="compose-count" id="composeCount">280</span>
+              <button class="btn btn-primary" onclick="submitMessage()" id="postBtn" style="padding:7px 18px;">Post</button>
             </div>
           </div>
 
-          <!-- Right info column -->
-          <aside class="feed-info-sidebar">
-            <div class="info-card">
-              <h3>About Feed</h3>
-              <p>A shared space for all Todoer users. Messages are visible to everyone on the platform.</p>
-            </div>
-            <div class="info-card">
-              <h3>Guidelines</h3>
-              <p>Keep it respectful. Messages are limited to 280 characters.</p>
-            </div>
-          </aside>
+          <div class="feed-list" id="feedList"></div>
+
+          <div class="feed-load-more" id="loadMoreWrap" style="display:none;">
+            <button class="btn btn-secondary" onclick="loadMore()">Load older messages</button>
+          </div>
         </div>
 
+        <aside class="feed-info-sidebar">
+          <div class="info-card">
+            <h3>About Feed</h3>
+            <p>A shared space for all Todoer users. Messages are visible to everyone on the platform.</p>
+          </div>
+          <div class="info-card">
+            <h3>Guidelines</h3>
+            <p>Keep it respectful. Messages are limited to 280 characters. You can delete your own messages.</p>
+          </div>
+        </aside>
       </div>
-    </div><!-- /.main-content -->
+    </main>
+  </div>
 
-  </div><!-- /.app-layout -->
+</div>
 
   <script>
     let currentUser = null;
@@ -393,7 +264,6 @@
     let oldestMessageId = null;
     let hasMore = false;
 
-    // ── Theme ──
     const saved = localStorage.getItem('theme') || 'dark';
     document.documentElement.setAttribute('data-theme', saved);
     updateThemeIcon(saved);
@@ -411,28 +281,19 @@
       document.getElementById('iconMoon').style.display = theme === 'dark'  ? 'block' : 'none';
     }
 
-    // ── Mobile sidebar toggle ──
-    document.getElementById('sidebarToggle').addEventListener('click', () => {
-      document.getElementById('sidebar').classList.toggle('open');
-    });
-
-    // ── WebSocket ──
     function connectWS() {
       const proto = location.protocol === 'https:' ? 'wss' : 'ws';
       ws = new WebSocket(`${proto}://${location.host}`);
-
       ws.onmessage = (e) => {
         const data = JSON.parse(e.data);
         if (data.type === 'feed:new') prependMessage(data.message);
         if (data.type === 'feed:delete') document.getElementById(`msg-${data.messageId}`)?.remove();
         checkEmpty();
       };
-
       ws.onclose = () => setTimeout(connectWS, 3000);
       ws.onerror = () => ws.close();
     }
 
-    // ── Auth ──
     async function checkAuth() {
       try {
         const r = await fetch('/api/auth/me');
@@ -441,24 +302,22 @@
         currentUser = data.user;
         const initials = (data.user.username || data.user.email || '?')[0].toUpperCase();
         document.getElementById('composeAvatar').textContent = initials;
-
-        // Populate sidebar user info
         document.getElementById('sidebarAvatar').textContent = initials;
-        // VULNERABLE: innerHTML — stored XSS if username is a payload
-        document.getElementById('sidebarUsername').innerHTML = '@' + data.user.username;
         document.getElementById('sidebarEmail').textContent = data.user.email || '';
+        // VULNERABLE: innerHTML — stored XSS if username is a payload
+        if (data.user.username) {
+          document.getElementById('sidebarName').innerHTML = '@' + data.user.username;
+        } else {
+          document.getElementById('sidebarName').textContent = data.user.email;
+        }
       } catch { window.location.href = '/'; }
     }
 
-    // ── Feed ──
     async function loadFeed() {
       try {
         const r = await fetch('/api/feed?limit=50');
         const messages = await r.json();
-        if (messages.length) {
-          oldestMessageId = messages[0].id;
-          hasMore = messages.length === 50;
-        }
+        if (messages.length) { oldestMessageId = messages[0].id; hasMore = messages.length === 50; }
         renderFeed(messages);
       } catch (e) { console.error(e); }
     }
@@ -473,9 +332,7 @@
           hasMore = messages.length === 50;
           const list = document.getElementById('feedList');
           messages.forEach(m => list.appendChild(buildMessage(m)));
-        } else {
-          hasMore = false;
-        }
+        } else { hasMore = false; }
         document.getElementById('loadMoreWrap').style.display = hasMore ? 'block' : 'none';
       } catch (e) { console.error(e); }
     }
@@ -483,10 +340,7 @@
     function renderFeed(messages) {
       const list = document.getElementById('feedList');
       list.innerHTML = '';
-      if (!messages.length) {
-        list.innerHTML = '<div class="feed-empty">No messages yet. Say something.</div>';
-        return;
-      }
+      if (!messages.length) { list.innerHTML = '<div class="feed-empty">No messages yet. Say something.</div>'; return; }
       [...messages].reverse().forEach(m => list.appendChild(buildMessage(m)));
       document.getElementById('loadMoreWrap').style.display = hasMore ? 'block' : 'none';
     }
@@ -502,7 +356,6 @@
       const isOwn = currentUser && message.user_id === currentUser.id;
       const initials = (message.username || message.email || '?')[0].toUpperCase();
       const displayName = message.username ? '@' + message.username : message.email;
-
       const el = document.createElement('div');
       el.className = 'feed-message';
       el.id = `msg-${message.id}`;
@@ -512,6 +365,7 @@
           <div class="message-meta">
             <span class="message-author">${escapeHtml(displayName)}</span>
             <span class="message-time">${timeAgo(message.created_at)}</span>
+            ${message.username ? `<div class="message-email">${escapeHtml(message.email)}</div>` : ''}
           </div>
           ${isOwn ? `<button class="message-delete" onclick="deleteMessage(${message.id})" title="Delete">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -530,7 +384,6 @@
       }
     }
 
-    // ── Compose ──
     function updateCount() {
       const input = document.getElementById('composeInput');
       const count = document.getElementById('composeCount');
@@ -540,10 +393,7 @@
     }
 
     function handleComposeKey(e) {
-      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault();
-        submitMessage();
-      }
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); submitMessage(); }
     }
 
     async function submitMessage() {
@@ -569,12 +419,7 @@
       await fetch(`/api/feed/${id}`, { method: 'DELETE' });
     }
 
-    // ── Helpers ──
-    function escapeHtml(t) {
-      const d = document.createElement('div');
-      d.textContent = t;
-      return d.innerHTML;
-    }
+    function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
 
     function timeAgo(s) {
       const diff = (Date.now() - new Date(s).getTime()) / 1000;
@@ -589,11 +434,7 @@
       window.location.href = '/';
     });
 
-    // ── Init ──
-    checkAuth().then(() => {
-      loadFeed();
-      connectWS();
-    });
+    checkAuth().then(() => { loadFeed(); connectWS(); });
   </script>
 </body>
 </html>
