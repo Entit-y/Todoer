@@ -7,6 +7,7 @@
   <title>Files — Todoer</title>
   <link rel="stylesheet" href="/styles.css">
   <style>
+    /* ── Toast ── */
     .toast {
       position: fixed; bottom: 24px; right: 24px;
       background: var(--surface-3); border: 1px solid var(--border-light);
@@ -21,6 +22,7 @@
     .toast.success { border-color: rgba(34,197,94,0.3); color: #22c55e; }
     .toast.error   { border-color: var(--danger-border); color: var(--danger); }
 
+    /* ── Confirm Modal ── */
     .confirm-modal {
       display: none; position: fixed; inset: 0;
       background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
@@ -40,6 +42,155 @@
     .confirm-box h3 { font-size: 15px; font-weight: 600; color: var(--text-1); margin-bottom: 8px; letter-spacing: -0.02em; }
     .confirm-box p  { font-size: 13.5px; color: var(--text-2); margin-bottom: 24px; line-height: 1.5; }
     .confirm-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+    /* ── Search bar ── */
+    .search-bar {
+      display: flex; gap: 8px; margin-bottom: 20px;
+    }
+    .search-wrap {
+      flex: 1; position: relative;
+    }
+    .search-wrap .search-icon {
+      position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+      color: var(--text-3); pointer-events: none;
+    }
+    .search-wrap .search-input {
+      padding-left: 32px;
+    }
+
+    /* ── Upload progress ── */
+    .upload-progress {
+      display: none;
+      position: fixed; bottom: 80px; right: 24px;
+      background: var(--surface-3); border: 1px solid var(--border-light);
+      border-radius: var(--radius-md); padding: 12px 16px;
+      box-shadow: var(--shadow-md); z-index: 3000;
+      min-width: 220px;
+    }
+    .upload-progress.show { display: block; }
+    .upload-progress-label {
+      font-size: 12.5px; color: var(--text-2); margin-bottom: 8px;
+      display: flex; align-items: center; gap: 7px;
+    }
+    .upload-progress-bar-wrap {
+      height: 3px; background: var(--surface-2);
+      border-radius: 2px; overflow: hidden;
+    }
+    .upload-progress-bar {
+      height: 100%; background: var(--accent);
+      border-radius: 2px; transition: width 0.2s;
+      width: 0%;
+    }
+    .upload-progress-bar.indeterminate {
+      width: 40%;
+      animation: indeterminate 1.2s infinite linear;
+    }
+    @keyframes indeterminate {
+      0%   { transform: translateX(-100%); }
+      100% { transform: translateX(350%); }
+    }
+
+    /* ── File count badge ── */
+    .file-count-badge {
+      font-size: 12px; font-weight: 600; color: var(--text-3);
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: 20px; padding: 2px 9px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── Files grid ── */
+    .files-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 8px;
+    }
+
+    .file-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-md); padding: 18px 14px 14px;
+      display: flex; flex-direction: column;
+      align-items: center; text-align: center;
+      transition: border-color 0.12s, background 0.12s, transform 0.12s;
+      cursor: default; position: relative;
+    }
+    .file-card:hover {
+      border-color: var(--border-light);
+      background: var(--surface-2);
+    }
+    .file-card:hover .file-actions { opacity: 1; }
+    .file-card.extracted-file { border-color: var(--border-light); }
+
+    .file-type-tag {
+      position: absolute; top: 10px; right: 10px;
+      font-size: 9px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: 4px; padding: 1px 5px; color: var(--text-3);
+    }
+
+    .file-icon { margin-bottom: 10px; }
+    .file-name {
+      font-size: 12.5px; font-weight: 500; color: var(--text-1);
+      margin-bottom: 3px; word-break: break-word;
+      letter-spacing: -0.01em; line-height: 1.4;
+      display: -webkit-box; -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .file-size { font-size: 11px; color: var(--text-3); margin-bottom: 1px; }
+    .file-date { font-size: 11px; color: var(--text-3); }
+    .file-source {
+      font-size: 10.5px; color: var(--text-3); margin-top: 3px;
+      display: flex; align-items: center; gap: 3px;
+    }
+    .file-source-dot {
+      width: 4px; height: 4px; border-radius: 50%;
+      background: var(--border-light); flex-shrink: 0;
+    }
+
+    .file-actions {
+      display: flex; gap: 3px; margin-top: 12px;
+      padding-top: 10px; border-top: 1px solid var(--border);
+      width: 100%; justify-content: center;
+      opacity: 0.3; transition: opacity 0.15s;
+    }
+
+    /* ── Empty state ── */
+    .empty-state {
+      grid-column: 1 / -1;
+      text-align: center; padding: 72px 20px 60px;
+    }
+    .empty-state-icon {
+      width: 52px; height: 52px; margin: 0 auto 18px;
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center;
+    }
+    .empty-state-icon svg { opacity: 0.4; }
+    .empty-state p { font-size: 14px; color: var(--text-2); margin-bottom: 6px; font-weight: 600; letter-spacing: -0.02em; }
+    .empty-state span { font-size: 12.5px; color: var(--text-3); display: block; margin-bottom: 20px; }
+
+    /* ── Skeleton ── */
+    @keyframes shimmer {
+      0%   { background-position: -600px 0; }
+      100% { background-position: 600px 0; }
+    }
+    .skeleton {
+      background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%);
+      background-size: 600px 100%;
+      animation: shimmer 1.4s infinite linear;
+      border-radius: 4px;
+    }
+    .skeleton-file-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-md); padding: 18px 14px 14px;
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+    }
+    .skeleton-file-icon { width: 44px; height: 44px; border-radius: var(--radius-sm); margin-bottom: 2px; }
+    .skeleton-file-name { height: 12px; width: 80%; }
+    .skeleton-file-name-2 { height: 12px; width: 55%; }
+    .skeleton-file-meta  { height: 10px; width: 40%; }
+    .skeleton-file-actions {
+      width: 100%; height: 1px; background: var(--border); margin-top: 4px;
+    }
   </style>
 </head>
 <body>
@@ -119,34 +270,54 @@
     <div class="container">
 
       <div class="page-header">
-        <h1>My Files</h1>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <h1>My Files</h1>
+          <span class="file-count-badge" id="fileCountBadge" style="display:none;"></span>
+        </div>
         <div class="header-actions">
           <button class="btn btn-secondary" onclick="showCreateArchiveModal()">Create archive</button>
           <label class="btn btn-primary upload-btn">
-            Upload file
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            Upload
             <input type="file" id="fileInput" style="display:none;" onchange="uploadFile(this.files[0])">
           </label>
         </div>
       </div>
 
       <div class="search-bar">
-        <input type="text" id="searchInput" placeholder="Search files…" class="search-input">
+        <div class="search-wrap">
+          <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input type="text" id="searchInput" placeholder="Search files…" class="search-input">
+        </div>
         <button class="btn btn-secondary" onclick="loadFiles()">Search</button>
       </div>
 
       <div id="filesList" class="files-grid"></div>
 
-      <div id="emptyState" class="empty-state" style="display:none;">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:12px;opacity:0.3;">
-          <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/>
-        </svg>
-        <p>No files yet. Upload your first one.</p>
-      </div>
-
     </div>
   </div>
 
 </div>
+
+  <!-- Upload progress -->
+  <div id="uploadProgress" class="upload-progress">
+    <div class="upload-progress-label">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+      <span id="uploadProgressLabel">Uploading…</span>
+    </div>
+    <div class="upload-progress-bar-wrap">
+      <div class="upload-progress-bar indeterminate" id="uploadProgressBar"></div>
+    </div>
+  </div>
 
   <!-- Toast -->
   <div id="toast" class="toast"></div>
@@ -225,6 +396,7 @@
 
     const imageExtensions = ['jpg','jpeg','png','gif','bmp','webp','svg','ico','tiff','tif'];
 
+    // ── Theme ──
     const saved = localStorage.getItem('theme') || 'dark';
     document.documentElement.setAttribute('data-theme', saved);
     updateThemeIcon(saved);
@@ -242,6 +414,7 @@
       document.getElementById('iconMoon').style.display = theme === 'dark'  ? 'block' : 'none';
     }
 
+    // ── Toast ──
     let toastTimer;
     function showToast(message, type = '') {
       const toast = document.getElementById('toast');
@@ -252,6 +425,7 @@
       toastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
     }
 
+    // ── Confirm ──
     function showConfirm({ title, message, confirmText = 'Confirm', danger = false }) {
       return new Promise(resolve => {
         document.getElementById('confirmTitle').textContent = title;
@@ -273,6 +447,7 @@
       });
     }
 
+    // ── Auth ──
     async function checkAuth() {
       try {
         const r = await fetch('/api/auth/me');
@@ -290,15 +465,33 @@
       } catch { window.location.href = '/'; }
     }
 
+    // ── Skeleton ──
+    function showSkeleton() {
+      document.getElementById('filesList').innerHTML = Array(8).fill(`
+        <div class="skeleton-file-card">
+          <div class="skeleton skeleton-file-icon"></div>
+          <div class="skeleton skeleton-file-name"></div>
+          <div class="skeleton skeleton-file-name-2"></div>
+          <div class="skeleton skeleton-file-meta"></div>
+          <div class="skeleton-file-actions"></div>
+        </div>`).join('');
+    }
+
+    // ── Files ──
     async function loadFiles() {
       const search = document.getElementById('searchInput').value;
       const params = new URLSearchParams();
       if (search) params.append('search', search);
+      showSkeleton();
       try {
         const response = await fetch(`/api/files?${params.toString()}`);
         files = await response.json();
         renderFiles();
-      } catch (error) { console.error('Failed to load files:', error); }
+      } catch (error) {
+        console.error('Failed to load files:', error);
+        showToast('Failed to load files.', 'error');
+        document.getElementById('filesList').innerHTML = '';
+      }
     }
 
     function isImageFile(filename) {
@@ -306,18 +499,39 @@
     }
 
     function renderFiles() {
-      const filesList  = document.getElementById('filesList');
-      const emptyState = document.getElementById('emptyState');
-      if (files.length === 0) { filesList.innerHTML = ''; emptyState.style.display = 'block'; return; }
-      emptyState.style.display = 'none';
-      filesList.innerHTML = files.map(file => `
+      const filesList = document.getElementById('filesList');
+      const badge = document.getElementById('fileCountBadge');
+
+      if (files.length === 0) {
+        badge.style.display = 'none';
+        filesList.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
+                <polyline points="13 2 13 9 20 9"/>
+              </svg>
+            </div>
+            <p>No files yet</p>
+            <span>Upload a file to get started</span>
+          </div>`;
+        return;
+      }
+
+      badge.textContent = files.length + ' file' + (files.length !== 1 ? 's' : '');
+      badge.style.display = '';
+
+      filesList.innerHTML = files.map(file => {
+        const ext = file.original_name.split('.').pop().toLowerCase();
+        return `
         <div class="file-card ${file.extracted_from ? 'extracted-file' : ''}" data-id="${file.id}">
+          <span class="file-type-tag">${ext}</span>
           <div class="file-icon">${getFileIcon(file.original_name)}</div>
-          <div class="file-info">
-            <h3 class="file-name" title="${escapeHtml(file.original_name)}">${escapeHtml(file.original_name)}</h3>
-            <p class="file-size">${formatFileSize(file.size)}</p>
-            <p class="file-date">${formatDate(file.created_at)}</p>
-            ${file.extracted_from ? `<p class="file-source">From: ${escapeHtml(file.extracted_from)}</p>` : ''}
+          <div style="width:100%;">
+            <div class="file-name" title="${escapeHtml(file.original_name)}">${escapeHtml(file.original_name)}</div>
+            <div class="file-size">${formatFileSize(file.size)}</div>
+            <div class="file-date">${formatDate(file.created_at)}</div>
+            ${file.extracted_from ? `<div class="file-source"><span class="file-source-dot"></span>Extracted</div>` : ''}
           </div>
           <div class="file-actions">
             ${isImageFile(file.original_name) ? `
@@ -335,9 +549,11 @@
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
             </button>
           </div>
-        </div>`).join('');
+        </div>`;
+      }).join('');
     }
 
+    // ── Image viewer ──
     function viewImage(fileId) {
       const file = files.find(f => f.id === fileId);
       if (!file) return;
@@ -346,7 +562,7 @@
       document.getElementById('imageFileName').textContent = formatFileSize(file.size);
       const img = document.getElementById('imageViewerImg');
       img.src = `/api/files/${fileId}/download?t=${Date.now()}`;
-      img.style.transform = `scale(1)`;
+      img.style.transform = 'scale(1)';
       document.getElementById('imageZoomLevel').textContent = '100%';
       document.getElementById('imageViewerModal').style.display = 'flex';
     }
@@ -366,49 +582,49 @@
       document.getElementById('imageZoomLevel').textContent = `${currentZoom}%`;
     }
 
-    document.addEventListener('keydown', e => {
-      if (e.key === 'Escape') {
-        closeImageViewer();
-        closeArchiveModal();
-        document.getElementById('confirmModal').style.display = 'none';
-      }
-    });
-
-    document.getElementById('imageViewerModal').addEventListener('click', e => {
-      if (e.target.id === 'imageViewerModal') closeImageViewer();
-    });
-
+    // ── File helpers ──
     function getFileIcon(filename) {
       const ext = filename.split('.').pop().toLowerCase();
       const color = {
-        pdf:  ['#ef4444','#dc2626'], zip:  ['#f59e0b','#d97706'],
-        tar:  ['#f59e0b','#d97706'], gz:   ['#f59e0b','#d97706'],
-        txt:  ['#60a5fa','#3b82f6'], js:   ['#fbbf24','#f59e0b'],
-        jpg:  ['#a78bfa','#8b5cf6'], jpeg: ['#a78bfa','#8b5cf6'],
-        png:  ['#a78bfa','#8b5cf6'], gif:  ['#a78bfa','#8b5cf6'],
-        webp: ['#a78bfa','#8b5cf6'], svg:  ['#a78bfa','#8b5cf6'],
+        pdf:  ['#ef4444'], zip:  ['#f59e0b'], tar:  ['#f59e0b'],
+        gz:   ['#f59e0b'], txt:  ['#60a5fa'], js:   ['#fbbf24'],
+        jpg:  ['#a78bfa'], jpeg: ['#a78bfa'], png:  ['#a78bfa'],
+        gif:  ['#a78bfa'], webp: ['#a78bfa'], svg:  ['#a78bfa'],
+        mp4:  ['#34d399'], mp3:  ['#34d399'], json: ['#fbbf24'],
+        html: ['#fb923c'], css:  ['#60a5fa'], py:   ['#60a5fa'],
       };
       const isImage = imageExtensions.includes(ext);
       const isArc   = ['zip','tar','gz','rar','7z'].includes(ext);
-      const c       = color[ext] || ['#6b7280','#4b5563'];
-      if (isImage) return `<svg width="44" height="44" viewBox="0 0 24 24" fill="${c[0]}22" stroke="${c[0]}" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`;
-      if (isArc)   return `<svg width="44" height="44" viewBox="0 0 24 24" fill="${c[0]}22" stroke="${c[0]}" stroke-width="1.2"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>`;
-      return `<svg width="44" height="44" viewBox="0 0 24 24" fill="${c[0]}22" stroke="${c[0]}" stroke-width="1.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`;
+      const c = (color[ext] || ['#6b7280'])[0];
+      if (isImage) return `<svg width="40" height="40" viewBox="0 0 24 24" fill="${c}22" stroke="${c}" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`;
+      if (isArc)   return `<svg width="40" height="40" viewBox="0 0 24 24" fill="${c}22" stroke="${c}" stroke-width="1.2"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>`;
+      return `<svg width="40" height="40" viewBox="0 0 24 24" fill="${c}22" stroke="${c}" stroke-width="1.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`;
     }
 
     function isArchive(filename) {
       return ['zip','rar','7z','tar','gz'].includes(filename.split('.').pop().toLowerCase());
     }
 
+    // ── Upload ──
     async function uploadFile(file) {
       if (!file) return;
+      const progress = document.getElementById('uploadProgress');
+      const label = document.getElementById('uploadProgressLabel');
+      const bar = document.getElementById('uploadProgressBar');
+      label.textContent = `Uploading ${file.name}…`;
+      bar.className = 'upload-progress-bar indeterminate';
+      progress.classList.add('show');
       const formData = new FormData();
       formData.append('file', file);
       try {
         const response = await fetch('/api/files/upload', { method: 'POST', body: formData });
+        progress.classList.remove('show');
         if (response.ok) { loadFiles(); showToast('File uploaded.', 'success'); }
         else { showToast('Failed to upload file.', 'error'); }
-      } catch { showToast('Upload failed.', 'error'); }
+      } catch {
+        progress.classList.remove('show');
+        showToast('Upload failed.', 'error');
+      }
       document.getElementById('fileInput').value = '';
     }
 
@@ -417,6 +633,7 @@
     async function extractArchive(id, name) {
       const confirmed = await showConfirm({ title: 'Extract archive', message: `Extract "${name}"? Files will be added to your file list.`, confirmText: 'Extract' });
       if (!confirmed) return;
+      showToast('Extracting…');
       try {
         const response = await fetch(`/api/files/extract/${id}`, { method: 'POST' });
         const data = await response.json();
@@ -434,6 +651,7 @@
       } catch { showToast('Failed to delete file.', 'error'); }
     }
 
+    // ── Archive ──
     function showCreateArchiveModal() {
       selectedFiles = [];
       renderFileCheckboxes();
@@ -473,18 +691,37 @@
       } catch { showToast('Failed to create archive.', 'error'); }
     });
 
-    document.getElementById('searchInput').addEventListener('keypress', e => { if (e.key === 'Enter') loadFiles(); });
+    // ── Keyboard & events ──
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        closeImageViewer();
+        closeArchiveModal();
+        document.getElementById('confirmModal').style.display = 'none';
+      }
+    });
+
+    document.getElementById('imageViewerModal').addEventListener('click', e => {
+      if (e.target.id === 'imageViewerModal') closeImageViewer();
+    });
+
+    let searchTimer;
+    document.getElementById('searchInput').addEventListener('input', () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(loadFiles, 300);
+    });
+
     document.getElementById('logoutBtn').addEventListener('click', async () => {
       await fetch('/api/auth/logout', { method: 'POST' });
       window.location.href = '/';
     });
 
+    // ── Formatters ──
     function escapeHtml(text) { const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
     function formatFileSize(bytes) {
       if (!bytes) return '0 B';
       const k = 1024, sizes = ['B','KB','MB','GB'];
       const i = Math.floor(Math.log(bytes) / Math.log(k));
-      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
     }
     function formatDate(dateStr) {
       if (!dateStr) return '';
