@@ -7,6 +7,7 @@
   <title>Workspaces — Todoer</title>
   <link rel="stylesheet" href="/styles.css">
   <style>
+    /* ── Workspace layout ── */
     .workspaces-layout {
       display: grid;
       grid-template-columns: 280px 1fr;
@@ -14,7 +15,7 @@
       align-items: start;
     }
 
-    /* ── Workspace list sidebar ── */
+    /* ── Workspace list sidebar (left) ── */
     .workspace-list {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -91,7 +92,7 @@
       font-size: 13px;
     }
 
-    /* ── Workspace detail panel ── */
+    /* ── Workspace detail panel (right) ── */
     .workspace-detail {
       display: flex;
       flex-direction: column;
@@ -305,75 +306,166 @@
     .toast.success { border-color: rgba(34,197,94,0.3); color: #22c55e; }
     .toast.error { border-color: rgba(239,68,68,0.3); color: #ef4444; }
 
+    /* ── Sidebar user link (clickable card) ── */
+    .sidebar-user-link {
+      display: block;
+      text-decoration: none;
+      color: inherit;
+      border-radius: var(--radius-md);
+      transition: background 0.15s;
+      margin: 0 -8px;
+      padding: 0 8px;
+    }
+    .sidebar-user-link:hover {
+      background: var(--surface-2);
+    }
+
+    /* ── Mobile sidebar toggle ── */
+    .sidebar-toggle {
+      display: none;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      width: 32px; height: 32px;
+      align-items: center; justify-content: center;
+      color: var(--text-2);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .sidebar-toggle:hover { background: var(--surface-2); color: var(--text-1); }
+
     @media (max-width: 768px) {
+      .sidebar-toggle { display: flex; }
       .workspaces-layout { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
-  <nav class="navbar">
-    <div class="nav-brand" style="display:flex;align-items:center;gap:8px;">
-      <object data="/assets/logo.svg" type="image/svg+xml" style="width:28px;height:28px;pointer-events:none;"></object>
-      <span>Todoer</span>
-    </div>
-    <div class="nav-links">
-      <a href="/home" class="nav-link">Tasks</a>
-      <a href="/feed" class="nav-link">Feed</a>
-      <a href="/files" class="nav-link">Files</a>
-      <a href="/workspaces" class="nav-link active">Workspaces</a>
-      <a href="/profile" class="nav-link">Profile</a>
-      <span id="navUsername" class="nav-username"></span>
-      <button class="theme-toggle" id="themeToggle" title="Toggle theme">
-        <svg id="iconSun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
-          <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
-          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-          <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
-          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-        </svg>
-        <svg id="iconMoon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-        </svg>
-      </button>
-      <button id="logoutBtn" class="btn btn-secondary" style="margin-left:4px;">Logout</button>
-    </div>
-  </nav>
+  <div class="app-layout">
 
-  <main class="container" style="padding-top:24px;">
-    <div class="page-header" style="margin-bottom:24px;">
-      <h1>Workspaces</h1>
-      <button class="btn btn-primary" onclick="openCreateModal()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-        </svg>
-        New workspace
-      </button>
-    </div>
-
-    <div class="workspaces-layout">
-      <!-- Sidebar -->
-      <div class="workspace-list">
-        <div class="workspace-list-header">
-          <h3>Your workspaces</h3>
-        </div>
-        <div id="workspaceList">
-          <div class="workspace-empty">Loading…</div>
-        </div>
+    <!-- ── Sidebar ── -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <object data="/assets/logo.svg" type="image/svg+xml" style="width:22px; height:22px; pointer-events:none; flex-shrink:0;"></object>
+        <span class="sidebar-brand-text">Todoer</span>
       </div>
 
-      <!-- Detail panel -->
-      <div id="detailPanel">
-        <div class="no-selection">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:12px;opacity:0.4;">
-            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-            <circle cx="9" cy="7" r="4"/>
-            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+      <nav class="sidebar-nav">
+        <span class="sidebar-section-label">Menu</span>
+
+        <a href="/home" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/>
           </svg>
-          <p>Select a workspace to view details</p>
+          Tasks
+        </a>
+
+        <a href="/feed" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.62 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.1a16 16 0 0 0 6 6l.92-.92a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16z"/>
+          </svg>
+          Feed
+        </a>
+
+        <a href="/files" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/>
+          </svg>
+          Files
+        </a>
+
+        <a href="/workspaces" class="nav-link active">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+          </svg>
+          Workspaces
+        </a>
+
+        <a href="/profile" class="nav-link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+          </svg>
+          Profile
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <a href="/profile" class="sidebar-user-link">
+          <div class="sidebar-user">
+            <div class="sidebar-user-avatar" id="sidebarAvatar">?</div>
+            <div class="sidebar-user-info">
+              <div class="sidebar-user-name" id="sidebarUsername">—</div>
+              <div class="sidebar-user-email" id="sidebarEmail">—</div>
+            </div>
+          </div>
+        </a>
+        <div class="sidebar-footer-actions">
+          <button class="sidebar-logout" id="logoutBtn">Log out</button>
+          <button class="theme-toggle" id="themeToggle" title="Toggle theme">
+            <svg id="iconSun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
+              <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+              <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+            </svg>
+            <svg id="iconMoon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            </svg>
+          </button>
         </div>
       </div>
-    </div>
-  </main>
+    </aside>
+
+    <!-- ── Main content ── -->
+    <div class="main-content">
+      <div class="container">
+
+        <div class="page-header" style="margin-bottom:24px;">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/>
+              </svg>
+            </button>
+            <h1>Workspaces</h1>
+          </div>
+          <button class="btn btn-primary" onclick="openCreateModal()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            New workspace
+          </button>
+        </div>
+
+        <div class="workspaces-layout">
+          <!-- Workspace list sidebar (left) -->
+          <div class="workspace-list">
+            <div class="workspace-list-header">
+              <h3>Your workspaces</h3>
+            </div>
+            <div id="workspaceList">
+              <div class="workspace-empty">Loading…</div>
+            </div>
+          </div>
+
+          <!-- Detail panel (right) -->
+          <div id="detailPanel">
+            <div class="no-selection">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:12px;opacity:0.4;">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+              <p>Select a workspace to view details</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- /.main-content -->
+
+  </div><!-- /.app-layout -->
 
   <!-- Create workspace modal -->
   <div class="modal-overlay" id="createModal">
@@ -417,6 +509,11 @@
       document.getElementById('iconMoon').style.display = theme === 'dark'  ? 'block' : 'none';
     }
 
+    // ── Mobile sidebar toggle ──
+    document.getElementById('sidebarToggle').addEventListener('click', () => {
+      document.getElementById('sidebar').classList.toggle('open');
+    });
+
     function showToast(msg, type = '') {
       const t = document.getElementById('toast');
       t.textContent = msg;
@@ -433,9 +530,16 @@
         if (!r.ok) { window.location.href = '/'; return; }
         const data = await r.json();
         currentUser = data.user;
+
+        // Populate sidebar user info (safe: textContent)
+        const initials = (data.user.username || data.user.email || '?')[0].toUpperCase();
+        document.getElementById('sidebarAvatar').textContent = initials;
         if (data.user.username) {
-          document.getElementById('navUsername').innerHTML = '@' + data.user.username;
+          document.getElementById('sidebarUsername').textContent = '@' + data.user.username;
+        } else {
+          document.getElementById('sidebarUsername').textContent = data.user.email || '—';
         }
+        document.getElementById('sidebarEmail').textContent = data.user.email || '';
       } catch { window.location.href = '/'; }
     }
 
@@ -609,7 +713,6 @@
           msg.style.display = 'block';
           document.getElementById('inviteEmailInput').value = '';
           showToast('Invitation sent', 'success');
-          // Refresh to show pending invite
           selectWorkspace(workspaceId);
         } else {
           msg.textContent = data.error || 'Failed to send invitation';
