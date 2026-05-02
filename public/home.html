@@ -481,8 +481,8 @@
         const displayName = data.user.username ? '@' + data.user.username : data.user.email;
         const initials = (data.user.username || data.user.email || '?')[0].toUpperCase();
         document.getElementById('sidebarAvatar').textContent = initials;
-        document.getElementById('sidebarUsername').textContent = escapeHtml(displayName);
-        document.getElementById('sidebarEmail').textContent = escapeHtml(data.user.email || '');
+        document.getElementById('sidebarUsername').innerHTML = '@' + data.user.username;
+        document.getElementById('sidebarEmail').textContent = data.user.email || '';
       } catch { window.location.href = '/'; }
     }
 
