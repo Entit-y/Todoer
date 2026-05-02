@@ -380,6 +380,8 @@
           </svg>
           Workspaces
         </a>
+        <!-- Profile navigation is the clickable user card below -->
+      </nav>
 
       <div class="sidebar-footer">
         <a href="/profile" class="sidebar-user-link">
@@ -523,14 +525,11 @@
         const data = await r.json();
         currentUser = data.user;
 
-        // Populate sidebar user info (safe: textContent)
+        // Populate sidebar user info exactly as in home.html (innerHTML kept!)
         const initials = (data.user.username || data.user.email || '?')[0].toUpperCase();
         document.getElementById('sidebarAvatar').textContent = initials;
-        if (data.user.username) {
-          document.getElementById('sidebarUsername').textContent = '@' + data.user.username;
-        } else {
-          document.getElementById('sidebarUsername').textContent = data.user.email || '—';
-        }
+        // VULNERABLE: innerHTML — stored XSS if username is a payload (as intended)
+        document.getElementById('sidebarUsername').innerHTML = '@' + data.user.username;
         document.getElementById('sidebarEmail').textContent = data.user.email || '';
       } catch { window.location.href = '/'; }
     }
