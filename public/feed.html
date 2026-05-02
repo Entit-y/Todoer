@@ -23,7 +23,7 @@
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
       padding: 14px 16px 12px;
-      margin-bottom: 20px;
+      margin-bottom: 8px;
       transition: border-color 0.15s, box-shadow 0.15s;
     }
     .compose-box:focus-within {
@@ -34,9 +34,9 @@
     .compose-row { display: flex; gap: 11px; align-items: flex-start; }
 
     .compose-avatar {
-      width: 32px; height: 32px; border-radius: 50%;
+      width: 30px; height: 30px; border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
-      font-size: 12px; font-weight: 700; flex-shrink: 0; margin-top: 2px;
+      font-size: 11px; font-weight: 700; flex-shrink: 0; margin-top: 3px;
       letter-spacing: -0.01em;
     }
 
@@ -53,29 +53,38 @@
     }
 
     .compose-count-wrap { display: flex; align-items: center; gap: 8px; }
+    .compose-hint { font-size: 11px; color: var(--text-3); }
 
-    .compose-count-ring {
-      width: 20px; height: 20px; flex-shrink: 0;
-    }
+    .compose-count-ring { width: 20px; height: 20px; flex-shrink: 0; }
 
     .compose-count {
       font-size: 11.5px; color: var(--text-3);
-      font-variant-numeric: tabular-nums;
-      transition: color 0.15s;
+      font-variant-numeric: tabular-nums; transition: color 0.15s;
+      min-width: 20px;
     }
     .compose-count.warn { color: #f59e0b; }
     .compose-count.over { color: var(--danger); }
 
+    /* ── Feed divider ── */
+    .feed-divider {
+      display: flex; align-items: center; gap: 10px;
+      margin: 16px 0 12px; color: var(--text-3);
+      font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+    }
+    .feed-divider::before, .feed-divider::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
+
     /* ── Feed list ── */
-    .feed-list { display: flex; flex-direction: column; gap: 2px; }
+    .feed-list { display: flex; flex-direction: column; gap: 1px; }
 
     .feed-message {
-      background: var(--surface);
-      border: 1px solid transparent;
+      background: transparent;
       border-radius: var(--radius-md);
-      padding: 14px 16px;
-      transition: background 0.12s, border-color 0.12s;
+      padding: 12px 14px;
+      transition: background 0.12s;
       animation: slideIn 0.2s ease;
+      position: relative;
     }
 
     @keyframes slideIn {
@@ -83,12 +92,22 @@
       to   { opacity: 1; transform: translateY(0); }
     }
 
-    .feed-message:hover {
-      background: var(--surface-2);
-      border-color: var(--border);
+    .feed-message:hover { background: var(--surface-2); }
+
+    /* Own messages get a subtle left accent */
+    .feed-message.own-message {
+      background: var(--accent-dim);
+      border-radius: var(--radius-md);
+    }
+    .feed-message.own-message:hover { background: var(--surface-2); }
+    .feed-message.own-message::before {
+      content: ''; position: absolute;
+      left: 0; top: 10px; bottom: 10px;
+      width: 2px; border-radius: 0 2px 2px 0;
+      background: var(--border-light);
     }
 
-    .message-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .message-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
 
     .message-avatar {
       width: 30px; height: 30px; border-radius: 50%;
@@ -97,10 +116,10 @@
       letter-spacing: -0.01em;
     }
 
-    .message-meta { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap; }
+    .message-meta { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 6px; }
     .message-author { font-size: 13px; font-weight: 600; color: var(--text-1); white-space: nowrap; }
     .message-email  { font-size: 11.5px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .message-time   { font-size: 11.5px; color: var(--text-3); white-space: nowrap; margin-left: auto; }
+    .message-time   { font-size: 11px; color: var(--text-3); white-space: nowrap; margin-left: auto; flex-shrink: 0; }
 
     .message-delete {
       background: none; border: none; color: var(--text-3);
@@ -111,19 +130,36 @@
     .message-delete:hover { color: var(--danger); background: var(--danger-dim); }
 
     .message-content {
-      font-size: 13.5px; color: var(--text-2);
+      font-size: 13.5px; color: var(--text-1);
       line-height: 1.65; word-break: break-word; white-space: pre-wrap;
       padding-left: 40px;
     }
 
-    /* ── Empty & load more ── */
+    /* ── Empty state ── */
     .feed-empty {
-      text-align: center; padding: 64px 20px; color: var(--text-3);
-      font-size: 13.5px;
+      text-align: center; padding: 56px 20px 48px; color: var(--text-3);
     }
+    .feed-empty-icon {
+      width: 40px; height: 40px; margin: 0 auto 14px;
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      color: var(--text-3);
+    }
+    .feed-empty p { font-size: 13.5px; margin-bottom: 4px; color: var(--text-2); }
+    .feed-empty span { font-size: 12px; color: var(--text-3); }
 
-    .feed-load-more { text-align: center; margin-top: 20px; }
-    .feed-load-more .btn { color: var(--text-3); font-size: 12.5px; }
+    /* ── Load more ── */
+    .feed-load-more { text-align: center; margin-top: 16px; }
+    .feed-load-more-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: none; border: 1px solid var(--border);
+      border-radius: var(--radius-md); padding: 8px 16px;
+      color: var(--text-3); font-family: var(--font); font-size: 12.5px;
+      cursor: pointer; transition: border-color 0.15s, color 0.15s, background 0.15s;
+    }
+    .feed-load-more-btn:hover {
+      border-color: var(--border-light); color: var(--text-1); background: var(--surface-2);
+    }
 
     /* ── Info sidebar ── */
     .feed-info-sidebar {
@@ -139,10 +175,30 @@
     .info-card h3 {
       font-size: 10.5px; font-weight: 600;
       text-transform: uppercase; letter-spacing: 0.08em;
-      color: var(--text-3); margin-bottom: 8px;
+      color: var(--text-3); margin-bottom: 10px;
     }
 
-    .info-card p { font-size: 12.5px; color: var(--text-2); line-height: 1.65; }
+    .info-stat {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 6px 0; border-bottom: 1px solid var(--border);
+      font-size: 12.5px;
+    }
+    .info-stat:last-child { border-bottom: none; padding-bottom: 0; }
+    .info-stat-label { color: var(--text-3); }
+    .info-stat-value { color: var(--text-1); font-weight: 600; font-variant-numeric: tabular-nums; }
+    .info-stat-value.online { color: #22c55e; }
+
+    .info-rule {
+      display: flex; align-items: flex-start; gap: 8px;
+      padding: 5px 0; font-size: 12.5px; color: var(--text-2); line-height: 1.5;
+      border-bottom: 1px solid var(--border);
+    }
+    .info-rule:last-child { border-bottom: none; padding-bottom: 0; }
+    .info-rule-num {
+      font-size: 10px; font-weight: 700; color: var(--text-3);
+      background: var(--surface-2); border-radius: 4px;
+      padding: 1px 5px; flex-shrink: 0; margin-top: 2px;
+    }
 
     /* ── Live badge ── */
     .live-badge {
@@ -286,18 +342,49 @@
           <div class="feed-list" id="feedList"></div>
 
           <div class="feed-load-more" id="loadMoreWrap" style="display:none;">
-            <button class="btn btn-secondary" onclick="loadMore()">Load older messages</button>
+            <button class="feed-load-more-btn" onclick="loadMore()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="17 11 12 6 7 11"/><polyline points="17 18 12 13 7 18"/>
+              </svg>
+              Load older messages
+            </button>
           </div>
         </div>
 
         <aside class="feed-info-sidebar">
           <div class="info-card">
-            <h3>About Feed</h3>
-            <p>A shared space for all Todoer users. Messages are visible to everyone on the platform.</p>
+            <h3>Activity</h3>
+            <div class="info-stat">
+              <span class="info-stat-label">Online now</span>
+              <span class="info-stat-value online" id="statOnline">—</span>
+            </div>
+            <div class="info-stat">
+              <span class="info-stat-label">Messages today</span>
+              <span class="info-stat-value" id="statToday">—</span>
+            </div>
+            <div class="info-stat">
+              <span class="info-stat-label">Total messages</span>
+              <span class="info-stat-value" id="statTotal">—</span>
+            </div>
           </div>
           <div class="info-card">
             <h3>Guidelines</h3>
-            <p>Keep it respectful. Messages are limited to 280 characters. You can delete your own messages.</p>
+            <div class="info-rule">
+              <span class="info-rule-num">1</span>
+              Keep it respectful
+            </div>
+            <div class="info-rule">
+              <span class="info-rule-num">2</span>
+              280 character limit
+            </div>
+            <div class="info-rule">
+              <span class="info-rule-num">3</span>
+              You can delete your own messages
+            </div>
+            <div class="info-rule">
+              <span class="info-rule-num">4</span>
+              Visible to all platform users
+            </div>
           </div>
         </aside>
       </div>
@@ -341,9 +428,13 @@
       ws.onmessage = (e) => {
         const data = JSON.parse(e.data);
         if (data.type === 'feed:new') prependMessage(data.message);
-        if (data.type === 'feed:delete') document.getElementById(`msg-${data.messageId}`)?.remove();
-        checkEmpty();
+        if (data.type === 'feed:delete') { document.getElementById(`msg-${data.messageId}`)?.remove(); checkEmpty(); }
+        if (data.type === 'presence' && data.online != null) {
+          const el = document.getElementById('statOnline');
+          if (el) el.textContent = data.online;
+        }
       };
+      ws.onopen = () => { const el = document.getElementById('statOnline'); if (el) el.textContent = '1'; };
       ws.onclose = () => setTimeout(connectWS, 3000);
       ws.onerror = () => ws.close();
     }
@@ -393,12 +484,43 @@
       } catch (e) { console.error(e); }
     }
 
+    function emptyStateHTML() {
+      return `<div class="feed-empty">
+        <div class="feed-empty-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+        </div>
+        <p>No messages yet</p>
+        <span>Be the first to say something</span>
+      </div>`;
+    }
+
     function renderFeed(messages) {
       const list = document.getElementById('feedList');
       list.innerHTML = '';
-      if (!messages.length) { list.innerHTML = '<div class="feed-empty">No messages yet. Say something.</div>'; return; }
+      if (!messages.length) { list.innerHTML = emptyStateHTML(); return; }
       [...messages].reverse().forEach(m => list.appendChild(buildMessage(m)));
       document.getElementById('loadMoreWrap').style.display = hasMore ? 'block' : 'none';
+      updateStats(messages);
+    }
+
+    function updateStats(messages) {
+      const total = messages.length;
+      const today = messages.filter(m => {
+        const d = new Date(m.created_at);
+        const n = new Date();
+        return d.getDate() === n.getDate() && d.getMonth() === n.getMonth() && d.getFullYear() === n.getFullYear();
+      }).length;
+      const el = document.getElementById('statTotal');
+      const elToday = document.getElementById('statToday');
+      if (el) el.textContent = total + (hasMore ? '+' : '');
+      if (elToday) elToday.textContent = today;
+    }
+
+    function checkEmpty() {
+      const list = document.getElementById('feedList');
+      if (!list.querySelector('.feed-message')) list.innerHTML = emptyStateHTML();
     }
 
     function prependMessage(message) {
@@ -406,6 +528,10 @@
       const empty = list.querySelector('.feed-empty');
       if (empty) empty.remove();
       list.prepend(buildMessage(message));
+      const elToday = document.getElementById('statToday');
+      if (elToday && elToday.textContent !== '—') elToday.textContent = (parseInt(elToday.textContent) || 0) + 1;
+      const elTotal = document.getElementById('statTotal');
+      if (elTotal && elTotal.textContent !== '—') elTotal.textContent = (parseInt(elTotal.textContent) || 0) + 1;
     }
 
     function buildMessage(message) {
@@ -414,7 +540,7 @@
       const displayName = message.username ? '@' + message.username : message.email;
       const avClass = avatarClass(message.username || message.email || '');
       const el = document.createElement('div');
-      el.className = 'feed-message';
+      el.className = 'feed-message' + (isOwn ? ' own-message' : '');
       el.id = `msg-${message.id}`;
       el.innerHTML = `
         <div class="message-header">
@@ -432,13 +558,6 @@
         </div>
         <div class="message-content">${escapeHtml(message.content)}</div>`;
       return el;
-    }
-
-    function checkEmpty() {
-      const list = document.getElementById('feedList');
-      if (!list.querySelector('.feed-message')) {
-        list.innerHTML = '<div class="feed-empty">No messages yet. Say something.</div>';
-      }
     }
 
     function updateCount() {
