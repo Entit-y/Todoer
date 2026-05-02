@@ -425,7 +425,8 @@ app.put('/api/profile/username', authenticateToken, (req, res) => {
   });
 });
 
-app.put('/api/profile/email', authenticateToken, (req, res) => {
+app.all('/api/profile/email', authenticateToken, (req, res) => {
+  if (!['PUT', 'POST'].includes(req.method)) return res.status(405).json({ error: 'Method not allowed' });
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: 'Email is required' });
   db.get('SELECT id FROM users WHERE email = ? AND id != ?', [email, req.user.id], (err, existing) => {
