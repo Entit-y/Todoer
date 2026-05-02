@@ -196,6 +196,21 @@ h1, h2, h3 {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
+.sidebar-user-link {
+  display: block;
+  text-decoration: none;          /* no underline */
+  color: inherit;                 /* keep sidebar text colour */
+  border-radius: var(--radius-md); /* match other card‑like elements */
+  transition: background 0.15s;
+  /* optional: negative margin so the clickable area feels like a card */
+  margin: 0 -8px;                 
+  padding: 0 8px;
+}
+
+.sidebar-user-link:hover {
+  background: var(--surface-2);   /* subtle highlight */
+}
+
 .sidebar-footer-actions {
   display: flex;
   align-items: center;
