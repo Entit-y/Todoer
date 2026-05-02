@@ -510,7 +510,6 @@
           <div class="message-meta">
             <span class="message-author">${escapeHtml(displayName)}</span>
             <span class="message-time">${timeAgo(message.created_at)}</span>
-            ${message.username ? `<div class="message-email">${escapeHtml(message.email)}</div>` : ''}
           </div>
           ${isOwn ? `<button class="message-delete" onclick="deleteMessage(${message.id})" title="Delete">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
