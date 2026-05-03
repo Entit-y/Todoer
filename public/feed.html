@@ -422,6 +422,14 @@
       return 'av-' + (Math.abs(h) % 8);
     }
 
+    // Avatar colors
+    const AV_COLORS = ['#6366f1','#8b5cf6','#ec4899','#ef4444','#f59e0b','#10b981','#06b6d4','#3b82f6'];
+    function avatarColor(str) {
+      let h = 0;
+      for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+      return AV_COLORS[h % AV_COLORS.length];
+    }
+
     function connectWS() {
       const proto = location.protocol === 'https:' ? 'wss' : 'ws';
       ws = new WebSocket(`${proto}://${location.host}`);
@@ -449,7 +457,10 @@
         const av = document.getElementById('composeAvatar');
         av.textContent = initials;
         av.className = 'compose-avatar ' + avatarClass(data.user.username || data.user.email || '');
-        document.getElementById('sidebarAvatar').textContent = initials;
+        const sidebarAv = document.getElementById('sidebarAvatar');
+        sidebarAv.textContent = initials;
+        sidebarAv.style.background = avatarColor(data.user.username || data.user.email || '?');
+        sidebarAv.style.border = 'none';
         document.getElementById('sidebarEmail').textContent = data.user.email || '';
         // VULNERABLE: innerHTML — stored XSS if username is a payload
         if (data.user.username) {
@@ -459,7 +470,6 @@
         }
       } catch { window.location.href = '/'; }
     }
-
     async function loadFeed() {
       try {
         const r = await fetch('/api/feed?limit=50');
