@@ -20,6 +20,9 @@ services:
       - BREVO_KEY=${BREVO_KEY}
       - BREVO_FROM=${BREVO_FROM}
       - APP_URL=https://entityy.site
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
