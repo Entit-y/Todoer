@@ -228,6 +228,14 @@ db.serialize(() => {
     // Mark all pre-existing users as verified so they are not locked out
     db.run(`UPDATE users SET verified = 1 WHERE verified = 0`);
   });
+
+  // Settings table — key/value store for admin-configurable values
+  db.run(`CREATE TABLE IF NOT EXISTS settings (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  )`);
+  // Seed defaults (INSERT OR IGNORE — never overwrites admin changes)
+  db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('max_upload_bytes', '${10 * 1024 * 1024}')`);
 });
 
 // File upload configuration
@@ -243,7 +251,29 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ storage });
+// Read max_upload_bytes from settings at request time so admin changes take
+// effect immediately without a restart.
+function getSetting(key, fallback) {
+  return new Promise(resolve => {
+    db.get('SELECT value FROM settings WHERE key = ?', [key], (err, row) => {
+      resolve(row ? row.value : fallback);
+    });
+  });
+}
+
+function dynamicUpload(fieldName) {
+  return async (req, res, next) => {
+    const maxBytes = parseInt(await getSetting('max_upload_bytes', 10 * 1024 * 1024));
+    const uploader = multer({ storage, limits: { fileSize: maxBytes } }).single(fieldName);
+    uploader(req, res, (err) => {
+      if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+        const mb = (maxBytes / (1024 * 1024)).toFixed(0);
+        return res.status(413).json({ error: `File too large. Maximum upload size is ${mb} MB.` });
+      }
+      next(err);
+    });
+  };
+}
 
 // Auth middleware
 const authenticateToken = (req, res, next) => {
@@ -593,7 +623,7 @@ app.get('/api/files', authenticateToken, (req, res) => {
   });
 });
 
-app.post('/api/files/upload', authenticateToken, upload.single('file'), (req, res) => {
+app.post('/api/files/upload', authenticateToken, dynamicUpload('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
   db.run(
     'INSERT INTO files (user_id, filename, original_name, filepath, size) VALUES (?, ?, ?, ?, ?)',
