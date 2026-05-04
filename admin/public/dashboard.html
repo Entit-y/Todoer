@@ -609,6 +609,57 @@
     // ── Init ──
     loaded.add('overview');
     loadOverview();
+
+    // ── Live feed via SSE ──
+    const evtSource = new EventSource('/api/events');
+    evtSource.onmessage = (e) => {
+      let data;
+      try { data = JSON.parse(e.data); } catch { return; }
+
+      if (data.type === 'feed:new') {
+        const m = data.message;
+        // Update feed table if it's currently loaded
+        const tbody = document.getElementById('feed-body');
+        if (tbody) {
+          // Remove empty/loading state row if present
+          const placeholder = tbody.querySelector('.empty-state, .loading');
+          if (placeholder) placeholder.closest('tr').remove();
+
+          const row = document.createElement('tr');
+          row.id = `feed-row-${m.id}`;
+          row.innerHTML = `
+            <td class="mono">${m.id}</td>
+            <td class="primary truncate" style="max-width:300px">${esc(m.content)}</td>
+            <td style="color:var(--text-2);font-size:12.5px"><a href="/users/${m.user_id}" style="color:var(--accent)">${esc(m.email)}</a></td>
+            <td class="mono">${fmtDate(m.created_at)}</td>
+            <td><div class="td-actions"><button class="btn-danger btn-sm" onclick="openDeleteModal('feed',${m.id},'${truncate(esc(m.content),40).replace(/'/g,"\\'")}')">Delete</button></div></td>
+          `;
+          // Prepend — newest first
+          tbody.insertBefore(row, tbody.firstChild);
+        }
+
+        // Show a toast regardless of active view
+        toast(`New feed post from ${m.username || m.email}`, 'info');
+
+        // Update the feed stat counter on overview
+        const feedStat = document.getElementById('stat-feed');
+        if (feedStat && feedStat.textContent !== '—') {
+          feedStat.textContent = parseInt(feedStat.textContent || 0) + 1;
+        }
+      }
+
+      if (data.type === 'feed:delete') {
+        const row = document.getElementById(`feed-row-${data.messageId}`);
+        if (row) row.remove();
+        const feedStat = document.getElementById('stat-feed');
+        if (feedStat && feedStat.textContent !== '—') {
+          feedStat.textContent = Math.max(0, parseInt(feedStat.textContent || 0) - 1);
+        }
+      }
+    };
+    evtSource.onerror = () => {
+      // SSE auto-reconnects natively — no action needed
+    };
   </script>
 
 </body>
