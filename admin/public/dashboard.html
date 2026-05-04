@@ -63,6 +63,11 @@
         <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="3"/><path d="M6.5 17.5c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/><circle cx="5" cy="13" r="2.5"/><circle cx="19" cy="13" r="2.5"/><path d="M2 21c0-2 1.5-3.5 3-3.5"/><path d="M22 21c0-2-1.5-3.5-3-3.5"/></svg>
         Workspaces
       </button>
+      <div class="sidebar-section-label" style="margin-top:6px">System</div>
+      <button class="nav-item" data-view="settings" onclick="showView('settings')">
+        <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Settings
+      </button>
     </nav>
     <div class="sidebar-footer">
       <a href="/logout" class="nav-item" style="color:var(--text-2);text-decoration:none;">
@@ -281,6 +286,36 @@
       </div>
     </section>
 
+    <!-- ── Settings ── -->
+    <section id="view-settings" class="hidden">
+      <div class="page-header">
+        <h1 class="page-title">Settings</h1>
+        <p class="page-subtitle">Platform configuration</p>
+      </div>
+
+      <div style="max-width:520px;display:flex;flex-direction:column;gap:12px;">
+
+        <div class="info-card">
+          <div class="info-card-header">
+            <div class="info-card-title">File Uploads</div>
+            <div class="info-card-desc">Maximum file size users can upload. Changes take effect immediately — no restart needed.</div>
+          </div>
+          <div class="info-card-body">
+            <div class="form-group" style="margin-bottom:0">
+              <label>Max upload size</label>
+              <div style="display:flex;gap:8px;align-items:center">
+                <input type="number" id="setting-max-upload-mb" min="1" max="100" style="width:90px" placeholder="10">
+                <span style="color:var(--text-2);font-size:13px">MB</span>
+                <button class="btn-primary" style="width:auto;padding:9px 16px;margin-left:4px" onclick="saveSetting('max_upload_bytes')">Save</button>
+              </div>
+            </div>
+            <div style="margin-top:8px;font-size:12px;color:var(--text-3)" id="setting-max-upload-current"></div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
   </main>
 
   <!-- Reset Password Modal -->
@@ -340,7 +375,7 @@
       window.scrollTo({ top: 0, behavior: 'smooth' });
       if (!loaded.has(name)) {
         loaded.add(name);
-        const loaders = { overview: loadOverview, users: loadUsers, tasks: loadTasks, files: loadFiles, feed: loadFeed, comments: loadComments, workspaces: loadWorkspaces };
+        const loaders = { overview: loadOverview, users: loadUsers, tasks: loadTasks, files: loadFiles, feed: loadFeed, comments: loadComments, workspaces: loadWorkspaces, settings: loadSettings };
         if (loaders[name]) loaders[name]();
       }
     }
@@ -605,6 +640,35 @@
       openModal('delete-modal');
     }
     async function confirmDelete() { if (deleteAction) await deleteAction(); }
+
+    // ── Settings ──
+    async function loadSettings() {
+      try {
+        const settings = await fetch('/api/settings').then(r => r.json());
+        const bytes = parseInt(settings.max_upload_bytes || 10 * 1024 * 1024);
+        const mb = bytes / (1024 * 1024);
+        document.getElementById('setting-max-upload-mb').value = mb;
+        document.getElementById('setting-max-upload-current').textContent = `Currently ${mb} MB (${bytes.toLocaleString()} bytes)`;
+      } catch (e) { console.error(e); }
+    }
+
+    async function saveSetting(key) {
+      if (key === 'max_upload_bytes') {
+        const mb = parseFloat(document.getElementById('setting-max-upload-mb').value);
+        if (!mb || mb < 1 || mb > 100) { toast('Enter a value between 1 and 100 MB', 'error'); return; }
+        const bytes = Math.round(mb * 1024 * 1024);
+        const res = await fetch(`/api/settings/${key}`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ value: bytes })
+        });
+        if (res.ok) {
+          toast(`Max upload size set to ${mb} MB`, 'success');
+          document.getElementById('setting-max-upload-current').textContent = `Currently ${mb} MB (${bytes.toLocaleString()} bytes)`;
+        } else {
+          toast('Failed to save setting', 'error');
+        }
+      }
+    }
 
     // ── Init ──
     loaded.add('overview');

@@ -471,4 +471,24 @@ app.delete('/api/workspaces/:id', authenticateAdmin, (req, res) => {
   });
 });
 
+// ============ SETTINGS ============
+
+app.get('/api/settings', authenticateAdmin, (req, res) => {
+  db.all('SELECT key, value FROM settings', (err, rows) => {
+    if (err) return res.status(500).json({ error: 'Failed to fetch settings' });
+    const settings = Object.fromEntries((rows || []).map(r => [r.key, r.value]));
+    res.json(settings);
+  });
+});
+
+app.put('/api/settings/:key', authenticateAdmin, (req, res) => {
+  const { key } = req.params;
+  const { value } = req.body;
+  if (value === undefined || value === '') return res.status(400).json({ error: 'Value is required' });
+  db.run('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', [key, String(value)], function(err) {
+    if (err) return res.status(500).json({ error: 'Failed to update setting' });
+    res.json({ key, value: String(value) });
+  });
+});
+
 app.listen(PORT, () => console.log(`Admin panel running on http://localhost:${PORT}`));
