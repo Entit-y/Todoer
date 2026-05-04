@@ -1,413 +1,681 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Todoer — Admin</title>
-  <link rel="stylesheet" href="/styles.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Todoer — Admin</title>
+    <link rel="stylesheet" href="/styles.css">
 </head>
 <body class="dashboard-body">
 
-  <!-- Sidebar -->
-  <aside class="sidebar">
-    <div class="sidebar-logo">
-      <embed src="/assets/logo.svg" type="image/svg+xml" width="26" height="26">
-      <span class="sidebar-logo-text">
-        todoer
-        <span class="admin-badge">admin</span>
-      </span>
-    </div>
-    <nav class="sidebar-nav">
-      <button class="nav-item active" onclick="showView('overview')">
-        <span class="nav-icon">◈</span> Overview
-      </button>
-      <button class="nav-item" onclick="showView('users')">
-        <span class="nav-icon">◉</span> Users
-      </button>
-      <button class="nav-item" onclick="showView('tasks')">
-        <span class="nav-icon">◎</span> Tasks
-      </button>
-      <button class="nav-item" onclick="showView('files')">
-        <span class="nav-icon">◫</span> Files
-      </button>
-    </nav>
-    <div class="sidebar-footer">
-      <a href="/logout" class="nav-item" style="display:flex;color:var(--text-muted);">
-        <span class="nav-icon">⇥</span> Sign out
-      </a>
-    </div>
-  </aside>
-
-  <!-- Main -->
-  <main class="main-content">
-
-    <!-- Overview -->
-    <section id="view-overview">
-      <h1 class="page-title">Overview</h1>
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-label">Total Users</div>
-          <div class="stat-value amber" id="stat-users">—</div>
+    <!-- Mobile header -->
+    <header class="mobile-header" id="mobile-header">
+        <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Toggle menu">
+            <svg width="20" height="14" viewBox="0 0 20 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <line x1="0" y1="1" x2="20" y2="1"/>
+                <line x1="0" y1="7" x2="20" y2="7"/>
+                <line x1="0" y1="13" x2="20" y2="13"/>
+            </svg>
+        </button>
+        <div class="mobile-brand">
+            <embed src="/assets/logo.svg" type="image/svg+xml" width="20" height="20">
+            <span class="mobile-brand-text">Todoer<span class="admin-badge">admin</span></span>
         </div>
-        <div class="stat-card">
-          <div class="stat-label">New This Week</div>
-          <div class="stat-value" id="stat-new">—</div>
+        <div class="mobile-spacer"></div>
+    </header>
+
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-logo">
+            <embed src="/assets/logo.svg" type="image/svg+xml" width="24" height="24">
+            <span class="sidebar-logo-text">
+                Todoer
+                <span class="admin-badge">admin</span>
+            </span>
         </div>
-        <div class="stat-card">
-          <div class="stat-label">Total Tasks</div>
-          <div class="stat-value" id="stat-tasks">—</div>
+
+        <nav class="sidebar-nav">
+            <button class="nav-item active" data-view="overview" onclick="showView('overview')">
+                <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+                </svg>
+                Overview
+            </button>
+            <button class="nav-item" data-view="users" onclick="showView('users')">
+                <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+                Users
+            </button>
+            <button class="nav-item" data-view="tasks" onclick="showView('tasks')">
+                <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                </svg>
+                Tasks
+            </button>
+            <button class="nav-item" data-view="files" onclick="showView('files')">
+                <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/>
+                </svg>
+                Files
+            </button>
+            <button class="nav-item" data-view="feed" onclick="showView('feed')">
+                <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+                Feed
+            </button>
+            <button class="nav-item" data-view="comments" onclick="showView('comments')">
+                <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+                </svg>
+                Comments
+            </button>
+            <button class="nav-item" data-view="workspaces" onclick="showView('workspaces')">
+                <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+                Workspaces
+            </button>
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="/logout" class="nav-item" style="display:flex;color:var(--text-2);text-decoration:none;">
+                <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+                </svg>
+                Sign out
+            </a>
         </div>
-        <div class="stat-card">
-          <div class="stat-label">Total Files</div>
-          <div class="stat-value" id="stat-files">—</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Storage Used</div>
-          <div class="stat-value" id="stat-storage">—</div>
-        </div>
-      </div>
+    </aside>
 
-      <div class="section-header">
-        <h2 class="section-title">Recent Users</h2>
-        <button class="btn-secondary" onclick="showView('users')">View all</button>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Email</th>
-              <th>Username</th>
-              <th>Verified</th>
-              <th>Registered</th>
-            </tr>
-          </thead>
-          <tbody id="overview-users-body">
-            <tr><td colspan="5" class="loading">Loading...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
+    <!-- Main -->
+    <main class="main-content" id="main-content" onclick="closeSidebarOnMainClick(event)">
 
-    <!-- Users -->
-    <section id="view-users" class="hidden">
-      <h1 class="page-title">Users</h1>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Email</th>
-              <th>Username</th>
-              <th>Verified</th>
-              <th>Tasks</th>
-              <th>Files</th>
-              <th>Registered</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="users-body">
-            <tr><td colspan="8" class="loading">Loading...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- Tasks -->
-    <section id="view-tasks" class="hidden">
-      <h1 class="page-title">Tasks</h1>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Title</th>
-              <th>User</th>
-              <th>Priority</th>
-              <th>Status</th>
-              <th>Created</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="tasks-body">
-            <tr><td colspan="7" class="loading">Loading...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- Files -->
-    <section id="view-files" class="hidden">
-      <h1 class="page-title">Files</h1>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Filename</th>
-              <th>User</th>
-              <th>Size</th>
-              <th>Uploaded</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="files-body">
-            <tr><td colspan="6" class="loading">Loading...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-  </main>
-
-  <!-- Reset Password Modal -->
-  <div class="modal-overlay hidden" id="reset-modal">
-    <div class="modal">
-      <h2 class="modal-title">Reset Password</h2>
-      <p style="font-size:0.875rem;color:var(--text-dim);margin-bottom:1.25rem;">
-        Set a new password for <strong id="reset-user-email" style="color:var(--text);"></strong>
-      </p>
-      <div class="form-group">
-        <label>New Password</label>
-        <input type="password" id="reset-password-input" placeholder="Min. 6 characters">
-      </div>
-      <div class="modal-actions">
-        <button class="btn-secondary" onclick="closeModal('reset-modal')">Cancel</button>
-        <button class="btn-primary" style="width:auto;margin-top:0;" onclick="submitReset()">Reset Password</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Delete Confirm Modal -->
-  <div class="modal-overlay hidden" id="delete-modal">
-    <div class="modal">
-      <h2 class="modal-title">Confirm Delete</h2>
-      <p style="font-size:0.875rem;color:var(--text-dim);margin-bottom:1.25rem;" id="delete-modal-msg"></p>
-      <div class="modal-actions">
-        <button class="btn-secondary" onclick="closeModal('delete-modal')">Cancel</button>
-        <button class="btn-danger" style="padding:0.6rem 1rem;font-size:0.875rem;" onclick="confirmDelete()">Delete</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Toast -->
-  <div id="toast"></div>
-
-  <script>
-    // ============ STATE ============
-    let resetTargetId = null;
-    let deleteAction = null;
-
-    // ============ VIEW SWITCHING ============
-    function showView(name) {
-      document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden'));
-      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-      document.getElementById('view-' + name).classList.remove('hidden');
-      document.querySelectorAll('.nav-item').forEach(n => {
-        if (n.textContent.trim().toLowerCase().startsWith(name === 'overview' ? '◈' : name[0])) {
-          n.classList.add('active');
-        }
-      });
-      // Mark active nav
-      document.querySelectorAll('.nav-item').forEach(n => {
-        const map = { overview: '◈', users: '◉', tasks: '◎', files: '◫' };
-        if (n.textContent.includes(map[name])) n.classList.add('active');
-      });
-      if (name === 'overview') loadOverview();
-      if (name === 'users') loadUsers();
-      if (name === 'tasks') loadTasks();
-      if (name === 'files') loadFiles();
-    }
-
-    // ============ HELPERS ============
-    function fmtDate(d) {
-      if (!d) return '—';
-      return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-    }
-
-    function fmtSize(bytes) {
-      if (!bytes) return '0 B';
-      const k = 1024;
-      const sizes = ['B', 'KB', 'MB', 'GB'];
-      const i = Math.floor(Math.log(bytes) / Math.log(k));
-      return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-    }
-
-    function toast(msg, type = '') {
-      const el = document.getElementById('toast');
-      el.textContent = msg;
-      el.className = 'show ' + type;
-      setTimeout(() => el.className = '', 2800);
-    }
-
-    function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
-    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
-
-    // ============ OVERVIEW ============
-    async function loadOverview() {
-      const stats = await fetch('/api/stats').then(r => r.json());
-      document.getElementById('stat-users').textContent = stats.totalUsers;
-      document.getElementById('stat-new').textContent = stats.newUsersThisWeek;
-      document.getElementById('stat-tasks').textContent = stats.totalTasks;
-      document.getElementById('stat-files').textContent = stats.totalFiles;
-      document.getElementById('stat-storage').textContent = fmtSize(stats.totalStorageBytes);
-
-      const users = await fetch('/api/users').then(r => r.json());
-      const tbody = document.getElementById('overview-users-body');
-      const recent = users.slice(0, 8);
-      if (!recent.length) {
-        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No users yet</td></tr>';
-        return;
-      }
-      tbody.innerHTML = recent.map(u => `
-        <tr>
-          <td class="mono">${u.id}</td>
-          <td class="primary">${u.email}</td>
-          <td>${u.username || '<span style="color:var(--text-muted)">—</span>'}</td>
-          <td>${u.verified
-            ? '<span class="badge badge-verified">Verified</span>'
-            : '<span class="badge badge-unverified">Unverified</span>'}</td>
-          <td class="mono">${fmtDate(u.created_at)}</td>
-        </tr>`).join('');
-    }
-
-    // ============ USERS ============
-    async function loadUsers() {
-      const users = await fetch('/api/users').then(r => r.json());
-      const tbody = document.getElementById('users-body');
-      if (!users.length) {
-        tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No users</td></tr>';
-        return;
-      }
-      tbody.innerHTML = users.map(u => `
-        <tr>
-          <td class="mono">${u.id}</td>
-          <td class="primary">${u.email}</td>
-          <td>${u.username || '<span style="color:var(--text-muted)">—</span>'}</td>
-          <td>${u.verified
-            ? '<span class="badge badge-verified">Verified</span>'
-            : '<span class="badge badge-unverified">Unverified</span>'}</td>
-          <td class="mono">${u.task_count}</td>
-          <td class="mono">${u.file_count}</td>
-          <td class="mono">${fmtDate(u.created_at)}</td>
-          <td>
-            <div style="display:flex;gap:0.5rem;justify-content:flex-end;">
-              <button class="btn-secondary" style="font-size:0.78rem;padding:0.4rem 0.7rem;"
-                onclick="openResetModal(${u.id}, '${u.email.replace(/'/g, "\\'")}')">
-                Reset pw
-              </button>
-              <button class="btn-danger"
-                onclick="openDeleteModal('user', ${u.id}, '${u.email.replace(/'/g, "\\'")}')">
-                Delete
-              </button>
+        <!-- Overview -->
+        <section id="view-overview">
+            <div class="page-header">
+                <h1 class="page-title">Overview</h1>
+                <p class="page-subtitle">Platform health and activity at a glance</p>
             </div>
-          </td>
-        </tr>`).join('');
-    }
 
-    // ============ TASKS ============
-    async function loadTasks() {
-      const tasks = await fetch('/api/tasks').then(r => r.json());
-      const tbody = document.getElementById('tasks-body');
-      if (!tasks.length) {
-        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No tasks</td></tr>';
-        return;
-      }
-      tbody.innerHTML = tasks.map(t => `
-        <tr>
-          <td class="mono">${t.id}</td>
-          <td class="primary" style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${t.title}</td>
-          <td style="font-size:0.8rem;color:var(--text-muted);">${t.user_email}</td>
-          <td>${priorityBadge(t.priority)}</td>
-          <td>${t.completed
-            ? '<span class="badge badge-done">Done</span>'
-            : '<span style="color:var(--text-muted);font-size:0.8rem;">Open</span>'}</td>
-          <td class="mono">${fmtDate(t.created_at)}</td>
-          <td>
-            <button class="btn-danger"
-              onclick="openDeleteModal('task', ${t.id}, '${t.title.replace(/'/g, "\\'")}')">
-              Delete
-            </button>
-          </td>
-        </tr>`).join('');
-    }
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Total Users</div>
+                    <div class="stat-value amber" id="stat-users">—</div>
+                    <div class="stat-delta">all time</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">New This Week</div>
+                    <div class="stat-value green" id="stat-new">—</div>
+                    <div class="stat-delta">last 7 days</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Total Tasks</div>
+                    <div class="stat-value" id="stat-tasks">—</div>
+                    <div class="stat-delta">all users</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Total Files</div>
+                    <div class="stat-value blue" id="stat-files">—</div>
+                    <div class="stat-delta">uploaded</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Storage Used</div>
+                    <div class="stat-value" id="stat-storage">—</div>
+                    <div class="stat-delta">on disk</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Feed Messages</div>
+                    <div class="stat-value" id="stat-feed">—</div>
+                    <div class="stat-delta">all time</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Task Comments</div>
+                    <div class="stat-value" id="stat-comments">—</div>
+                    <div class="stat-delta">all time</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Workspaces</div>
+                    <div class="stat-value" id="stat-workspaces">—</div>
+                    <div class="stat-delta">active</div>
+                </div>
+            </div>
 
-    function priorityBadge(p) {
-      const map = { high: 'badge-high', medium: 'badge-medium', low: 'badge-low' };
-      return `<span class="badge ${map[p] || 'badge-medium'}">${p || 'medium'}</span>`;
-    }
+            <div class="section-header">
+                <span class="section-title">Recent Users</span>
+                <button class="btn-secondary" onclick="showView('users')">View all →</button>
+            </div>
 
-    // ============ FILES ============
-    async function loadFiles() {
-      const files = await fetch('/api/files').then(r => r.json());
-      const tbody = document.getElementById('files-body');
-      if (!files.length) {
-        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No files</td></tr>';
-        return;
-      }
-      tbody.innerHTML = files.map(f => `
-        <tr>
-          <td class="mono">${f.id}</td>
-          <td class="primary" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${f.original_name}</td>
-          <td style="font-size:0.8rem;color:var(--text-muted);">${f.user_email}</td>
-          <td class="mono">${fmtSize(f.size)}</td>
-          <td class="mono">${fmtDate(f.created_at)}</td>
-          <td>
-            <button class="btn-danger"
-              onclick="openDeleteModal('file', ${f.id}, '${f.original_name.replace(/'/g, "\\'")}')">
-              Delete
-            </button>
-          </td>
-        </tr>`).join('');
-    }
+            <div class="table-wrap">
+                <div class="table-scroll">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Email</th>
+                                <th>Username</th>
+                                <th>Verified</th>
+                                <th>Registered</th>
+                            </tr>
+                        </thead>
+                        <tbody id="overview-users-body">
+                            <tr><td colspan="5" class="loading">fetching data…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
 
-    // ============ RESET PASSWORD ============
-    function openResetModal(id, email) {
-      resetTargetId = id;
-      document.getElementById('reset-user-email').textContent = email;
-      document.getElementById('reset-password-input').value = '';
-      openModal('reset-modal');
-    }
+        <!-- Users -->
+        <section id="view-users" class="hidden">
+            <div class="page-header">
+                <h1 class="page-title">Users</h1>
+                <p class="page-subtitle">All registered accounts</p>
+            </div>
+            <div class="table-wrap">
+                <div class="table-scroll">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Email</th>
+                                <th>Username</th>
+                                <th>Verified</th>
+                                <th>Tasks</th>
+                                <th>Files</th>
+                                <th>Registered</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-body">
+                            <tr><td colspan="8" class="loading">fetching data…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
 
-    async function submitReset() {
-      const pw = document.getElementById('reset-password-input').value.trim();
-      if (!pw || pw.length < 6) { toast('Password must be at least 6 characters', 'error'); return; }
-      const res = await fetch(`/api/users/${resetTargetId}/reset-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ newPassword: pw })
-      });
-      closeModal('reset-modal');
-      if (res.ok) toast('Password reset successfully', 'success');
-      else toast('Failed to reset password', 'error');
-    }
+        <!-- Tasks -->
+        <section id="view-tasks" class="hidden">
+            <div class="page-header">
+                <h1 class="page-title">Tasks</h1>
+                <p class="page-subtitle">All tasks across all users</p>
+            </div>
+            <div class="table-wrap">
+                <div class="table-scroll">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Title</th>
+                                <th>User</th>
+                                <th>Priority</th>
+                                <th>Status</th>
+                                <th>Created</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="tasks-body">
+                            <tr><td colspan="7" class="loading">fetching data…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
 
-    // ============ DELETE ============
-    function openDeleteModal(type, id, label) {
-      const msgs = {
-        user: `Delete user <strong style="color:var(--text)">${label}</strong>? This will remove their account, tasks, and files.`,
-        task: `Delete task <strong style="color:var(--text)">${label}</strong>?`,
-        file: `Delete file <strong style="color:var(--text)">${label}</strong>?`
-      };
-      document.getElementById('delete-modal-msg').innerHTML = msgs[type];
-      const endpoints = { user: `/api/users/${id}`, task: `/api/tasks/${id}`, file: `/api/files/${id}` };
-      const reloads = { user: loadUsers, task: loadTasks, file: loadFiles };
-      deleteAction = async () => {
-        const res = await fetch(endpoints[type], { method: 'DELETE' });
-        closeModal('delete-modal');
-        if (res.ok) { toast('Deleted successfully', 'success'); reloads[type](); }
-        else toast('Delete failed', 'error');
-      };
-      openModal('delete-modal');
-    }
+        <!-- Files -->
+        <section id="view-files" class="hidden">
+            <div class="page-header">
+                <h1 class="page-title">Files</h1>
+                <p class="page-subtitle">All uploaded files across all users</p>
+            </div>
+            <div class="table-wrap">
+                <div class="table-scroll">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Filename</th>
+                                <th>User</th>
+                                <th>Size</th>
+                                <th>Uploaded</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="files-body">
+                            <tr><td colspan="6" class="loading">fetching data…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
 
-    async function confirmDelete() {
-      if (deleteAction) await deleteAction();
-    }
+        <!-- Feed -->
+        <section id="view-feed" class="hidden">
+            <div class="page-header">
+                <h1 class="page-title">Feed</h1>
+                <p class="page-subtitle">All public feed messages</p>
+            </div>
+            <div class="table-wrap">
+                <div class="table-scroll">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Message</th>
+                                <th>User</th>
+                                <th>Posted</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="feed-body">
+                            <tr><td colspan="5" class="loading">fetching data…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
 
-    // ============ INIT ============
-    loadOverview();
-  </script>
+        <!-- Comments -->
+        <section id="view-comments" class="hidden">
+            <div class="page-header">
+                <h1 class="page-title">Comments</h1>
+                <p class="page-subtitle">All task comments across all users</p>
+            </div>
+            <div class="table-wrap">
+                <div class="table-scroll">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Comment</th>
+                                <th>Task</th>
+                                <th>User</th>
+                                <th>Posted</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="comments-body">
+                            <tr><td colspan="6" class="loading">fetching data…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Workspaces -->
+        <section id="view-workspaces" class="hidden">
+            <div class="page-header">
+                <h1 class="page-title">Workspaces</h1>
+                <p class="page-subtitle">All workspaces and their members</p>
+            </div>
+            <div class="table-wrap">
+                <div class="table-scroll">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Owner</th>
+                                <th>Members</th>
+                                <th>Pending Invites</th>
+                                <th>Created</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="workspaces-body">
+                            <tr><td colspan="7" class="loading">fetching data…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Reset Password Modal -->
+    <div class="modal-overlay hidden" id="reset-modal">
+        <div class="modal">
+            <h2 class="modal-title">Reset password</h2>
+            <p class="modal-subtitle">Set a new password for <strong id="reset-user-email" style="color:var(--text-1);"></strong></p>
+            <div class="form-group">
+                <label>New password</label>
+                <input type="password" id="reset-password-input" placeholder="Minimum 6 characters">
+            </div>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeModal('reset-modal')">Cancel</button>
+                <button class="btn-primary modal-btn-primary" onclick="submitReset()">Reset password</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirm Modal -->
+    <div class="modal-overlay hidden" id="delete-modal">
+        <div class="modal">
+            <h2 class="modal-title">Confirm deletion</h2>
+            <p class="modal-subtitle" id="delete-modal-msg"></p>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeModal('delete-modal')">Cancel</button>
+                <button class="btn-danger" style="padding:9px 16px;font-size:13px;" onclick="confirmDelete()">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast"></div>
+
+    <script>
+        let resetTargetId = null;
+        let deleteAction  = null;
+
+        // ── Sidebar ──
+        function toggleSidebar() { document.body.classList.toggle('sidebar-open'); }
+        function closeSidebar()  { document.body.classList.remove('sidebar-open'); }
+        function closeSidebarOnMainClick(e) {
+            if (window.innerWidth < 1024 && document.body.classList.contains('sidebar-open')) {
+                const tag = e.target.tagName.toLowerCase();
+                if (!['button','a','input','select','textarea','label'].includes(tag)) closeSidebar();
+            }
+        }
+
+        // ── View switching ──
+        function showView(name) {
+            document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden'));
+            document.querySelectorAll('.nav-item[data-view]').forEach(n => n.classList.remove('active'));
+            document.getElementById('view-' + name).classList.remove('hidden');
+            const btn = document.querySelector(`.nav-item[data-view="${name}"]`);
+            if (btn) btn.classList.add('active');
+            closeSidebar();
+            document.getElementById('main-content').scrollTop = 0;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            const loaders = {
+                overview:   loadOverview,
+                users:      loadUsers,
+                tasks:      loadTasks,
+                files:      loadFiles,
+                feed:       loadFeed,
+                comments:   loadComments,
+                workspaces: loadWorkspaces
+            };
+            if (loaders[name]) loaders[name]();
+        }
+
+        // ── Helpers ──
+        function fmtDate(d) {
+            if (!d) return '—';
+            return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+        }
+
+        function fmtSize(bytes) {
+            if (!bytes) return '0 B';
+            const k = 1024, sizes = ['B','KB','MB','GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+
+        function truncate(str, n) {
+            if (!str) return '—';
+            return str.length > n ? str.slice(0, n) + '…' : str;
+        }
+
+        function toast(msg, type = '') {
+            const el = document.getElementById('toast');
+            el.textContent = msg;
+            el.className = 'show ' + type;
+            setTimeout(() => el.className = '', 2800);
+        }
+
+        function openModal(id)  { document.getElementById(id).classList.remove('hidden'); document.body.classList.add('modal-open'); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); document.body.classList.remove('modal-open'); }
+
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') { closeModal('reset-modal'); closeModal('delete-modal'); closeSidebar(); }
+        });
+
+        window.addEventListener('resize', () => { if (window.innerWidth >= 1024) closeSidebar(); });
+
+        // ── Badge helpers ──
+        function verifiedBadge(v) {
+            return v
+                ? '<span class="badge badge-verified">Verified</span>'
+                : '<span class="badge badge-unverified">Unverified</span>';
+        }
+
+        function priorityBadge(p) {
+            const map = { high: 'badge-high', medium: 'badge-medium', low: 'badge-low' };
+            return `<span class="badge ${map[p] || 'badge-medium'}">${p || 'medium'}</span>`;
+        }
+
+        // ── Overview ──
+        async function loadOverview() {
+            try {
+                const stats = await fetch('/api/stats').then(r => r.json());
+                document.getElementById('stat-users').textContent     = stats.totalUsers;
+                document.getElementById('stat-new').textContent       = stats.newUsersThisWeek;
+                document.getElementById('stat-tasks').textContent     = stats.totalTasks;
+                document.getElementById('stat-files').textContent     = stats.totalFiles;
+                document.getElementById('stat-storage').textContent   = fmtSize(stats.totalStorageBytes);
+                document.getElementById('stat-feed').textContent      = stats.totalFeedMessages;
+                document.getElementById('stat-comments').textContent  = stats.totalComments;
+                document.getElementById('stat-workspaces').textContent = stats.totalWorkspaces;
+
+                const users  = await fetch('/api/users').then(r => r.json());
+                const tbody  = document.getElementById('overview-users-body');
+                const recent = users.slice(0, 8);
+                if (!recent.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No users yet</td></tr>'; return; }
+                tbody.innerHTML = recent.map(u => `
+                    <tr>
+                        <td class="mono">${u.id}</td>
+                        <td class="primary">${u.email}</td>
+                        <td>${u.username || `<span style="color:var(--text-3)">—</span>`}</td>
+                        <td>${verifiedBadge(u.verified)}</td>
+                        <td class="mono">${fmtDate(u.created_at)}</td>
+                    </tr>`).join('');
+            } catch (e) { console.error(e); }
+        }
+
+        // ── Users ──
+        async function loadUsers() {
+            try {
+                const users = await fetch('/api/users').then(r => r.json());
+                const tbody = document.getElementById('users-body');
+                if (!users.length) { tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No users</td></tr>'; return; }
+                tbody.innerHTML = users.map(u => `
+                    <tr>
+                        <td class="mono">${u.id}</td>
+                        <td class="primary">${u.email}</td>
+                        <td>${u.username || `<span style="color:var(--text-3)">—</span>`}</td>
+                        <td>${verifiedBadge(u.verified)}</td>
+                        <td class="mono">${u.task_count}</td>
+                        <td class="mono">${u.file_count}</td>
+                        <td class="mono">${fmtDate(u.created_at)}</td>
+                        <td>
+                            <div class="td-actions">
+                                <button class="btn-secondary btn-sm" onclick="openResetModal(${u.id}, '${u.email.replace(/'/g, "\\'")}')">Reset pw</button>
+                                <button class="btn-danger btn-sm" onclick="openDeleteModal('user', ${u.id}, '${u.email.replace(/'/g, "\\'")}')">Delete</button>
+                            </div>
+                        </td>
+                    </tr>`).join('');
+            } catch (e) { console.error(e); }
+        }
+
+        // ── Tasks ──
+        async function loadTasks() {
+            try {
+                const tasks = await fetch('/api/tasks').then(r => r.json());
+                const tbody = document.getElementById('tasks-body');
+                if (!tasks.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No tasks</td></tr>'; return; }
+                tbody.innerHTML = tasks.map(t => `
+                    <tr>
+                        <td class="mono">${t.id}</td>
+                        <td class="primary" style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${t.title}</td>
+                        <td style="color:var(--text-2);font-size:12.5px;">${t.user_email}</td>
+                        <td>${priorityBadge(t.priority)}</td>
+                        <td>${t.completed
+                            ? '<span class="badge badge-done">Done</span>'
+                            : `<span style="color:var(--text-3);font-size:12px;font-family:var(--font-mono);">open</span>`}</td>
+                        <td class="mono">${fmtDate(t.created_at)}</td>
+                        <td>
+                            <div class="td-actions">
+                                <button class="btn-danger btn-sm" onclick="openDeleteModal('task', ${t.id}, '${t.title.replace(/'/g, "\\'")}')">Delete</button>
+                            </div>
+                        </td>
+                    </tr>`).join('');
+            } catch (e) { console.error(e); }
+        }
+
+        // ── Files ──
+        async function loadFiles() {
+            try {
+                const files = await fetch('/api/files').then(r => r.json());
+                const tbody = document.getElementById('files-body');
+                if (!files.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No files</td></tr>'; return; }
+                tbody.innerHTML = files.map(f => `
+                    <tr>
+                        <td class="mono">${f.id}</td>
+                        <td class="primary" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${f.original_name}</td>
+                        <td style="color:var(--text-2);font-size:12.5px;">${f.user_email}</td>
+                        <td class="mono">${fmtSize(f.size)}</td>
+                        <td class="mono">${fmtDate(f.created_at)}</td>
+                        <td>
+                            <div class="td-actions">
+                                <button class="btn-danger btn-sm" onclick="openDeleteModal('file', ${f.id}, '${f.original_name.replace(/'/g, "\\'")}')">Delete</button>
+                            </div>
+                        </td>
+                    </tr>`).join('');
+            } catch (e) { console.error(e); }
+        }
+
+        // ── Feed ──
+        async function loadFeed() {
+            try {
+                const messages = await fetch('/api/feed').then(r => r.json());
+                const tbody = document.getElementById('feed-body');
+                if (!messages.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No feed messages</td></tr>'; return; }
+                tbody.innerHTML = messages.map(m => `
+                    <tr>
+                        <td class="mono">${m.id}</td>
+                        <td class="primary" style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${m.content}</td>
+                        <td style="color:var(--text-2);font-size:12.5px;">${m.user_email}</td>
+                        <td class="mono">${fmtDate(m.created_at)}</td>
+                        <td>
+                            <div class="td-actions">
+                                <button class="btn-danger btn-sm" onclick="openDeleteModal('feed', ${m.id}, '${truncate(m.content, 40).replace(/'/g, "\\'")}')">Delete</button>
+                            </div>
+                        </td>
+                    </tr>`).join('');
+            } catch (e) { console.error(e); }
+        }
+
+        // ── Comments ──
+        async function loadComments() {
+            try {
+                const comments = await fetch('/api/comments').then(r => r.json());
+                const tbody = document.getElementById('comments-body');
+                if (!comments.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No comments</td></tr>'; return; }
+                tbody.innerHTML = comments.map(c => `
+                    <tr>
+                        <td class="mono">${c.id}</td>
+                        <td class="primary" style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.content}</td>
+                        <td style="color:var(--text-2);font-size:12.5px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.task_title}</td>
+                        <td style="color:var(--text-2);font-size:12.5px;">${c.user_email}</td>
+                        <td class="mono">${fmtDate(c.created_at)}</td>
+                        <td>
+                            <div class="td-actions">
+                                <button class="btn-danger btn-sm" onclick="openDeleteModal('comment', ${c.id}, '${truncate(c.content, 40).replace(/'/g, "\\'")}')">Delete</button>
+                            </div>
+                        </td>
+                    </tr>`).join('');
+            } catch (e) { console.error(e); }
+        }
+
+        // ── Workspaces ──
+        async function loadWorkspaces() {
+            try {
+                const workspaces = await fetch('/api/workspaces').then(r => r.json());
+                const tbody = document.getElementById('workspaces-body');
+                if (!workspaces.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No workspaces</td></tr>'; return; }
+                tbody.innerHTML = workspaces.map(w => `
+                    <tr>
+                        <td class="mono">${w.id}</td>
+                        <td class="primary">${w.name}</td>
+                        <td style="color:var(--text-2);font-size:12.5px;">${w.owner_email}</td>
+                        <td class="mono">${w.member_count}</td>
+                        <td class="mono">${w.pending_invites}</td>
+                        <td class="mono">${fmtDate(w.created_at)}</td>
+                        <td>
+                            <div class="td-actions">
+                                <button class="btn-danger btn-sm" onclick="openDeleteModal('workspace', ${w.id}, '${w.name.replace(/'/g, "\\'")}')">Delete</button>
+                            </div>
+                        </td>
+                    </tr>`).join('');
+            } catch (e) { console.error(e); }
+        }
+
+        // ── Reset password ──
+        function openResetModal(id, email) {
+            resetTargetId = id;
+            document.getElementById('reset-user-email').textContent = email;
+            document.getElementById('reset-password-input').value = '';
+            openModal('reset-modal');
+        }
+
+        async function submitReset() {
+            const pw = document.getElementById('reset-password-input').value.trim();
+            if (!pw || pw.length < 6) { toast('Password must be at least 6 characters', 'error'); return; }
+            const res = await fetch(`/api/users/${resetTargetId}/reset-password`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ newPassword: pw })
+            });
+            closeModal('reset-modal');
+            toast(res.ok ? 'Password reset successfully' : 'Failed to reset password', res.ok ? 'success' : 'error');
+        }
+
+        // ── Delete ──
+        function openDeleteModal(type, id, label) {
+            const msgs = {
+                user:      `Delete user <strong style="color:var(--text-1)">${label}</strong>? This removes their account, tasks, and files permanently.`,
+                task:      `Delete task <strong style="color:var(--text-1)">${label}</strong>?`,
+                file:      `Delete file <strong style="color:var(--text-1)">${label}</strong>?`,
+                feed:      `Delete message <strong style="color:var(--text-1)">${label}</strong>?`,
+                comment:   `Delete comment <strong style="color:var(--text-1)">${label}</strong>?`,
+                workspace: `Delete workspace <strong style="color:var(--text-1)">${label}</strong>? This removes all members and invitations.`
+            };
+            document.getElementById('delete-modal-msg').innerHTML = msgs[type];
+            const endpoints = {
+                user:      `/api/users/${id}`,
+                task:      `/api/tasks/${id}`,
+                file:      `/api/files/${id}`,
+                feed:      `/api/feed/${id}`,
+                comment:   `/api/comments/${id}`,
+                workspace: `/api/workspaces/${id}`
+            };
+            const reloads = {
+                user:      loadUsers,
+                task:      loadTasks,
+                file:      loadFiles,
+                feed:      loadFeed,
+                comment:   loadComments,
+                workspace: loadWorkspaces
+            };
+            deleteAction = async () => {
+                const res = await fetch(endpoints[type], { method: 'DELETE' });
+                closeModal('delete-modal');
+                if (res.ok) { toast('Deleted successfully', 'success'); reloads[type](); }
+                else toast('Delete failed', 'error');
+            };
+            openModal('delete-modal');
+        }
+
+        async function confirmDelete() { if (deleteAction) await deleteAction(); }
+
+        // ── Init ──
+        loadOverview();
+    </script>
 
 </body>
 </html>
