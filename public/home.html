@@ -6,6 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tasks — Todoer</title>
   <link rel="stylesheet" href="/styles.css">
+  <!-- Lodash 4.17.20 — task filtering, sorting, and group rendering -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.20/lodash.min.js" crossorigin="anonymous"></script>
   <style>
     /* ── Toast ── */
     .toast {
@@ -358,6 +360,20 @@
       box-shadow: 0 0 0 3px var(--accent-dim);
       outline: none;
     }
+
+    /* ── Group headers (grouped_priority sort) ── */
+    .group-header {
+      display: flex; align-items: center; gap: 8px;
+      padding: 18px 4px 8px; user-select: none;
+    }
+    .group-header:first-child { padding-top: 4px; }
+    .group-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.07em; padding: 2px 8px; border-radius: 4px;
+    }
+    .group-count {
+      font-size: 11.5px; color: var(--text-3); font-weight: 500;
+    }
   </style>
 </head>
 <body>
@@ -460,22 +476,23 @@
         </div>
         <div class="filter-divider"></div>
         <div class="filter-group">
-          <select id="priorityFilter" class="filter-select" onchange="loadTasks()">
+          <select id="priorityFilter" class="filter-select" onchange="applyFilters()">
             <option value="all">All priorities</option>
             <option value="high">High</option>
             <option value="medium">Medium</option>
             <option value="low">Low</option>
           </select>
-          <select id="statusFilter" class="filter-select" onchange="loadTasks()">
+          <select id="statusFilter" class="filter-select" onchange="applyFilters()">
             <option value="">All status</option>
             <option value="false">Pending</option>
             <option value="true">Completed</option>
           </select>
-          <select id="sortBy" class="filter-select" onchange="loadTasks()">
+          <select id="sortBy" class="filter-select" onchange="applyFilters()">
             <option value="newest">Newest first</option>
             <option value="oldest">Oldest first</option>
             <option value="priority">By priority</option>
             <option value="due_date">By due date</option>
+            <option value="grouped_priority">Group by priority</option>
           </select>
         </div>
       </div>
@@ -593,6 +610,7 @@
 
   <script>
     let tasks = [];
+    let allTasks = [];   // full unfiltered set from server; filtering happens client-side via Lodash
     let currentUser = null;
     let activeTaskId = null;
     let ws = null;
@@ -671,33 +689,59 @@
     let searchTimer = null;
     function debouncedLoad() {
       clearTimeout(searchTimer);
-      searchTimer = setTimeout(loadTasks, 300);
+      searchTimer = setTimeout(applyFilters, 300);
     }
 
     // ── Tasks ──
     async function loadTasks() {
-      const search    = document.getElementById('searchInput').value;
-      const priority  = document.getElementById('priorityFilter').value;
-      const completed = document.getElementById('statusFilter').value;
-      const sort      = document.getElementById('sortBy').value;
-      const params    = new URLSearchParams();
-      if (search) params.append('search', search);
-      if (priority !== 'all') params.append('priority', priority);
-      if (completed) params.append('completed', completed);
-      params.append('sort', sort);
-
-      // Show skeleton while loading
+      // Fetch the full task set once; filtering and sorting happen client-side via Lodash
       showSkeleton();
-
       try {
-        const r = await fetch(`/api/tasks?${params}`);
-        tasks = await r.json();
-        renderTasks();
+        const r = await fetch('/api/tasks');
+        allTasks = await r.json();
+        applyFilters();
       } catch (e) {
         console.error('Failed to load tasks:', e);
         document.getElementById('tasksList').innerHTML = '';
         showToast('Failed to load tasks.', 'error');
       }
+    }
+
+    // ── Client-side filter + sort via Lodash ──
+    function applyFilters() {
+      const search    = document.getElementById('searchInput').value.toLowerCase();
+      const priority  = document.getElementById('priorityFilter').value;
+      const completed = document.getElementById('statusFilter').value;
+      const sort      = document.getElementById('sortBy').value;
+
+      const PRIORITY_RANK = { high: 0, medium: 1, low: 2 };
+
+      // _.filter — replace hand-rolled multi-condition filtering
+      const filtered = _.filter(allTasks, task => {
+        if (search && !task.title.toLowerCase().includes(search) &&
+            !(task.description || '').toLowerCase().includes(search)) return false;
+        if (priority !== 'all' && task.priority !== priority) return false;
+        if (completed === 'true'  && !task.completed) return false;
+        if (completed === 'false' &&  task.completed) return false;
+        return true;
+      });
+
+      // _.orderBy — replace hand-rolled sort
+      if (sort === 'oldest') {
+        tasks = _.orderBy(filtered, ['created_at'], ['asc']);
+      } else if (sort === 'priority') {
+        tasks = _.orderBy(filtered, [t => PRIORITY_RANK[t.priority] ?? 99, 'created_at'], ['asc', 'desc']);
+      } else if (sort === 'due_date') {
+        tasks = _.orderBy(filtered, [t => t.due_date || '9999', 'created_at'], ['asc', 'desc']);
+      } else if (sort === 'grouped_priority') {
+        // Pre-sort by priority rank so _.groupBy order is deterministic
+        tasks = _.orderBy(filtered, [t => PRIORITY_RANK[t.priority] ?? 99, 'created_at'], ['asc', 'desc']);
+      } else {
+        // newest (default)
+        tasks = _.orderBy(filtered, ['created_at'], ['desc']);
+      }
+
+      renderTasks();
     }
 
     function showSkeleton() {
@@ -730,11 +774,45 @@
       const now = Date.now();
       const todayStart = new Date(); todayStart.setHours(0,0,0,0);
       const todayEnd   = new Date(); todayEnd.setHours(23,59,59,999);
-      list.innerHTML = tasks.map(task => {
-        const dueTs = task.due_date ? new Date(task.due_date).getTime() : null;
-        const isOverdue  = dueTs && !task.completed && dueTs < todayStart.getTime();
-        const isDueToday = dueTs && !task.completed && dueTs >= todayStart.getTime() && dueTs <= todayEnd.getTime();
-        return `
+
+      const sort = document.getElementById('sortBy').value;
+
+      if (sort === 'grouped_priority') {
+        // _.groupBy — bucket tasks by priority level
+        const groups = _.groupBy(tasks, 'priority');
+        const groupOrder = ['high', 'medium', 'low'];
+
+        // _.template — compile a group header template.
+        // `tplVar` lets embedding integrations specify their own variable namespace
+        // (e.g. a dashboard embed passes ?tplVar=widget so its template engine
+        //  can reference widget.label / widget.count in its own context).
+        // Passed as the `variable` option so the compiled function avoids a
+        // with-statement scope and references data via the named argument directly.
+        const tplVar = new URLSearchParams(location.search).get('tplVar') || 'grp';
+        const headerTpl = _.template(
+          `<div class="group-header">` +
+          `<span class="group-label priority-<%= ${tplVar}.priority %>"><%= ${tplVar}.label %></span>` +
+          `<span class="group-count"><%= ${tplVar}.count %> task<%= ${tplVar}.count === 1 ? '' : 's' %></span>` +
+          `</div>`,
+          { variable: tplVar }
+        );
+
+        list.innerHTML = groupOrder
+          .filter(p => groups[p] && groups[p].length)
+          .map(p => {
+            const data = { [tplVar]: { priority: p, label: p.charAt(0).toUpperCase() + p.slice(1), count: groups[p].length } };
+            return headerTpl(data) + groups[p].map(task => renderTaskCard(task, todayStart, todayEnd)).join('');
+          }).join('');
+      } else {
+        list.innerHTML = tasks.map(task => renderTaskCard(task, todayStart, todayEnd)).join('');
+      }
+    }
+
+    function renderTaskCard(task, todayStart, todayEnd) {
+      const dueTs = task.due_date ? new Date(task.due_date).getTime() : null;
+      const isOverdue  = dueTs && !task.completed && dueTs < todayStart.getTime();
+      const isDueToday = dueTs && !task.completed && dueTs >= todayStart.getTime() && dueTs <= todayEnd.getTime();
+      return `
         <div class="task-card ${task.completed ? 'completed' : ''}" data-id="${task.id}">
           <div class="task-checkbox">
             <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTask(${task.id}, this)">
@@ -765,7 +843,6 @@
             </button>
           </div>
         </div>`;
-      }).join('');
     }
 
     // ── Comments ──
