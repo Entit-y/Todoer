@@ -44,8 +44,6 @@ app.get('/', (req, res) => res.redirect('/login'));
 // VULNERABLE: ?error= parameter reflected directly into the page without sanitization.
 // Enables reflected XSS — the gadget for the cookie tossing chain.
 app.get('/login', (req, res) => {
-  // VULNERABLE: req.query.error reflected directly into HTML without sanitization.
-  // Enables reflected XSS via GET /login?error=<payload>
   const error = req.query.error || '';
   res.send(`<!DOCTYPE html>
 <html lang="en">
@@ -85,11 +83,9 @@ app.get('/login', (req, res) => {
 // VULNERABLE: no rate limiting on login — brute force friendly
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
-
   if (username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
     return res.redirect('/login?error=Invalid credentials');
   }
-
   const token = jwt.sign({ username }, ADMIN_JWT_SECRET, { expiresIn: '8h' });
   res.cookie('admin_token', token, { httpOnly: true });
   res.redirect('/dashboard');
@@ -119,7 +115,16 @@ app.get('/api/stats', authenticateAdmin, (req, res) => {
           stats.newUsersThisWeek = row?.count || 0;
           db.get('SELECT SUM(size) as total FROM files', (err, row) => {
             stats.totalStorageBytes = row?.total || 0;
-            res.json(stats);
+            db.get('SELECT COUNT(*) as count FROM feed_messages', (err, row) => {
+              stats.totalFeedMessages = row?.count || 0;
+              db.get('SELECT COUNT(*) as count FROM task_comments', (err, row) => {
+                stats.totalComments = row?.count || 0;
+                db.get('SELECT COUNT(*) as count FROM workspaces', (err, row) => {
+                  stats.totalWorkspaces = row?.count || 0;
+                  res.json(stats);
+                });
+              });
+            });
           });
         });
       });
@@ -127,15 +132,12 @@ app.get('/api/stats', authenticateAdmin, (req, res) => {
   });
 });
 
-// All users
+// ============ USERS ============
+
 app.get('/api/users', authenticateAdmin, (req, res) => {
   db.all(`
     SELECT
-      u.id,
-      u.email,
-      u.username,
-      u.verified,
-      u.created_at,
+      u.id, u.email, u.username, u.verified, u.created_at,
       COUNT(DISTINCT t.id) as task_count,
       COUNT(DISTINCT f.id) as file_count
     FROM users u
@@ -149,7 +151,6 @@ app.get('/api/users', authenticateAdmin, (req, res) => {
   });
 });
 
-// Single user detail
 app.get('/api/users/:id', authenticateAdmin, (req, res) => {
   const { id } = req.params;
   db.get('SELECT id, email, username, verified, created_at FROM users WHERE id = ?', [id], (err, user) => {
@@ -162,7 +163,6 @@ app.get('/api/users/:id', authenticateAdmin, (req, res) => {
   });
 });
 
-// Delete user
 app.delete('/api/users/:id', authenticateAdmin, (req, res) => {
   const { id } = req.params;
   db.run('DELETE FROM users WHERE id = ?', [id], function(err) {
@@ -172,7 +172,6 @@ app.delete('/api/users/:id', authenticateAdmin, (req, res) => {
   });
 });
 
-// Direct password reset — no email flow, no token
 app.post('/api/users/:id/reset-password', authenticateAdmin, async (req, res) => {
   const { id } = req.params;
   const { newPassword } = req.body;
@@ -185,7 +184,8 @@ app.post('/api/users/:id/reset-password', authenticateAdmin, async (req, res) =>
   });
 });
 
-// All tasks
+// ============ TASKS ============
+
 app.get('/api/tasks', authenticateAdmin, (req, res) => {
   db.all(`
     SELECT t.*, u.email as user_email, u.username
@@ -198,7 +198,6 @@ app.get('/api/tasks', authenticateAdmin, (req, res) => {
   });
 });
 
-// Delete task
 app.delete('/api/tasks/:id', authenticateAdmin, (req, res) => {
   db.run('DELETE FROM tasks WHERE id = ?', [req.params.id], function(err) {
     if (err) return res.status(500).json({ error: 'Failed to delete task' });
@@ -207,7 +206,8 @@ app.delete('/api/tasks/:id', authenticateAdmin, (req, res) => {
   });
 });
 
-// All files
+// ============ FILES ============
+
 app.get('/api/files', authenticateAdmin, (req, res) => {
   db.all(`
     SELECT f.*, u.email as user_email, u.username
@@ -220,12 +220,86 @@ app.get('/api/files', authenticateAdmin, (req, res) => {
   });
 });
 
-// Delete file
 app.delete('/api/files/:id', authenticateAdmin, (req, res) => {
   db.run('DELETE FROM files WHERE id = ?', [req.params.id], function(err) {
     if (err) return res.status(500).json({ error: 'Failed to delete file' });
     if (this.changes === 0) return res.status(404).json({ error: 'File not found' });
     res.json({ message: 'File deleted' });
+  });
+});
+
+// ============ FEED ============
+
+app.get('/api/feed', authenticateAdmin, (req, res) => {
+  db.all(`
+    SELECT fm.id, fm.content, fm.created_at, u.email as user_email, u.username, u.id as user_id
+    FROM feed_messages fm
+    JOIN users u ON u.id = fm.user_id
+    ORDER BY fm.created_at DESC
+  `, (err, rows) => {
+    if (err) return res.status(500).json({ error: 'Failed to fetch feed messages' });
+    res.json(rows);
+  });
+});
+
+app.delete('/api/feed/:id', authenticateAdmin, (req, res) => {
+  db.run('DELETE FROM feed_messages WHERE id = ?', [req.params.id], function(err) {
+    if (err) return res.status(500).json({ error: 'Failed to delete message' });
+    if (this.changes === 0) return res.status(404).json({ error: 'Message not found' });
+    res.json({ message: 'Message deleted' });
+  });
+});
+
+// ============ COMMENTS ============
+
+app.get('/api/comments', authenticateAdmin, (req, res) => {
+  db.all(`
+    SELECT tc.id, tc.content, tc.created_at,
+           t.title as task_title, t.id as task_id,
+           u.email as user_email, u.username, u.id as user_id
+    FROM task_comments tc
+    JOIN tasks t ON t.id = tc.task_id
+    JOIN users u ON u.id = tc.user_id
+    ORDER BY tc.created_at DESC
+  `, (err, rows) => {
+    if (err) return res.status(500).json({ error: 'Failed to fetch comments' });
+    res.json(rows);
+  });
+});
+
+app.delete('/api/comments/:id', authenticateAdmin, (req, res) => {
+  db.run('DELETE FROM task_comments WHERE id = ?', [req.params.id], function(err) {
+    if (err) return res.status(500).json({ error: 'Failed to delete comment' });
+    if (this.changes === 0) return res.status(404).json({ error: 'Comment not found' });
+    res.json({ message: 'Comment deleted' });
+  });
+});
+
+// ============ WORKSPACES ============
+
+app.get('/api/workspaces', authenticateAdmin, (req, res) => {
+  db.all(`
+    SELECT w.id, w.name, w.created_at,
+           u.email as owner_email, u.username as owner_username,
+           COUNT(DISTINCT wm.user_id) as member_count,
+           COUNT(DISTINCT wi.id) as pending_invites
+    FROM workspaces w
+    JOIN users u ON u.id = w.owner_id
+    LEFT JOIN workspace_members wm ON wm.workspace_id = w.id
+    LEFT JOIN workspace_invitations wi ON wi.workspace_id = w.id AND wi.status = 'pending'
+    GROUP BY w.id
+    ORDER BY w.created_at DESC
+  `, (err, rows) => {
+    if (err) return res.status(500).json({ error: 'Failed to fetch workspaces' });
+    res.json(rows);
+  });
+});
+
+app.delete('/api/workspaces/:id', authenticateAdmin, (req, res) => {
+  db.run('DELETE FROM workspaces WHERE id = ?', [req.params.id], function(err) {
+    if (err) return res.status(500).json({ error: 'Failed to delete workspace' });
+    if (this.changes === 0) return res.status(404).json({ error: 'Workspace not found' });
+    res.json({ message: 'Workspace deleted' });
   });
 });
 
