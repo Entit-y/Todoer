@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>User — Todoer Admin</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="dashboard-body">
+
+  <!-- Mobile header -->
+  <header class="mobile-header" id="mobile-header">
+    <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Toggle menu">
+      <svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <line x1="0" y1="1" x2="18" y2="1"/><line x1="0" y1="7" x2="18" y2="7"/><line x1="0" y1="13" x2="18" y2="13"/>
+      </svg>
+    </button>
+    <div class="mobile-brand">
+      <embed src="/assets/logo.svg" type="image/svg+xml" width="20" height="20">
+      <span>Todoer<span class="admin-badge" style="margin-left:6px">admin</span></span>
+    </div>
+    <div class="mobile-spacer"></div>
+  </header>
+
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <embed src="/assets/logo.svg" type="image/svg+xml" width="24" height="24">
+      <span class="sidebar-logo-text">Todoer<span class="admin-badge">admin</span></span>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="sidebar-section-label">Dashboard</div>
+      <a href="/dashboard" class="nav-item">
+        <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Overview
+      </a>
+      <div class="sidebar-section-label" style="margin-top:6px">Content</div>
+      <a href="/dashboard" class="nav-item active">
+        <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Users
+      </a>
+      <a href="/dashboard#tasks" class="nav-item">
+        <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        Tasks
+      </a>
+      <a href="/dashboard#files" class="nav-item">
+        <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+        Files
+      </a>
+      <div class="sidebar-section-label" style="margin-top:6px">Moderation</div>
+      <a href="/dashboard#feed" class="nav-item">
+        <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Feed
+      </a>
+      <a href="/dashboard#comments" class="nav-item">
+        <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+        Comments
+      </a>
+      <a href="/dashboard#workspaces" class="nav-item">
+        <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="3"/><path d="M6.5 17.5c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/><circle cx="5" cy="13" r="2.5"/><circle cx="19" cy="13" r="2.5"/><path d="M2 21c0-2 1.5-3.5 3-3.5"/><path d="M22 21c0-2-1.5-3.5-3-3.5"/></svg>
+        Workspaces
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="/logout" class="nav-item" style="color:var(--text-2);text-decoration:none;">
+        <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Sign out
+      </a>
+    </div>
+  </aside>
+
+  <main class="main-content" id="main-content" onclick="closeSidebarOnMainClick(event)">
+
+    <!-- Back -->
+    <a href="/dashboard" class="back-btn" onclick="history.length > 1 && (event.preventDefault(), history.back())">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+      Back to Users
+    </a>
+
+    <!-- Loading state -->
+    <div id="loading-state" style="text-align:center;padding:60px 20px;color:var(--text-3);font-size:13px">Loading user…</div>
+    <div id="error-state" class="hidden" style="text-align:center;padding:60px 20px;color:var(--red);font-size:13px">User not found.</div>
+
+    <!-- User content (hidden until loaded) -->
+    <div id="user-content" class="hidden">
+
+      <!-- Header -->
+      <div class="user-detail-header">
+        <div class="user-header-left">
+          <div class="user-avatar" id="user-avatar">?</div>
+          <div class="user-meta">
+            <h1 id="user-username">—</h1>
+            <div class="user-email" id="user-email">—</div>
+            <div style="margin-top:6px;display:flex;gap:6px;align-items:center">
+              <span id="user-verified-badge"></span>
+              <span style="color:var(--text-3);font-size:12px" id="user-joined"></span>
+            </div>
+          </div>
+        </div>
+        <div class="user-header-actions">
+          <button class="btn-secondary" onclick="openResetModal()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            Reset password
+          </button>
+          <button class="btn-danger" onclick="openDeleteModal()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+            Delete user
+          </button>
+        </div>
+      </div>
+
+      <!-- Stats strip -->
+      <div class="user-stats-strip">
+        <div class="user-stat-pill">
+          <div class="val" id="stat-tasks" style="color:var(--blue)">0</div>
+          <div class="lbl">Tasks</div>
+        </div>
+        <div class="user-stat-pill">
+          <div class="val" id="stat-files" style="color:var(--amber)">0</div>
+          <div class="lbl">Files</div>
+        </div>
+        <div class="user-stat-pill">
+          <div class="val" id="stat-storage" style="color:var(--green)">0 B</div>
+          <div class="lbl">Storage</div>
+        </div>
+        <div class="user-stat-pill">
+          <div class="val" id="stat-comments">0</div>
+          <div class="lbl">Comments</div>
+        </div>
+        <div class="user-stat-pill">
+          <div class="val" id="stat-feed">0</div>
+          <div class="lbl">Feed Posts</div>
+        </div>
+        <div class="user-stat-pill">
+          <div class="val" id="stat-workspaces" style="color:var(--purple)">0</div>
+          <div class="lbl">Workspaces</div>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="detail-tabs">
+        <button class="detail-tab active" data-tab="tasks"      onclick="switchTab('tasks')">Tasks</button>
+        <button class="detail-tab"        data-tab="files"      onclick="switchTab('files')">Files</button>
+        <button class="detail-tab"        data-tab="comments"   onclick="switchTab('comments')">Comments</button>
+        <button class="detail-tab"        data-tab="feed"       onclick="switchTab('feed')">Feed Posts</button>
+        <button class="detail-tab"        data-tab="workspaces" onclick="switchTab('workspaces')">Workspaces</button>
+      </div>
+
+      <!-- Tasks tab -->
+      <div class="tab-pane active" id="tab-tasks">
+        <div class="table-wrap">
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr><th>ID</th><th>Title</th><th>Priority</th><th>Status</th><th>Created</th><th></th></tr>
+              </thead>
+              <tbody id="tasks-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Files tab -->
+      <div class="tab-pane" id="tab-files">
+        <div class="table-wrap">
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr><th>ID</th><th>Filename</th><th>Size</th><th>Uploaded</th><th></th></tr>
+              </thead>
+              <tbody id="files-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Comments tab -->
+      <div class="tab-pane" id="tab-comments">
+        <div class="table-wrap">
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr><th>ID</th><th>Comment</th><th>On Task</th><th>Posted</th><th></th></tr>
+              </thead>
+              <tbody id="comments-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Feed tab -->
+      <div class="tab-pane" id="tab-feed">
+        <div class="table-wrap">
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr><th>ID</th><th>Message</th><th>Posted</th><th></th></tr>
+              </thead>
+              <tbody id="feed-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Workspaces tab -->
+      <div class="tab-pane" id="tab-workspaces">
+        <div class="table-wrap">
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr><th>ID</th><th>Name</th><th>Role</th><th>Joined</th></tr>
+              </thead>
+              <tbody id="workspaces-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /user-content -->
+
+  </main>
+
+  <!-- Reset Password Modal -->
+  <div class="modal-overlay hidden" id="reset-modal">
+    <div class="modal">
+      <h2 class="modal-title">Reset password</h2>
+      <p class="modal-subtitle">Set a new password for <strong id="reset-user-email" style="color:var(--text-1)"></strong></p>
+      <div class="form-group">
+        <label>New password</label>
+        <input type="password" id="reset-password-input" placeholder="Minimum 6 characters">
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="closeModal('reset-modal')">Cancel</button>
+        <button class="btn-primary" style="width:auto;padding:9px 18px" onclick="submitReset()">Reset password</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Confirm Modal -->
+  <div class="modal-overlay hidden" id="delete-modal">
+    <div class="modal">
+      <h2 class="modal-title">Confirm deletion</h2>
+      <p class="modal-subtitle" id="delete-modal-msg"></p>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="closeModal('delete-modal')">Cancel</button>
+        <button class="btn-danger" style="padding:9px 16px;font-size:13px" id="confirm-delete-btn">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script>
+    // ── State ──
+    let userId = null;
+    let userData = null;
+
+    // ── Sidebar ──
+    function toggleSidebar() { document.body.classList.toggle('sidebar-open'); }
+    function closeSidebar()  { document.body.classList.remove('sidebar-open'); }
+    function closeSidebarOnMainClick(e) {
+      if (window.innerWidth < 1024 && document.body.classList.contains('sidebar-open')) {
+        const tag = e.target.tagName.toLowerCase();
+        if (!['button','a','input','select','textarea','label'].includes(tag)) closeSidebar();
+      }
+    }
+
+    // ── Modals ──
+    function openModal(id)  { document.getElementById(id).classList.remove('hidden'); }
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+    // ── Toast ──
+    function toast(msg, type = 'info') {
+      const el = document.createElement('div');
+      el.className = 'toast-msg ' + type;
+      el.textContent = msg;
+      document.getElementById('toast').appendChild(el);
+      setTimeout(() => el.remove(), 3200);
+    }
+
+    // ── Helpers ──
+    function fmtDate(d) {
+      if (!d) return '—';
+      return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+    function fmtSize(b) {
+      if (!b) return '0 B';
+      const k = 1024, sizes = ['B','KB','MB','GB'];
+      const i = Math.floor(Math.log(b) / Math.log(k));
+      return parseFloat((b / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+    function truncate(s, n) { return s && s.length > n ? s.slice(0, n) + '…' : (s || ''); }
+    function esc(s) { const d = document.createElement('div'); d.textContent = String(s || ''); return d.innerHTML; }
+
+    // ── Tabs ──
+    function switchTab(name) {
+      document.querySelectorAll('.detail-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+      document.querySelector(`.detail-tab[data-tab="${name}"]`).classList.add('active');
+      document.getElementById('tab-' + name).classList.add('active');
+    }
+
+    // ── Load user ──
+    async function init() {
+      const parts = window.location.pathname.split('/');
+      userId = parts[parts.indexOf('users') + 1];
+      if (!userId || isNaN(userId)) {
+        showError();
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/users/${userId}/detail`);
+        if (!res.ok) throw new Error('Not found');
+        userData = await res.json();
+        renderUser(userData);
+      } catch (e) {
+        showError();
+      }
+    }
+
+    function showError() {
+      document.getElementById('loading-state').classList.add('hidden');
+      document.getElementById('error-state').classList.remove('hidden');
+    }
+
+    function renderUser(data) {
+      const { user, stats, tasks, files, comments, feedPosts, workspaces } = data;
+
+      // Header
+      const initials = (user.username || user.email || '?').slice(0, 2).toUpperCase();
+      document.getElementById('user-avatar').textContent = initials;
+      document.getElementById('user-username').textContent = user.username || user.email;
+      document.getElementById('user-email').textContent = user.email;
+      document.getElementById('user-verified-badge').innerHTML = user.verified
+        ? '<span class="badge badge-green">Verified</span>'
+        : '<span class="badge badge-gray">Unverified</span>';
+      document.getElementById('user-joined').textContent = 'Joined ' + fmtDate(user.created_at);
+      document.title = (user.username || user.email) + ' — Todoer Admin';
+
+      // Stats strip
+      document.getElementById('stat-tasks').textContent     = stats.taskCount;
+      document.getElementById('stat-files').textContent     = stats.fileCount;
+      document.getElementById('stat-storage').textContent   = fmtSize(stats.totalStorage);
+      document.getElementById('stat-comments').textContent  = stats.commentCount;
+      document.getElementById('stat-feed').textContent      = stats.feedPostCount;
+      document.getElementById('stat-workspaces').textContent = stats.workspaceCount;
+
+      // Tasks
+      const tasksTbody = document.getElementById('tasks-body');
+      if (!tasks.length) {
+        tasksTbody.innerHTML = '<tr><td colspan="6" class="empty-state">No tasks</td></tr>';
+      } else {
+        tasksTbody.innerHTML = tasks.map(t => {
+          const pClass = { high: 'priority-high', medium: 'priority-medium', low: 'priority-low' }[t.priority] || 'priority-low';
+          const sClass = t.completed ? 'status-done' : 'status-todo';
+          return `<tr>
+            <td class="mono">${t.id}</td>
+            <td class="primary truncate" style="max-width:260px">${esc(t.title)}</td>
+            <td><span class="${pClass}">${t.priority || 'low'}</span></td>
+            <td><span class="${sClass}">${t.completed ? 'Done' : 'Todo'}</span></td>
+            <td class="mono">${fmtDate(t.created_at)}</td>
+            <td><div class="td-actions"><button class="btn-danger btn-sm" onclick="deleteItem('task',${t.id},'${esc(t.title).replace(/'/g,"\\'")}')">Delete</button></div></td>
+          </tr>`;
+        }).join('');
+      }
+
+      // Files
+      const filesTbody = document.getElementById('files-body');
+      if (!files.length) {
+        filesTbody.innerHTML = '<tr><td colspan="5" class="empty-state">No files</td></tr>';
+      } else {
+        filesTbody.innerHTML = files.map(f => `<tr>
+          <td class="mono">${f.id}</td>
+          <td class="primary truncate" style="max-width:280px">${esc(f.original_name)}</td>
+          <td class="mono">${fmtSize(f.size)}</td>
+          <td class="mono">${fmtDate(f.created_at)}</td>
+          <td><div class="td-actions"><button class="btn-danger btn-sm" onclick="deleteItem('file',${f.id},'${esc(f.original_name).replace(/'/g,"\\'")}')">Delete</button></div></td>
+        </tr>`).join('');
+      }
+
+      // Comments
+      const commentsTbody = document.getElementById('comments-body');
+      if (!comments.length) {
+        commentsTbody.innerHTML = '<tr><td colspan="5" class="empty-state">No comments</td></tr>';
+      } else {
+        commentsTbody.innerHTML = comments.map(c => `<tr>
+          <td class="mono">${c.id}</td>
+          <td class="primary truncate" style="max-width:240px">${esc(c.content)}</td>
+          <td class="truncate" style="color:var(--text-2);max-width:180px;font-size:12.5px">${esc(c.task_title)}</td>
+          <td class="mono">${fmtDate(c.created_at)}</td>
+          <td><div class="td-actions"><button class="btn-danger btn-sm" onclick="deleteItem('comment',${c.id},'${truncate(esc(c.content),40).replace(/'/g,"\\'")}')">Delete</button></div></td>
+        </tr>`).join('');
+      }
+
+      // Feed posts
+      const feedTbody = document.getElementById('feed-body');
+      if (!feedPosts.length) {
+        feedTbody.innerHTML = '<tr><td colspan="4" class="empty-state">No feed posts</td></tr>';
+      } else {
+        feedTbody.innerHTML = feedPosts.map(m => `<tr>
+          <td class="mono">${m.id}</td>
+          <td class="primary truncate" style="max-width:360px">${esc(m.content)}</td>
+          <td class="mono">${fmtDate(m.created_at)}</td>
+          <td><div class="td-actions"><button class="btn-danger btn-sm" onclick="deleteItem('feed',${m.id},'${truncate(esc(m.content),40).replace(/'/g,"\\'")}')">Delete</button></div></td>
+        </tr>`).join('');
+      }
+
+      // Workspaces
+      const wsTbody = document.getElementById('workspaces-body');
+      if (!workspaces.length) {
+        wsTbody.innerHTML = '<tr><td colspan="4" class="empty-state">Not a member of any workspace</td></tr>';
+      } else {
+        wsTbody.innerHTML = workspaces.map(w => `<tr>
+          <td class="mono">${w.id}</td>
+          <td class="primary">${esc(w.name)}</td>
+          <td>${w.is_owner ? '<span class="badge badge-amber">Owner</span>' : '<span class="badge badge-gray">Member</span>'}</td>
+          <td class="mono">${fmtDate(w.joined_at)}</td>
+        </tr>`).join('');
+      }
+
+      // Show content
+      document.getElementById('loading-state').classList.add('hidden');
+      document.getElementById('user-content').classList.remove('hidden');
+    }
+
+    // ── Delete item (task/file/comment/feed) ──
+    function deleteItem(type, id, label) {
+      const msgs = {
+        task:    `Delete task <strong style="color:var(--text-1)">${label}</strong>?`,
+        file:    `Delete file <strong style="color:var(--text-1)">${label}</strong>?`,
+        comment: `Delete comment <strong style="color:var(--text-1)">${label}</strong>?`,
+        feed:    `Delete feed post <strong style="color:var(--text-1)">${label}</strong>?`,
+      };
+      const ep = { task: `/api/tasks/${id}`, file: `/api/files/${id}`, comment: `/api/comments/${id}`, feed: `/api/feed/${id}` };
+      document.getElementById('delete-modal-msg').innerHTML = msgs[type];
+      document.getElementById('confirm-delete-btn').onclick = async () => {
+        const res = await fetch(ep[type], { method: 'DELETE' });
+        closeModal('delete-modal');
+        if (res.ok) { toast('Deleted', 'success'); init(); }
+        else toast('Delete failed', 'error');
+      };
+      openModal('delete-modal');
+    }
+
+    // ── Delete user ──
+    function openDeleteModal() {
+      const email = userData?.user?.email || 'this user';
+      document.getElementById('delete-modal-msg').innerHTML =
+        `Permanently delete <strong style="color:var(--text-1)">${esc(email)}</strong>? This removes their account, tasks, and files.`;
+      document.getElementById('confirm-delete-btn').onclick = async () => {
+        const res = await fetch(`/api/users/${userId}`, { method: 'DELETE' });
+        closeModal('delete-modal');
+        if (res.ok) { toast('User deleted', 'success'); setTimeout(() => window.location.href = '/dashboard', 800); }
+        else toast('Delete failed', 'error');
+      };
+      openModal('delete-modal');
+    }
+
+    // ── Reset password ──
+    function openResetModal() {
+      const email = userData?.user?.email || '';
+      document.getElementById('reset-user-email').textContent = email;
+      document.getElementById('reset-password-input').value = '';
+      openModal('reset-modal');
+    }
+    async function submitReset() {
+      const pw = document.getElementById('reset-password-input').value.trim();
+      if (!pw || pw.length < 6) { toast('Password must be at least 6 characters', 'error'); return; }
+      const res = await fetch(`/api/users/${userId}/reset-password`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newPassword: pw })
+      });
+      closeModal('reset-modal');
+      toast(res.ok ? 'Password reset successfully' : 'Failed to reset password', res.ok ? 'success' : 'error');
+    }
+
+    init();
+  </script>
+
+</body>
+</html>

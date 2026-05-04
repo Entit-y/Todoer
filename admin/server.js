@@ -100,6 +100,10 @@ app.get('/dashboard', authenticateAdmin, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
 
+app.get('/users/:id', authenticateAdmin, (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'user-detail.html'));
+});
+
 // ============ API ROUTES ============
 
 // Stats overview
@@ -132,6 +136,39 @@ app.get('/api/stats', authenticateAdmin, (req, res) => {
   });
 });
 
+// Stats for charts — activity over last 30 days
+app.get('/api/stats/activity', authenticateAdmin, (req, res) => {
+  const results = {};
+
+  db.all(`
+    SELECT date(created_at) as day, COUNT(*) as count
+    FROM users
+    WHERE created_at >= datetime('now', '-30 days')
+    GROUP BY day ORDER BY day ASC
+  `, (err, rows) => {
+    results.userGrowth = rows || [];
+
+    db.all(`
+      SELECT date(created_at) as day, COUNT(*) as count
+      FROM tasks
+      WHERE created_at >= datetime('now', '-30 days')
+      GROUP BY day ORDER BY day ASC
+    `, (err, rows) => {
+      results.taskActivity = rows || [];
+
+      db.all(`
+        SELECT date(created_at) as day, COUNT(*) as count
+        FROM files
+        WHERE created_at >= datetime('now', '-30 days')
+        GROUP BY day ORDER BY day ASC
+      `, (err, rows) => {
+        results.fileUploads = rows || [];
+        res.json(results);
+      });
+    });
+  });
+});
+
 // ============ USERS ============
 
 app.get('/api/users', authenticateAdmin, (req, res) => {
@@ -158,6 +195,68 @@ app.get('/api/users/:id', authenticateAdmin, (req, res) => {
     db.all('SELECT * FROM tasks WHERE user_id = ? ORDER BY created_at DESC', [id], (err, tasks) => {
       db.all('SELECT id, original_name, size, created_at FROM files WHERE user_id = ? ORDER BY created_at DESC', [id], (err, files) => {
         res.json({ user, tasks, files });
+      });
+    });
+  });
+});
+
+// Full user detail — profile + tasks + files + comments + feed posts + workspace memberships
+app.get('/api/users/:id/detail', authenticateAdmin, (req, res) => {
+  const { id } = req.params;
+
+  db.get('SELECT id, email, username, verified, created_at FROM users WHERE id = ?', [id], (err, user) => {
+    if (err || !user) return res.status(404).json({ error: 'User not found' });
+
+    db.all('SELECT * FROM tasks WHERE user_id = ? ORDER BY created_at DESC', [id], (err, tasks) => {
+      tasks = tasks || [];
+
+      db.all('SELECT id, original_name, size, created_at FROM files WHERE user_id = ? ORDER BY created_at DESC', [id], (err, files) => {
+        files = files || [];
+
+        db.all(`
+          SELECT tc.id, tc.content, tc.created_at, t.title as task_title, t.id as task_id
+          FROM task_comments tc
+          JOIN tasks t ON t.id = tc.task_id
+          WHERE tc.user_id = ?
+          ORDER BY tc.created_at DESC
+        `, [id], (err, comments) => {
+          comments = comments || [];
+
+          db.all('SELECT id, content, created_at FROM feed_messages WHERE user_id = ? ORDER BY created_at DESC', [id], (err, feedPosts) => {
+            feedPosts = feedPosts || [];
+
+            db.all(`
+              SELECT w.id, w.name, w.created_at as workspace_created_at,
+                     wm.joined_at,
+                     CASE WHEN w.owner_id = ? THEN 1 ELSE 0 END as is_owner
+              FROM workspace_members wm
+              JOIN workspaces w ON w.id = wm.workspace_id
+              WHERE wm.user_id = ?
+              ORDER BY wm.joined_at DESC
+            `, [id, id], (err, workspaces) => {
+              workspaces = workspaces || [];
+
+              const totalStorage = files.reduce((sum, f) => sum + (f.size || 0), 0);
+
+              res.json({
+                user,
+                stats: {
+                  taskCount: tasks.length,
+                  fileCount: files.length,
+                  totalStorage,
+                  commentCount: comments.length,
+                  feedPostCount: feedPosts.length,
+                  workspaceCount: workspaces.length,
+                },
+                tasks,
+                files,
+                comments,
+                feedPosts,
+                workspaces,
+              });
+            });
+          });
+        });
       });
     });
   });
