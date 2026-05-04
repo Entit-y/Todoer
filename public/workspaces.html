@@ -236,6 +236,49 @@
     .toast.success { border-color: rgba(34,197,94,0.3); color: #22c55e; }
     .toast.error   { border-color: var(--danger-border); color: var(--danger); }
 
+    /* ── Active workspace banner ── */
+    .ws-active-banner {
+      display: none;
+      align-items: center; gap: 10px;
+      padding: 9px 14px;
+      background: rgba(99,102,241,0.08);
+      border: 1px solid rgba(99,102,241,0.2);
+      border-radius: var(--radius-md);
+      font-size: 12.5px; color: var(--text-2);
+      margin-bottom: 16px;
+    }
+    .ws-active-banner.show { display: flex; }
+    .ws-active-banner strong { color: var(--text-1); }
+    .ws-active-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: #6366f1; flex-shrink: 0;
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.2);
+    }
+    .btn-deactivate {
+      margin-left: auto; font-size: 11.5px;
+      color: var(--text-3); background: none; border: none;
+      cursor: pointer; padding: 2px 6px;
+      border-radius: 4px; transition: background 0.12s, color 0.12s;
+    }
+    .btn-deactivate:hover { background: var(--surface-2); color: var(--text-1); }
+
+    /* ── Activate button on workspace item ── */
+    .workspace-item-actions {
+      display: flex; align-items: center; gap: 6px; margin-left: auto; flex-shrink: 0;
+    }
+    .btn-activate {
+      font-size: 11px; font-weight: 600; padding: 3px 9px;
+      border-radius: 4px; cursor: pointer; white-space: nowrap;
+      transition: background 0.12s, color 0.12s;
+      background: rgba(99,102,241,0.1);
+      color: #818cf8;
+      border: 1px solid rgba(99,102,241,0.2);
+    }
+    .btn-activate:hover { background: rgba(99,102,241,0.18); }
+    .btn-activate.active-ws {
+      background: rgba(99,102,241,0.18); color: #a5b4fc;
+    }
+
     @media (max-width: 768px) {
       .workspaces-layout { grid-template-columns: 1fr; }
       .workspace-list { position: static; }
@@ -328,6 +371,13 @@
         </button>
       </div>
 
+      <div class="ws-active-banner" id="wsActiveBanner">
+        <div class="ws-active-dot"></div>
+        <span>Active workspace: <strong id="wsActiveName">—</strong></span>
+        <span style="color:var(--text-3);font-size:11.5px">Tasks &amp; files will be scoped to this workspace</span>
+        <button class="btn-deactivate" onclick="deactivateWorkspace()">× Deactivate</button>
+      </div>
+
       <div class="workspaces-layout">
         <!-- List -->
         <div class="workspace-list">
@@ -415,6 +465,41 @@
   let workspaces        = [];
   let activeWorkspaceId = null;
   let toastTimer;
+
+  // ── Active workspace (persisted across pages) ──
+  const WS_KEY = 'activeWorkspace'; // { id, name }
+
+  function getActiveWorkspace() {
+    try { return JSON.parse(localStorage.getItem(WS_KEY)) || null; } catch { return null; }
+  }
+
+  function setActiveWorkspace(ws) {
+    if (ws) localStorage.setItem(WS_KEY, JSON.stringify(ws));
+    else localStorage.removeItem(WS_KEY);
+    renderActiveBanner();
+    renderWorkspaceList();
+  }
+
+  function activateWorkspace(id, name) {
+    setActiveWorkspace({ id, name });
+    showToast(`"${name}" is now your active workspace`, 'success');
+  }
+
+  function deactivateWorkspace() {
+    setActiveWorkspace(null);
+    showToast('Switched to personal context', '');
+  }
+
+  function renderActiveBanner() {
+    const active = getActiveWorkspace();
+    const banner = document.getElementById('wsActiveBanner');
+    if (active) {
+      document.getElementById('wsActiveName').textContent = active.name;
+      banner.classList.add('show');
+    } else {
+      banner.classList.remove('show');
+    }
+  }
 
   // ── Avatar colors (same palette as home.html) ──
   const AV_COLORS = [
@@ -546,6 +631,7 @@
 
   function renderWorkspaceList() {
     const list = document.getElementById('workspaceList');
+    const active = getActiveWorkspace();
     if (!workspaces.length) {
       list.innerHTML = `
         <div class="workspace-list-empty">
@@ -560,13 +646,20 @@
       return;
     }
     list.innerHTML = workspaces.map(w => {
-      const color = avatarColor(w.name);
+      const color    = avatarColor(w.name);
+      const isActive = active && active.id === w.id;
       return `
-        <div class="workspace-item ${w.id === activeWorkspaceId ? 'active' : ''}" onclick="selectWorkspace(${w.id})">
+        <div class="workspace-item ${activeWorkspaceId === w.id ? 'active' : ''}" onclick="selectWorkspace(${w.id})">
           <div class="workspace-icon" style="background:${color};">${escapeHtml(w.name[0].toUpperCase())}</div>
           <div class="workspace-item-info">
             <div class="workspace-item-name">${escapeHtml(w.name)}</div>
             <div class="workspace-item-role">${w.role}</div>
+          </div>
+          <div class="workspace-item-actions">
+            ${isActive
+              ? `<button class="btn-activate active-ws" onclick="event.stopPropagation();deactivateWorkspace()">Active ✓</button>`
+              : `<button class="btn-activate" onclick="event.stopPropagation();activateWorkspace(${w.id},'${escapeHtml(w.name).replace(/'/g,"\\'")}')">Activate</button>`
+            }
           </div>
         </div>`;
     }).join('');
@@ -765,6 +858,7 @@
   });
 
   // ── Init ──
+  renderActiveBanner();
   checkAuth().then(loadWorkspaces);
 </script>
 </body>

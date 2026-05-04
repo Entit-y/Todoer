@@ -191,6 +191,20 @@
     .skeleton-file-actions {
       width: 100%; height: 1px; background: var(--border); margin-top: 4px;
     }
+    /* ── Workspace context banner ── */
+    .ws-context-banner {
+      display: none; align-items: center; gap: 10px;
+      padding: 8px 14px; margin-bottom: 14px;
+      background: rgba(99,102,241,0.08);
+      border: 1px solid rgba(99,102,241,0.2);
+      border-radius: var(--radius-md);
+      font-size: 12.5px; color: var(--text-2);
+    }
+    .ws-context-banner.show { display: flex; }
+    .ws-context-dot { width: 7px; height: 7px; border-radius: 50%; background: #6366f1; flex-shrink: 0; box-shadow: 0 0 0 3px rgba(99,102,241,0.2); }
+    .ws-context-banner strong { color: var(--text-1); }
+    .ws-context-banner a { margin-left: auto; font-size: 11.5px; color: var(--text-3); text-decoration: none; }
+    .ws-context-banner a:hover { color: var(--text-1); }
   </style>
 </head>
 <body>
@@ -271,7 +285,7 @@
 
       <div class="page-header">
         <div style="display:flex;align-items:center;gap:10px;">
-          <h1>My Files</h1>
+          <h1 id="pageTitle">My Files</h1>
           <span class="file-count-badge" id="fileCountBadge" style="display:none;"></span>
         </div>
         <div class="header-actions">
@@ -286,6 +300,12 @@
             <input type="file" id="fileInput" style="display:none;" onchange="uploadFile(this.files[0])">
           </label>
         </div>
+      </div>
+
+      <div class="ws-context-banner" id="wsContextBanner">
+        <div class="ws-context-dot"></div>
+        <span>Workspace: <strong id="wsContextName">—</strong></span>
+        <a href="/workspaces">Switch →</a>
       </div>
 
       <div class="search-bar">
@@ -455,6 +475,33 @@
       });
     }
 
+    // ── Workspace context ──
+    const WS_KEY = 'activeWorkspace';
+    function getActiveWorkspace() {
+      try { return JSON.parse(localStorage.getItem(WS_KEY)) || null; } catch { return null; }
+    }
+
+    function apiFetch(url, options = {}) {
+      const active = getActiveWorkspace();
+      const headers = { ...(options.headers || {}) };
+      if (active) headers['X-Workspace-Id'] = active.id;
+      return fetch(url, { ...options, headers });
+    }
+
+    function initWorkspaceBanner() {
+      const active = getActiveWorkspace();
+      const banner = document.getElementById('wsContextBanner');
+      const title  = document.getElementById('pageTitle');
+      if (active) {
+        document.getElementById('wsContextName').textContent = active.name;
+        banner.classList.add('show');
+        title.textContent = active.name + ' — Files';
+      } else {
+        banner.classList.remove('show');
+        title.textContent = 'My Files';
+      }
+    }
+
     // ── Auth ──
     async function checkAuth() {
       try {
@@ -496,7 +543,7 @@
       if (search) params.append('search', search);
       showSkeleton();
       try {
-        const response = await fetch(`/api/files?${params.toString()}`);
+        const response = await apiFetch(`/api/files?${params.toString()}`);
         files = await response.json();
         renderFiles();
       } catch (error) {
@@ -550,7 +597,7 @@
               <button class="btn-icon" onclick="viewImage(${file.id})" title="View">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
               </button>` : ''}
-            <button class="btn-icon" onclick="downloadFile(${file.id})" title="Download">
+            <button class="btn-icon" onclick="downloadFile(${file.id}, '${file.original_name.replace(/'/g, "\\'")}')" title="Download">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             </button>
             ${isArchive(file.original_name) && !file.extracted_from ? `
@@ -629,7 +676,7 @@
       const formData = new FormData();
       formData.append('file', file);
       try {
-        const response = await fetch('/api/files/upload', { method: 'POST', body: formData });
+        const response = await apiFetch('/api/files/upload', { method: 'POST', body: formData });
         progress.classList.remove('show');
         if (response.ok) { loadFiles(); showToast('File uploaded.', 'success'); }
         else { showToast('Failed to upload file.', 'error'); }
@@ -640,14 +687,26 @@
       document.getElementById('fileInput').value = '';
     }
 
-    async function downloadFile(id) { window.location.href = `/api/files/${id}/download`; }
+    async function downloadFile(id, name) {
+      try {
+        const response = await apiFetch(`/api/files/${id}/download`);
+        if (!response.ok) { showToast('Download failed.', 'error'); return; }
+        const blob = await response.blob();
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href = url; a.download = name || 'download';
+        document.body.appendChild(a); a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch { showToast('Download failed.', 'error'); }
+    }
 
     async function extractArchive(id, name) {
       const confirmed = await showConfirm({ title: 'Extract archive', message: `Extract "${name}"? Files will be added to your file list.`, confirmText: 'Extract' });
       if (!confirmed) return;
       showToast('Extracting…');
       try {
-        const response = await fetch(`/api/files/extract/${id}`, { method: 'POST' });
+        const response = await apiFetch(`/api/files/extract/${id}`, { method: 'POST' });
         const data = await response.json();
         if (response.ok) { loadFiles(); showToast(`Extracted ${data.files.length} file(s).`, 'success'); }
         else { showToast(data.error || 'Extraction failed.', 'error'); }
@@ -658,7 +717,7 @@
       const confirmed = await showConfirm({ title: 'Delete file', message: `"${name}" will be permanently deleted.`, confirmText: 'Delete', danger: true });
       if (!confirmed) return;
       try {
-        await fetch(`/api/files/${id}`, { method: 'DELETE' });
+        await apiFetch(`/api/files/${id}`, { method: 'DELETE' });
         loadFiles(); showToast('File deleted.', 'success');
       } catch { showToast('Failed to delete file.', 'error'); }
     }
@@ -693,7 +752,7 @@
       e.preventDefault();
       if (selectedFiles.length === 0) { showToast('Select at least one file.', 'error'); return; }
       try {
-        const response = await fetch('/api/files/create-archive', {
+        const response = await apiFetch('/api/files/create-archive', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ fileIds: selectedFiles, archiveName: document.getElementById('archiveName').value || `archive-${Date.now()}.zip` })
@@ -740,6 +799,7 @@
       return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     }
 
+    initWorkspaceBanner();
     checkAuth();
     loadFiles();
   </script>

@@ -236,6 +236,10 @@ db.serialize(() => {
   )`);
   // Seed defaults (INSERT OR IGNORE — never overwrites admin changes)
   db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('max_upload_bytes', '${10 * 1024 * 1024}')`);
+
+  // Migration: add workspace_id to tasks and files (nullable — NULL means personal)
+  db.run(`ALTER TABLE tasks ADD COLUMN workspace_id INTEGER REFERENCES workspaces(id) ON DELETE CASCADE`, () => {});
+  db.run(`ALTER TABLE files ADD COLUMN workspace_id INTEGER REFERENCES workspaces(id) ON DELETE CASCADE`, () => {});
 });
 
 // File upload configuration
@@ -529,16 +533,35 @@ app.delete('/api/profile/account', authenticateToken, (req, res) => {
   });
 });
 
+// Resolve optional X-Workspace-Id header — verifies membership and attaches
+// req.workspaceId (integer or null) to the request.
+const resolveWorkspace = (req, res, next) => {
+  const wsId = req.headers['x-workspace-id'];
+  if (!wsId) { req.workspaceId = null; return next(); }
+  const id = parseInt(wsId);
+  if (isNaN(id)) { req.workspaceId = null; return next(); }
+  db.get(
+    'SELECT workspace_id FROM workspace_members WHERE workspace_id = ? AND user_id = ?',
+    [id, req.user.id],
+    (err, row) => {
+      req.workspaceId = row ? id : null;
+      next();
+    }
+  );
+};
+
 // ============ TASKS ROUTES ============
 
-app.get('/api/tasks', authenticateToken, (req, res) => {
+app.get('/api/tasks', authenticateToken, resolveWorkspace, (req, res) => {
   const { search, priority, completed, sort } = req.query;
+  const wsFilter = req.workspaceId !== null ? 'AND t.workspace_id = ?' : 'AND t.workspace_id IS NULL';
   let query = `
     SELECT t.*, COUNT(tc.id) as comment_count
     FROM tasks t
     LEFT JOIN task_comments tc ON tc.task_id = t.id
-    WHERE t.user_id = ?`;
+    WHERE t.user_id = ? ${wsFilter}`;
   const params = [req.user.id];
+  if (req.workspaceId !== null) params.push(req.workspaceId);
   if (search) { query += ' AND (t.title LIKE ? OR t.description LIKE ?)'; params.push(`%${search}%`, `%${search}%`); }
   if (priority && priority !== 'all') { query += ' AND t.priority = ?'; params.push(priority); }
   if (completed !== undefined && completed !== '') { query += ' AND t.completed = ?'; params.push(completed === 'true' ? 1 : 0); }
@@ -563,14 +586,14 @@ app.get('/api/tasks/:id', authenticateToken, (req, res) => {
   });
 });
 
-app.post('/api/tasks', authenticateToken, (req, res) => {
+app.post('/api/tasks', authenticateToken, resolveWorkspace, (req, res) => {
   const { title, description, priority, due_date } = req.body;
   if (!title) return res.status(400).json({ error: 'Title is required' });
   const validPriorities = ['low', 'medium', 'high'];
   const taskPriority = validPriorities.includes(priority) ? priority : 'medium';
   db.run(
-    'INSERT INTO tasks (user_id, title, description, priority, due_date) VALUES (?, ?, ?, ?, ?)',
-    [req.user.id, title, description || '', taskPriority, due_date || null],
+    'INSERT INTO tasks (user_id, workspace_id, title, description, priority, due_date) VALUES (?, ?, ?, ?, ?, ?)',
+    [req.user.id, req.workspaceId, title, description || '', taskPriority, due_date || null],
     function(err) {
       if (err) return res.status(500).json({ error: 'Failed to create task' });
       res.json({ id: this.lastID, message: 'Task created successfully' });
@@ -611,10 +634,12 @@ app.delete('/api/tasks/:id', authenticateToken, (req, res) => {
 
 // ============ FILES ROUTES ============
 
-app.get('/api/files', authenticateToken, (req, res) => {
+app.get('/api/files', authenticateToken, resolveWorkspace, (req, res) => {
   const { search } = req.query;
-  let query = 'SELECT * FROM files WHERE user_id = ?';
+  const wsFilter = req.workspaceId !== null ? 'AND workspace_id = ?' : 'AND workspace_id IS NULL';
+  let query = `SELECT * FROM files WHERE user_id = ? ${wsFilter}`;
   const params = [req.user.id];
+  if (req.workspaceId !== null) params.push(req.workspaceId);
   if (search) { query += ' AND original_name LIKE ?'; params.push(`%${search}%`); }
   query += ' ORDER BY created_at DESC';
   db.all(query, params, (err, files) => {
@@ -623,11 +648,11 @@ app.get('/api/files', authenticateToken, (req, res) => {
   });
 });
 
-app.post('/api/files/upload', authenticateToken, dynamicUpload('file'), (req, res) => {
+app.post('/api/files/upload', authenticateToken, resolveWorkspace, dynamicUpload('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
   db.run(
-    'INSERT INTO files (user_id, filename, original_name, filepath, size) VALUES (?, ?, ?, ?, ?)',
-    [req.user.id, req.file.filename, req.file.originalname, req.file.path, req.file.size],
+    'INSERT INTO files (user_id, workspace_id, filename, original_name, filepath, size) VALUES (?, ?, ?, ?, ?, ?)',
+    [req.user.id, req.workspaceId, req.file.filename, req.file.originalname, req.file.path, req.file.size],
     function(err) {
       if (err) { fs.unlinkSync(req.file.path); return res.status(500).json({ error: 'Failed to save file record' }); }
       res.json({ id: this.lastID, message: 'File uploaded successfully', file: { id: this.lastID, filename: req.file.filename, original_name: req.file.originalname, size: req.file.size } });
@@ -635,8 +660,13 @@ app.post('/api/files/upload', authenticateToken, dynamicUpload('file'), (req, re
   );
 });
 
-app.get('/api/files/:id/download', authenticateToken, (req, res) => {
-  db.get('SELECT * FROM files WHERE id = ? AND user_id = ?', [req.params.id, req.user.id], (err, file) => {
+app.get('/api/files/:id/download', authenticateToken, resolveWorkspace, (req, res) => {
+  // Allow download if user owns the file, or if it belongs to an active workspace the user is a member of
+  const query = req.workspaceId !== null
+    ? 'SELECT * FROM files WHERE id = ? AND workspace_id = ?'
+    : 'SELECT * FROM files WHERE id = ? AND user_id = ?';
+  const param = req.workspaceId !== null ? req.workspaceId : req.user.id;
+  db.get(query, [req.params.id, param], (err, file) => {
     if (err || !file) return res.status(404).json({ error: 'File not found' });
     res.download(file.filepath, file.original_name);
   });
@@ -749,7 +779,7 @@ function extractTar(filePath, extractDir, isGzip) {
   });
 }
 
-app.post('/api/files/extract/:id', authenticateToken, async (req, res) => {
+app.post('/api/files/extract/:id', authenticateToken, resolveWorkspace, async (req, res) => {
   db.get('SELECT * FROM files WHERE id = ? AND user_id = ?', [req.params.id, req.user.id], async (err, file) => {
     if (err || !file) return res.status(404).json({ error: 'File not found' });
 
@@ -777,8 +807,8 @@ app.post('/api/files/extract/:id', authenticateToken, async (req, res) => {
 
       const insertPromises = extractedFiles.map(ef => new Promise((resolve) => {
         db.run(
-          'INSERT INTO files (user_id, filename, original_name, filepath, size, extracted_from) VALUES (?, ?, ?, ?, ?, ?)',
-          [req.user.id, path.basename(ef.path), ef.name, ef.path, ef.size, file.original_name],
+          'INSERT INTO files (user_id, workspace_id, filename, original_name, filepath, size, extracted_from) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [req.user.id, req.workspaceId, path.basename(ef.path), ef.name, ef.path, ef.size, file.original_name],
           function(err) { if (err) console.error('Failed to register extracted file:', err); resolve(); }
         );
       }));
