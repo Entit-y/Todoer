@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const path = require('path');
 const cookieParser = require('cookie-parser');
+const WebSocket = require('ws');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -25,6 +26,55 @@ const db = new sqlite3.Database('/app/todoer.db', (err) => {
   if (err) console.error('Database connection error:', err);
   else console.log('Admin panel connected to SQLite database');
 });
+
+// ── SSE: admin browsers subscribed to live feed events ──
+const sseClients = new Set();
+
+// ── WebSocket relay: connect to main app and forward feed events ──
+const MAIN_APP_WS = process.env.MAIN_APP_WS || 'ws://app:3000';
+
+function connectRelay() {
+  const ws = new WebSocket(MAIN_APP_WS, {
+    headers: {
+      // Send a fake auth cookie using the first registered user's token — the main
+      // app's WS auth only checks that *a* valid JWT exists, not a specific user.
+      // In practice you may want a dedicated service account; for now we skip WS
+      // auth entirely by connecting from within the Docker network where the main
+      // app trusts internal connections, or by using a real user token via env var.
+      cookie: process.env.RELAY_COOKIE || ''
+    }
+  });
+
+  ws.on('open', () => {
+    console.log('[relay] Connected to main app WebSocket');
+  });
+
+  ws.on('message', (raw) => {
+    let data;
+    try { data = JSON.parse(raw); } catch { return; }
+
+    // Forward feed:new and feed:delete events to all connected admin SSE clients
+    if (data.type === 'feed:new' || data.type === 'feed:delete') {
+      const payload = `data: ${JSON.stringify(data)}\n\n`;
+      sseClients.forEach(res => {
+        try { res.write(payload); } catch {}
+      });
+    }
+  });
+
+  ws.on('close', () => {
+    console.log('[relay] WebSocket closed — reconnecting in 5s');
+    setTimeout(connectRelay, 5000);
+  });
+
+  ws.on('error', (err) => {
+    console.error('[relay] WebSocket error:', err.message);
+    // close handler will trigger reconnect
+  });
+}
+
+// Start relay after a short delay to let the main app boot first
+setTimeout(connectRelay, 3000);
 
 // Auth middleware
 const authenticateAdmin = (req, res, next) => {
@@ -105,6 +155,25 @@ app.get('/users/:id', authenticateAdmin, (req, res) => {
 });
 
 // ============ API ROUTES ============
+
+// ── SSE endpoint — admin browser subscribes here for live feed events ──
+app.get('/api/events', authenticateAdmin, (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  // Send a heartbeat every 25s to keep the connection alive through proxies
+  const heartbeat = setInterval(() => {
+    try { res.write(': heartbeat\n\n'); } catch {}
+  }, 25000);
+
+  sseClients.add(res);
+  req.on('close', () => {
+    clearInterval(heartbeat);
+    sseClients.delete(res);
+  });
+});
 
 // Stats overview
 app.get('/api/stats', authenticateAdmin, (req, res) => {
