@@ -389,10 +389,15 @@ app.get('/api/files', authenticateAdmin, (req, res) => {
 });
 
 app.delete('/api/files/:id', authenticateAdmin, (req, res) => {
-  db.run('DELETE FROM files WHERE id = ?', [req.params.id], function(err) {
-    if (err) return res.status(500).json({ error: 'Failed to delete file' });
-    if (this.changes === 0) return res.status(404).json({ error: 'File not found' });
-    res.json({ message: 'File deleted' });
+  db.get('SELECT * FROM files WHERE id = ?', [req.params.id], (err, file) => {
+    if (err || !file) return res.status(404).json({ error: 'File not found' });
+    db.run('DELETE FROM files WHERE id = ?', [req.params.id], function(err) {
+      if (err) return res.status(500).json({ error: 'Failed to delete file' });
+      if (file.filepath && require('fs').existsSync(file.filepath)) {
+        try { require('fs').unlinkSync(file.filepath); } catch (e) { console.error('Failed to unlink file:', e.message); }
+      }
+      res.json({ message: 'File deleted' });
+    });
   });
 });
 

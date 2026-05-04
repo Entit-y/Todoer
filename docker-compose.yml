@@ -36,8 +36,8 @@ services:
     expose:
       - "3001"
     volumes:
-      - ./todoer.db:/app/todoer.db:ro
-      - ./uploads:/app/uploads:ro
+      - ./todoer.db:/app/todoer.db
+      - ./uploads:/app/uploads
     environment:
       - NODE_ENV=production
       - PORT=3001
