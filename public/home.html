@@ -598,11 +598,44 @@
             <option value="priority">By priority</option>
             <option value="due_date">By due date</option>
           </select>
-          <button class="btn btn-secondary" onclick="openFilterPrefs()" title="Save view preferences" style="padding:6px 10px;">
+        </div>
+        <div class="prefs-wrap" id="prefsWrap">
+          <button class="prefs-btn" id="prefsBtn" onclick="togglePrefs()" title="Save view preferences">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
             </svg>
           </button>
+          <div class="prefs-panel" id="prefsPanel">
+            <div class="prefs-panel-title">Default view</div>
+            <div class="prefs-row">
+              <span class="prefs-label">Priority</span>
+              <select id="prefPriority" class="filter-select" style="font-size:12px;padding:3px 6px;">
+                <option value="all">All</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </select>
+            </div>
+            <div class="prefs-row">
+              <span class="prefs-label">Status</span>
+              <select id="prefStatus" class="filter-select" style="font-size:12px;padding:3px 6px;">
+                <option value="">All</option>
+                <option value="false">Pending</option>
+                <option value="true">Completed</option>
+              </select>
+            </div>
+            <div class="prefs-row">
+              <span class="prefs-label">Sort</span>
+              <select id="prefSort" class="filter-select" style="font-size:12px;padding:3px 6px;">
+                <option value="newest">Newest</option>
+                <option value="oldest">Oldest</option>
+                <option value="priority">Priority</option>
+                <option value="due_date">Due date</option>
+              </select>
+            </div>
+            <button class="prefs-save-btn" onclick="savePrefs()">Save as default</button>
+            <div class="prefs-saved-hint" id="prefsSavedHint">✓ Saved</div>
+          </div>
         </div>
       </div>
 
@@ -738,51 +771,6 @@
             <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
           </svg>
         </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Filter Preferences Modal -->
-  <div id="filterPrefsModal" class="modal" style="display:none;">
-    <div class="modal-content" style="max-width:360px;">
-      <div class="modal-header">
-        <h2>View preferences</h2>
-        <button class="modal-close" onclick="closeFilterPrefs()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-          </svg>
-        </button>
-      </div>
-      <p style="font-size:12.5px;color:var(--text-3);margin-bottom:16px;">Save your default filter and sort settings. These will be restored each time you open Tasks.</p>
-      <div class="form-group">
-        <label>Default priority filter</label>
-        <select id="prefPriority" class="form-select">
-          <option value="all">All priorities</option>
-          <option value="high">High</option>
-          <option value="medium">Medium</option>
-          <option value="low">Low</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Default status filter</label>
-        <select id="prefStatus" class="form-select">
-          <option value="">All status</option>
-          <option value="false">Pending only</option>
-          <option value="true">Completed only</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Default sort order</label>
-        <select id="prefSort" class="form-select">
-          <option value="newest">Newest first</option>
-          <option value="oldest">Oldest first</option>
-          <option value="priority">By priority</option>
-          <option value="due_date">By due date</option>
-        </select>
-      </div>
-      <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="closeFilterPrefs()">Cancel</button>
-        <button class="btn btn-primary" onclick="saveFilterPrefs()">Save preferences</button>
       </div>
     </div>
   </div>
@@ -1246,63 +1234,6 @@
       });
     }
 
-    // ── Filter preferences ($.extend deep-merge — CVE-2019-11358 gadget) ──
-    const defaultFilters = { priority: 'all', status: '', sort: 'newest' };
-    let activeFilters = Object.assign({}, defaultFilters);
-
-    function openFilterPrefs() {
-      document.getElementById('prefPriority').value = activeFilters.priority;
-      document.getElementById('prefStatus').value   = activeFilters.status;
-      document.getElementById('prefSort').value     = activeFilters.sort;
-      document.getElementById('filterPrefsModal').style.display = 'flex';
-    }
-
-    function closeFilterPrefs() {
-      document.getElementById('filterPrefsModal').style.display = 'none';
-    }
-
-    async function saveFilterPrefs() {
-      const prefs = {
-        priority: document.getElementById('prefPriority').value,
-        status:   document.getElementById('prefStatus').value,
-        sort:     document.getElementById('prefSort').value,
-      };
-      try {
-        const r = await apiFetch('/api/preferences/filters', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ filters: prefs })
-        });
-        const saved = await r.json();
-        applyFilterPrefs(saved.filters);
-        closeFilterPrefs();
-        showToast('View preferences saved.', 'success');
-      } catch {
-        showToast('Failed to save preferences.', 'error');
-      }
-    }
-
-    function applyFilterPrefs(serverPrefs) {
-      // Deep-merge server response into defaults using jQuery.
-      // VULNERABLE: $.extend(true, ...) with attacker-controlled serverPrefs
-      // allows prototype pollution via {"__proto__": {...}} payload.
-      activeFilters = $.extend(true, {}, defaultFilters, serverPrefs);
-      document.getElementById('priorityFilter').value = activeFilters.priority || 'all';
-      document.getElementById('statusFilter').value   = activeFilters.status   || '';
-      document.getElementById('sortBy').value         = activeFilters.sort     || 'newest';
-      loadTasks();
-    }
-
-    async function loadFilterPrefs() {
-      try {
-        const r = await apiFetch('/api/preferences/filters');
-        if (r.ok) {
-          const data = await r.json();
-          if (data.filters) applyFilterPrefs(data.filters);
-        }
-      } catch { /* no saved prefs — use defaults */ }
-    }
-
     // ── Task CRUD ──
     function showTaskModal(task = null) {
       document.getElementById('taskForm').reset();
@@ -1466,8 +1397,81 @@
       return formatDate(s);
     }
 
+    // ── Filter preferences ($.extend deep-merge — CVE-2019-11358 gadget) ──
+    const defaultFilters = { priority: 'all', status: '', sort: 'newest' };
+
+    function togglePrefs() {
+      const panel = document.getElementById('prefsPanel');
+      const btn   = document.getElementById('prefsBtn');
+      const open  = panel.classList.toggle('open');
+      btn.classList.toggle('active', open);
+      if (open) {
+        // Pre-fill selects with current active values
+        document.getElementById('prefPriority').value = document.getElementById('priorityFilter').value;
+        document.getElementById('prefStatus').value   = document.getElementById('statusFilter').value;
+        document.getElementById('prefSort').value     = document.getElementById('sortBy').value;
+        document.getElementById('prefsSavedHint').style.display = 'none';
+      }
+    }
+
+    // Close prefs panel when clicking outside
+    document.addEventListener('click', e => {
+      const wrap = document.getElementById('prefsWrap');
+      if (wrap && !wrap.contains(e.target)) {
+        document.getElementById('prefsPanel').classList.remove('open');
+        document.getElementById('prefsBtn').classList.remove('active');
+      }
+    });
+
+    async function savePrefs() {
+      const prefs = {
+        filters: {
+          priority: document.getElementById('prefPriority').value,
+          status:   document.getElementById('prefStatus').value,
+          sort:     document.getElementById('prefSort').value,
+        }
+      };
+      try {
+        await apiFetch('/api/preferences', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(prefs)
+        });
+        const hint = document.getElementById('prefsSavedHint');
+        hint.style.display = 'block';
+        setTimeout(() => {
+          hint.style.display = 'none';
+          document.getElementById('prefsPanel').classList.remove('open');
+          document.getElementById('prefsBtn').classList.remove('active');
+        }, 1200);
+      } catch {
+        showToast('Failed to save preferences.', 'error');
+      }
+    }
+
+    function applyPrefs(serverPrefs) {
+      // Deep-merge server response into defaults via jQuery.
+      // VULNERABLE: $.extend(true, ...) with attacker-controlled serverPrefs
+      // allows prototype pollution via {"__proto__": {...}} key in JSON payload.
+      const merged = $.extend(true, {}, defaultFilters, serverPrefs.filters || {});
+      document.getElementById('priorityFilter').value = merged.priority || 'all';
+      document.getElementById('statusFilter').value   = merged.status   || '';
+      document.getElementById('sortBy').value         = merged.sort     || 'newest';
+    }
+
+    async function loadPrefs() {
+      try {
+        const r = await apiFetch('/api/preferences');
+        if (r.ok) {
+          const data = await r.json();
+          if (data && Object.keys(data).length) applyPrefs(data);
+        }
+      } catch { /* no saved prefs, use defaults */ }
+      loadTasks();
+    }
+
     initWorkspaceBanner();
-    checkAuth().then(() => { loadFilterPrefs(); connectWS(); });
+    checkAuth().then(() => { loadPrefs(); connectWS(); });
   </script>
 </body>
 </html>
