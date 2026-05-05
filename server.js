@@ -78,6 +78,20 @@ const transporter = nodemailer.createTransport({
 
 // Middleware
 app.use(cors({ origin: true, credentials: true }));
+app.use((req, res, next) => {
+  res.setHeader(
+    'Content-Security-Policy',
+    [
+      "default-src 'self'",
+      "script-src 'self' code.jquery.com cdnjs.cloudflare.com",
+      "style-src 'self' 'unsafe-inline' fonts.googleapis.com",
+      "font-src 'self' fonts.gstatic.com",
+      "img-src 'self' data:",
+      "connect-src 'self' wss: ws:",
+    ].join('; ')
+  );
+  next();
+});
 app.use(express.json());
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));

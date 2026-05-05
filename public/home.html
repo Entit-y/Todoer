@@ -6,13 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tasks — Todoer</title>
   <link rel="stylesheet" href="/styles.css">
-  <script src="https://code.jquery.com/jquery-3.3.1.min.js" crossorigin="anonymous"></script>
+  <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
   <meta name="generator" content="jQuery 3.3.1">
-  <!-- DOMPurify 3.2.4 — vulnerable to prototype-pollution bypass (CVE-2026-41238):
-       once Object.prototype.tagNameCheck/attributeNameCheck are polluted via $.extend,
-       CUSTOM_ELEMENT_HANDLING fallback inherits the polluted regexes and allows
-       arbitrary custom elements + event handlers through sanitize(). -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js"></script>
   <style>
     /* ── Toast ── */
     .toast {
@@ -603,44 +599,6 @@
             <option value="due_date">By due date</option>
           </select>
         </div>
-        <div class="prefs-wrap" id="prefsWrap">
-          <button class="prefs-btn" id="prefsBtn" onclick="togglePrefs()" title="Save view preferences">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-            </svg>
-          </button>
-          <div class="prefs-panel" id="prefsPanel">
-            <div class="prefs-panel-title">Default view</div>
-            <div class="prefs-row">
-              <span class="prefs-label">Priority</span>
-              <select id="prefPriority" class="filter-select" style="font-size:12px;padding:3px 6px;">
-                <option value="all">All</option>
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
-              </select>
-            </div>
-            <div class="prefs-row">
-              <span class="prefs-label">Status</span>
-              <select id="prefStatus" class="filter-select" style="font-size:12px;padding:3px 6px;">
-                <option value="">All</option>
-                <option value="false">Pending</option>
-                <option value="true">Completed</option>
-              </select>
-            </div>
-            <div class="prefs-row">
-              <span class="prefs-label">Sort</span>
-              <select id="prefSort" class="filter-select" style="font-size:12px;padding:3px 6px;">
-                <option value="newest">Newest</option>
-                <option value="oldest">Oldest</option>
-                <option value="priority">Priority</option>
-                <option value="due_date">Due date</option>
-              </select>
-            </div>
-            <button class="prefs-save-btn" onclick="savePrefs()">Save as default</button>
-            <div class="prefs-saved-hint" id="prefsSavedHint">✓ Saved</div>
-          </div>
-        </div>
       </div>
 
       <div id="tasksList" class="tasks-list"></div>
@@ -823,7 +781,7 @@
       const descSection = document.getElementById('detailDescSection');
       const descEl      = document.getElementById('detailDescription');
       if (task.description) {
-        $(descEl).html(DOMPurify.sanitize(task.description));
+        $(descEl).html(task.description);
         descSection.style.display = '';
       } else {
         descSection.style.display = 'none';
@@ -1055,7 +1013,7 @@
 
       tasks.forEach(task => {
         if (task.description) {
-          $(`[data-task-id="${task.id}"]`).html(DOMPurify.sanitize(task.description));
+          $(`[data-task-id="${task.id}"]`).html(task.description);
         }
       });
     }
@@ -1401,81 +1359,8 @@
       return formatDate(s);
     }
 
-    // ── Filter preferences ($.extend deep-merge — CVE-2019-11358 gadget) ──
-    const defaultFilters = { priority: 'all', status: '', sort: 'newest' };
-
-    function togglePrefs() {
-      const panel = document.getElementById('prefsPanel');
-      const btn   = document.getElementById('prefsBtn');
-      const open  = panel.classList.toggle('open');
-      btn.classList.toggle('active', open);
-      if (open) {
-        // Pre-fill selects with current active values
-        document.getElementById('prefPriority').value = document.getElementById('priorityFilter').value;
-        document.getElementById('prefStatus').value   = document.getElementById('statusFilter').value;
-        document.getElementById('prefSort').value     = document.getElementById('sortBy').value;
-        document.getElementById('prefsSavedHint').style.display = 'none';
-      }
-    }
-
-    // Close prefs panel when clicking outside
-    document.addEventListener('click', e => {
-      const wrap = document.getElementById('prefsWrap');
-      if (wrap && !wrap.contains(e.target)) {
-        document.getElementById('prefsPanel').classList.remove('open');
-        document.getElementById('prefsBtn').classList.remove('active');
-      }
-    });
-
-    async function savePrefs() {
-      const prefs = {
-        filters: {
-          priority: document.getElementById('prefPriority').value,
-          status:   document.getElementById('prefStatus').value,
-          sort:     document.getElementById('prefSort').value,
-        }
-      };
-      try {
-        await apiFetch('/api/preferences', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(prefs)
-        });
-        const hint = document.getElementById('prefsSavedHint');
-        hint.style.display = 'block';
-        setTimeout(() => {
-          hint.style.display = 'none';
-          document.getElementById('prefsPanel').classList.remove('open');
-          document.getElementById('prefsBtn').classList.remove('active');
-        }, 1200);
-      } catch {
-        showToast('Failed to save preferences.', 'error');
-      }
-    }
-
-    function applyPrefs(serverPrefs) {
-      // Deep-merge server response into defaults via jQuery.
-      // VULNERABLE: $.extend(true, ...) with attacker-controlled serverPrefs
-      // allows prototype pollution via {"__proto__": {...}} key in JSON payload.
-      const merged = $.extend(true, {}, defaultFilters, serverPrefs.filters || {});
-      document.getElementById('priorityFilter').value = merged.priority || 'all';
-      document.getElementById('statusFilter').value   = merged.status   || '';
-      document.getElementById('sortBy').value         = merged.sort     || 'newest';
-    }
-
-    async function loadPrefs() {
-      try {
-        const r = await apiFetch('/api/preferences');
-        if (r.ok) {
-          const data = await r.json();
-          if (data && Object.keys(data).length) applyPrefs(data);
-        }
-      } catch { /* no saved prefs, use defaults */ }
-      loadTasks();
-    }
-
     initWorkspaceBanner();
-    checkAuth().then(() => { loadPrefs(); connectWS(); });
+    checkAuth().then(() => { loadTasks(); connectWS(); });
   </script>
 </body>
 </html>
