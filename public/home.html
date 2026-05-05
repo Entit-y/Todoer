@@ -1406,6 +1406,7 @@
       const open  = panel.classList.toggle('open');
       btn.classList.toggle('active', open);
       if (open) {
+        // Pre-fill selects with current active values
         document.getElementById('prefPriority').value = document.getElementById('priorityFilter').value;
         document.getElementById('prefStatus').value   = document.getElementById('statusFilter').value;
         document.getElementById('prefSort').value     = document.getElementById('sortBy').value;
@@ -1413,6 +1414,7 @@
       }
     }
 
+    // Close prefs panel when clicking outside
     document.addEventListener('click', e => {
       const wrap = document.getElementById('prefsWrap');
       if (wrap && !wrap.contains(e.target)) {
@@ -1448,8 +1450,9 @@
     }
 
     function applyPrefs(serverPrefs) {
+      // Deep-merge server response into defaults via jQuery.
       // VULNERABLE: $.extend(true, ...) with attacker-controlled serverPrefs
-      // allows prototype pollution via {"__proto__": {...}} in the stored JSON.
+      // allows prototype pollution via {"__proto__": {...}} key in JSON payload.
       const merged = $.extend(true, {}, defaultFilters, serverPrefs.filters || {});
       document.getElementById('priorityFilter').value = merged.priority || 'all';
       document.getElementById('statusFilter').value   = merged.status   || '';
