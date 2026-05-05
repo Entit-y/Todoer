@@ -240,6 +240,14 @@ db.serialize(() => {
   // Migration: add workspace_id to tasks and files (nullable — NULL means personal)
   db.run(`ALTER TABLE tasks ADD COLUMN workspace_id INTEGER REFERENCES workspaces(id) ON DELETE CASCADE`, () => {});
   db.run(`ALTER TABLE files ADD COLUMN workspace_id INTEGER REFERENCES workspaces(id) ON DELETE CASCADE`, () => {});
+
+  // User preferences — stores per-user JSON blobs (filter state, UI prefs etc.)
+  // VULNERABLE: value column stores raw JSON, deserialized client-side via
+  // $.extend(true, defaults, prefs) — CVE-2019-11358 prototype pollution surface
+  db.run(`CREATE TABLE IF NOT EXISTS user_preferences (
+    user_id   INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    value     TEXT NOT NULL DEFAULT '{}'
+  )`);
 });
 
 // File upload configuration
@@ -586,49 +594,82 @@ app.get('/api/tasks/:id', authenticateToken, (req, res) => {
   });
 });
 
-// ── Task description sanitizer ──
-// Strips the most obvious XSS vectors from HTML task descriptions while
-// deliberately NOT accounting for jQuery's htmlPrefilter() mutation.
+// ============ PREFERENCES ROUTES ============
+// Stores per-user UI preferences (filter state, sort order, etc.) as raw JSON.
 //
-// What it catches:
-//   <img src=x onerror=alert(1)>              → onerror stripped → inert
-//   <svg onload=alert(1)>                     → onload stripped → inert
-//   <a href="javascript:alert(1)">click</a>   → href stripped → inert
-//   <script>alert(1)</script>                 → tag stripped entirely
+// VULNERABLE by design — CVE-2019-11358 (jQuery < 3.4.0 prototype pollution):
+// The client merges server preferences into defaults via:
+//   $.extend(true, defaultFilters, serverPreferences)
 //
-// What it intentionally misses — the CVE-2020-11022 bypass:
-//   <style><style/><img src=x onerror=alert(1)>
+// If an attacker POSTs {"__proto__": {"tagNameCheck": /.*/, "attributeNameCheck": /.*/}}
+// as their preferences, jQuery's deep merge walks into __proto__ and assigns
+// those properties directly onto Object.prototype — poisoning every object
+// in the page session.
 //
-//   The sanitizer sees this as an opening <style> tag followed by content
-//   it treats as a style block. The <img onerror> sits inside what looks
-//   like a style rule — the sanitizer's regex never matches it as a tag
-//   with an event handler because it's reading raw string, not parsed DOM.
+// This then triggers CVE-2026-41238 (DOMPurify 3.0.1-3.3.3):
+// DOMPurify's CUSTOM_ELEMENT_HANDLING config falls back to {} which inherits
+// from the now-polluted Object.prototype, causing DOMPurify to permit any
+// custom element and event handler through sanitization.
 //
-//   jQuery's htmlPrefilter() then rewrites <style/> → <style></style>
-//   on the client before DOM insertion, closing the style block early and
-//   promoting the <img onerror> into the live DOM as an executable element.
-//
-//   The key insight: the sanitizer evaluates the string as text.
-//   jQuery evaluates it as a tag tree after mutation. They disagree on
-//   what the string means — and the attacker exploits that disagreement.
-function sanitizeDescription(html) {
-  if (!html) return html;
+// Payload stored here → returned to client → $.extend poisons prototype →
+// DOMPurify bypassed → <x-pwned onfocus=alert(document.cookie) autofocus> fires
 
-  // 1. Strip <script> blocks entirely
-  html = html.replace(/<script[\s\S]*?<\/script>/gi, '');
+app.get('/api/preferences', authenticateToken, (req, res) => {
+  db.get('SELECT value FROM user_preferences WHERE user_id = ?', [req.user.id], (err, row) => {
+    if (err) return res.status(500).json({ error: 'Failed to fetch preferences' });
+    try { res.json(row ? JSON.parse(row.value) : {}); }
+    catch { res.json({}); }
+  });
+});
 
-  // 2. Strip event handler attributes (onerror, onload, onclick, etc.)
-  //    Matches: on<word> = "..." or on<word> = '...' or on<word>=value
-  html = html.replace(/\s+on\w+\s*=\s*"[^"]*"/gi, '');
-  html = html.replace(/\s+on\w+\s*=\s*'[^']*'/gi, '');
-  html = html.replace(/\s+on\w+\s*=\s*[^\s>]*/gi, '');
+app.post('/api/preferences', authenticateToken, (req, res) => {
+  // Raw body stored without sanitization — __proto__ keys survive JSON.stringify
+  const value = JSON.stringify(req.body);
+  db.run(
+    'INSERT OR REPLACE INTO user_preferences (user_id, value) VALUES (?, ?)',
+    [req.user.id, value],
+    function(err) {
+      if (err) return res.status(500).json({ error: 'Failed to save preferences' });
+      res.json({ message: 'Preferences saved' });
+    }
+  );
+});
 
-  // 3. Strip javascript: and data: URIs from href/src/action attributes
-  html = html.replace(/(href|src|action)\s*=\s*["']?\s*javascript:[^"'\s>]*/gi, '');
-  html = html.replace(/(href|src|action)\s*=\s*["']?\s*data:[^"'\s>]*/gi, '');
+// ============ TASKS ROUTES ============
 
-  return html;
-}
+app.get('/api/tasks', authenticateToken, resolveWorkspace, (req, res) => {
+  const { search, priority, completed, sort } = req.query;
+  const wsFilter = req.workspaceId !== null ? 'AND t.workspace_id = ?' : 'AND t.workspace_id IS NULL';
+  let query = `
+    SELECT t.*, COUNT(tc.id) as comment_count
+    FROM tasks t
+    LEFT JOIN task_comments tc ON tc.task_id = t.id
+    WHERE t.user_id = ? ${wsFilter}`;
+  const params = [req.user.id];
+  if (req.workspaceId !== null) params.push(req.workspaceId);
+  if (search) { query += ' AND (t.title LIKE ? OR t.description LIKE ?)'; params.push(`%${search}%`, `%${search}%`); }
+  if (priority && priority !== 'all') { query += ' AND t.priority = ?'; params.push(priority); }
+  if (completed !== undefined && completed !== '') { query += ' AND t.completed = ?'; params.push(completed === 'true' ? 1 : 0); }
+  query += ' GROUP BY t.id';
+  const sortOptions = {
+    'newest':   'ORDER BY t.created_at DESC',
+    'oldest':   'ORDER BY t.created_at ASC',
+    'priority': "ORDER BY CASE t.priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 END",
+    'due_date': 'ORDER BY t.due_date ASC'
+  };
+  query += ' ' + (sortOptions[sort] || sortOptions['newest']);
+  db.all(query, params, (err, tasks) => {
+    if (err) return res.status(500).json({ error: 'Failed to fetch tasks' });
+    res.json(tasks);
+  });
+});
+
+app.get('/api/tasks/:id', authenticateToken, (req, res) => {
+  db.get('SELECT * FROM tasks WHERE id = ? AND user_id = ?', [req.params.id, req.user.id], (err, task) => {
+    if (err || !task) return res.status(404).json({ error: 'Task not found' });
+    res.json(task);
+  });
+});
 
 app.post('/api/tasks', authenticateToken, resolveWorkspace, (req, res) => {
   const { title, description, priority, due_date } = req.body;
@@ -637,7 +678,7 @@ app.post('/api/tasks', authenticateToken, resolveWorkspace, (req, res) => {
   const taskPriority = validPriorities.includes(priority) ? priority : 'medium';
   db.run(
     'INSERT INTO tasks (user_id, workspace_id, title, description, priority, due_date) VALUES (?, ?, ?, ?, ?, ?)',
-    [req.user.id, req.workspaceId, title, sanitizeDescription(description) || '', taskPriority, due_date || null],
+    [req.user.id, req.workspaceId, title, description || '', taskPriority, due_date || null],
     function(err) {
       if (err) return res.status(500).json({ error: 'Failed to create task' });
       res.json({ id: this.lastID, message: 'Task created successfully' });
@@ -653,7 +694,7 @@ app.put('/api/tasks/:id', authenticateToken, (req, res) => {
     const updates = [];
     const params = [];
     if (title !== undefined) { updates.push('title = ?'); params.push(title); }
-    if (description !== undefined) { updates.push('description = ?'); params.push(sanitizeDescription(description)); }
+    if (description !== undefined) { updates.push('description = ?'); params.push(description); }
     if (priority !== undefined) {
       if (['low', 'medium', 'high'].includes(priority)) { updates.push('priority = ?'); params.push(priority); }
     }
@@ -675,8 +716,6 @@ app.delete('/api/tasks/:id', authenticateToken, (req, res) => {
     res.json({ message: 'Task deleted successfully' });
   });
 });
-
-// ============ FILES ROUTES ============
 
 app.get('/api/files', authenticateToken, resolveWorkspace, (req, res) => {
   const { search } = req.query;
