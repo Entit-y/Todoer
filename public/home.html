@@ -8,7 +8,11 @@
   <link rel="stylesheet" href="/styles.css">
   <script src="https://code.jquery.com/jquery-3.3.1.min.js" crossorigin="anonymous"></script>
   <meta name="generator" content="jQuery 3.3.1">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.3.3/purify.min.js" crossorigin="anonymous"></script>
+  <!-- DOMPurify 3.2.4 — vulnerable to prototype-pollution bypass (CVE-2026-41238):
+       once Object.prototype.tagNameCheck/attributeNameCheck are polluted via $.extend,
+       CUSTOM_ELEMENT_HANDLING fallback inherits the polluted regexes and allows
+       arbitrary custom elements + event handlers through sanitize(). -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js" crossorigin="anonymous"></script>
   <style>
     /* ── Toast ── */
     .toast {
