@@ -6,6 +6,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tasks — Todoer</title>
   <link rel="stylesheet" href="/styles.css">
+  <!-- jQuery 3.3.1 — CVE-2020-11022, CVE-2020-11023, CVE-2019-11358 -->
+  <!-- Pinned to vulnerable version intentionally for security training -->
+  <script src="https://code.jquery.com/jquery-3.3.1.min.js" crossorigin="anonymous"></script>
+  <meta name="generator" content="jQuery 3.3.1">
   <style>
     /* ── Toast ── */
     .toast {
@@ -363,7 +367,7 @@
       font-size: 12.5px; color: var(--text-2);
       margin: 4px 0 6px; line-height: 1.55;
       max-height: 48px; overflow: hidden;
-      /* Intentionally rendered as innerHTML — CVE-2021-33829 surface */
+    /* Rich description rendered via jQuery $.html() — CVE-2020-11022 XSS surface */
     }
     .task-description-rich p  { margin: 0; }
     .task-description-rich ul,
@@ -402,7 +406,7 @@
       font-size: 10.5px; font-weight: 600; text-transform: uppercase;
       letter-spacing: 0.06em; color: var(--text-3); margin-bottom: 8px;
     }
-    /* Rich HTML description rendered in drawer — intentional XSS surface */
+    /* Rich HTML description rendered in drawer — jQuery $.html() XSS surface (CVE-2020-11022) */
     .task-detail-description {
       font-size: 13.5px; color: var(--text-2); line-height: 1.65;
       background: var(--surface-2); border: 1px solid var(--border);
@@ -641,7 +645,7 @@
     <div class="task-detail-body">
       <div class="task-detail-section" id="detailDescSection">
         <div class="task-detail-section-label">Description</div>
-        <!-- innerHTML intentionally unsanitized — CVE-2021-33829 render surface -->
+        <!-- innerHTML for title/meta only; description rendered via jQuery $.html() — CVE-2020-11022 -->
         <div class="task-detail-description" id="detailDescription"></div>
       </div>
       <div class="task-detail-section">
@@ -718,9 +722,26 @@
     let ws = null;
     let wsActive = true;
 
-    // ── CKEditor 4.16.0 init ──
-    // Pinned to vulnerable version — CVE-2021-33829
-    // Payload: Xss<!--{cke_protected}--!><img src=1 onerror=alert(document.cookie)> -->Attack
+    // ── CVE-2020-11022 (jQuery < 3.5.0) ──
+    // jQuery's htmlPrefilter() regex transforms self-closing tags before DOM insertion:
+    //   rxhtmlTag matches e.g. <style/> and rewrites it to <style></style>
+    // This closes the style block early, promoting subsequent content out of it
+    // and into the live DOM as executable HTML — even though the raw string
+    // looks like one continuous style block to a human reader.
+    //
+    // Payload:  <style><style/><img src=x onerror=alert(document.cookie)>
+    //
+    // What the browser receives after jQuery mutates it:
+    //   <style><style></style><img src=x onerror=alert(document.cookie)>
+    //   ^^^^^^^^^^^^^^^^^^^^^^  ← jQuery closed this, breaking out of style
+    //
+    // A plain innerHTML call with the same string would NOT fire —
+    // the browser parses <style/> as an unclosed tag and keeps everything
+    // inside the style block. The exploit is jQuery-specific.
+    //
+    // Render surfaces: renderTasks() → $('[data-task-id]').html()
+    //                  openTaskDetail() → $(descEl).html()
+
     // ── Task detail drawer ──
     function openTaskDetail(id) {
       const task = tasks.find(t => t.id === id);
@@ -729,8 +750,7 @@
 
       document.getElementById('detailTitle').textContent = task.title;
 
-      // Meta pills
-      const priorityColors = { high: 'var(--danger)', medium: '#f59e0b', low: '#22c55e' };
+      // Meta pills — safe: only controlled values (priority string, dates)
       const dueTs = task.due_date ? new Date(task.due_date) : null;
       const todayStart = new Date(); todayStart.setHours(0,0,0,0);
       const isOverdue = dueTs && !task.completed && dueTs < todayStart;
@@ -740,11 +760,12 @@
         ${dueTs ? `<span style="font-size:12px;color:${isOverdue ? 'var(--danger)' : 'var(--text-3)'};">Due ${formatDate(task.due_date)}</span>` : ''}
       `;
 
-      // Description — rendered as raw HTML (CVE-2021-33829 surface)
+      // Description — routed through jQuery $.html() so htmlPrefilter() mutates
+      // the string before insertion. This is the CVE-2020-11022 render surface.
       const descSection = document.getElementById('detailDescSection');
       const descEl      = document.getElementById('detailDescription');
       if (task.description) {
-        descEl.innerHTML = task.description; // intentionally unsanitized
+        $(descEl).html(task.description);
         descSection.style.display = '';
       } else {
         descSection.style.display = 'none';
@@ -935,6 +956,8 @@
       const now = Date.now();
       const todayStart = new Date(); todayStart.setHours(0,0,0,0);
       const todayEnd   = new Date(); todayEnd.setHours(23,59,59,999);
+
+      // Build cards with a placeholder for descriptions
       list.innerHTML = tasks.map(task => {
         const dueTs = task.due_date ? new Date(task.due_date).getTime() : null;
         const isOverdue  = dueTs && !task.completed && dueTs < todayStart.getTime();
@@ -946,7 +969,7 @@
           </div>
           <div class="task-content">
             <div class="task-title" style="cursor:pointer;" onclick="openTaskDetail(${task.id})">${escapeHtml(task.title)}</div>
-            ${task.description ? `<div class="task-description-rich">${task.description}</div>` : ''}
+            ${task.description ? `<div class="task-description-rich" data-task-id="${task.id}"></div>` : ''}
             <div class="task-meta">
               <span class="task-priority priority-${task.priority}">${task.priority}</span>
               ${task.due_date ? `<span class="task-due${isOverdue ? ' overdue' : isDueToday ? ' due-today' : ''}">Due ${formatDate(task.due_date)}</span><span class="task-sep">·</span>` : ''}
@@ -971,6 +994,16 @@
           </div>
         </div>`;
       }).join('');
+
+      // Render descriptions via jQuery $.fn.html() — CVE-2020-11022
+      // htmlPrefilter() transforms <style/> → <style></style>, breaking
+      // content out of the style block into the live DOM as executable HTML.
+      // Payload: <style><style/><img src=x onerror=alert(document.cookie)>
+      tasks.forEach(task => {
+        if (task.description) {
+          $(`[data-task-id="${task.id}"]`).html(task.description);
+        }
+      });
     }
 
     // ── Comments ──
