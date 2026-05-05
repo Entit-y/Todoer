@@ -6,6 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tasks — Todoer</title>
   <link rel="stylesheet" href="/styles.css">
+  <!-- CKEditor 4.16.0 — rich text editing for task descriptions -->
+  <script src="https://cdn.ckeditor.com/4.16.0/standard/ckeditor.js"></script>
   <style>
     /* ── Toast ── */
     .toast {
@@ -358,6 +360,72 @@
       box-shadow: 0 0 0 3px var(--accent-dim);
       outline: none;
     }
+    /* ── CKEditor container ── */
+    .cke_chrome { border-radius: var(--radius-sm) !important; border-color: var(--border) !important; }
+    .cke_top, .cke_bottom { background: var(--surface-2) !important; border-color: var(--border) !important; }
+    .cke_editable { background: var(--surface) !important; color: var(--text-1) !important; font-family: var(--font) !important; font-size: 13.5px !important; min-height: 120px; }
+    .cke_combo_text, .cke_button_label, .cke_toolbar_separator { color: var(--text-2) !important; }
+    [data-theme="light"] .cke_editable { background: #fff !important; color: #111 !important; }
+
+    /* ── Rich description on task cards ── */
+    .task-description-rich {
+      font-size: 12.5px; color: var(--text-2);
+      margin: 4px 0 6px; line-height: 1.55;
+      max-height: 48px; overflow: hidden;
+      /* Intentionally rendered as innerHTML — CVE-2021-33829 surface */
+    }
+    .task-description-rich p  { margin: 0; }
+    .task-description-rich ul,
+    .task-description-rich ol { margin: 0; padding-left: 16px; }
+    .task-description-rich strong { color: var(--text-1); }
+
+    /* ── Task detail drawer ── */
+    .task-detail-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.45); backdrop-filter: blur(3px);
+      z-index: 900;
+    }
+    .task-detail-overlay.open { display: block; }
+    .task-detail-drawer {
+      position: fixed; top: 0; right: 0; bottom: 0;
+      width: 420px; max-width: 100vw;
+      background: var(--surface);
+      border-left: 1px solid var(--border);
+      z-index: 901; display: flex; flex-direction: column;
+      transform: translateX(100%);
+      transition: transform 0.22s cubic-bezier(0.4,0,0.2,1);
+      overflow: hidden;
+    }
+    .task-detail-drawer.open { transform: translateX(0); }
+    .task-detail-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      padding: 20px 20px 16px; border-bottom: 1px solid var(--border); gap: 12px;
+    }
+    .task-detail-title { font-size: 15px; font-weight: 600; color: var(--text-1); letter-spacing: -0.02em; line-height: 1.4; }
+    .task-detail-meta { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
+    .task-detail-body {
+      flex: 1; overflow-y: auto; padding: 18px 20px;
+    }
+    .task-detail-section { margin-bottom: 20px; }
+    .task-detail-section-label {
+      font-size: 10.5px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--text-3); margin-bottom: 8px;
+    }
+    /* Rich HTML description rendered in drawer — intentional XSS surface */
+    .task-detail-description {
+      font-size: 13.5px; color: var(--text-2); line-height: 1.65;
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 12px 14px;
+    }
+    .task-detail-description p  { margin: 0 0 8px; }
+    .task-detail-description p:last-child { margin-bottom: 0; }
+    .task-detail-description ul,
+    .task-detail-description ol { padding-left: 18px; margin: 0 0 8px; }
+    .task-detail-description strong { color: var(--text-1); }
+    .task-detail-description a { color: var(--accent); }
+    .task-detail-description pre,
+    .task-detail-description code { background: var(--surface-3); border-radius: 3px; padding: 1px 5px; font-size: 12px; }
+
     /* ── Workspace context banner ── */
     .ws-context-banner {
       display: none; align-items: center; gap: 10px;
@@ -565,6 +633,46 @@
     </div>
   </div>
 
+  <!-- Task Detail Drawer -->
+  <div class="task-detail-overlay" id="taskDetailOverlay" onclick="closeTaskDetail()"></div>
+  <div class="task-detail-drawer" id="taskDetailDrawer">
+    <div class="task-detail-header">
+      <div style="flex:1;min-width:0;">
+        <div class="task-detail-title" id="detailTitle"></div>
+        <div class="task-detail-meta" id="detailMeta"></div>
+      </div>
+      <button class="drawer-close" onclick="closeTaskDetail()" title="Close">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+    <div class="task-detail-body">
+      <div class="task-detail-section" id="detailDescSection">
+        <div class="task-detail-section-label">Description</div>
+        <!-- innerHTML intentionally unsanitized — CVE-2021-33829 render surface -->
+        <div class="task-detail-description" id="detailDescription"></div>
+      </div>
+      <div class="task-detail-section">
+        <div class="task-detail-section-label">Actions</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-secondary" id="detailEditBtn" onclick="editTaskFromDetail()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
+            Edit task
+          </button>
+          <button class="btn btn-secondary" id="detailCommentsBtn" onclick="openCommentsFromDetail()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            Comments
+          </button>
+          <button class="btn btn-secondary" style="color:var(--danger);border-color:var(--danger-border);" id="detailDeleteBtn" onclick="deleteTaskFromDetail()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Comments drawer -->
   <div class="comments-overlay" id="commentsOverlay" onclick="closeComments()"></div>
   <div class="comments-drawer" id="commentsDrawer">
@@ -615,8 +723,95 @@
     let tasks = [];
     let currentUser = null;
     let activeTaskId = null;
+    let activeDetailTaskId = null;
     let ws = null;
-    let wsActive = true;  // set false on logout to stop reconnect
+    let wsActive = true;
+
+    // ── CKEditor 4.16.0 init ──
+    // Pinned to vulnerable version — CVE-2021-33829
+    // Description content is stored and rendered as raw HTML (intentional vuln surface)
+    let editor = null;
+    function initEditor() {
+      if (editor) { try { editor.destroy(); } catch {} }
+      editor = CKEDITOR.replace('taskDescription', {
+        toolbar: [
+          { name: 'basicstyles', items: ['Bold','Italic','Underline','Strike','-','RemoveFormat'] },
+          { name: 'paragraph',   items: ['NumberedList','BulletedList','-','Blockquote'] },
+          { name: 'links',       items: ['Link','Unlink'] },
+          { name: 'insert',      items: ['HorizontalRule'] },
+          { name: 'styles',      items: ['Format'] },
+          { name: 'source',      items: ['Source'] }
+        ],
+        height: 160,
+        removePlugins: 'elementspath,resize',
+        contentsCss: `
+          body { font-family: 'Sora', 'Inter', sans-serif; font-size: 13.5px;
+                 color: #c9d1d9; background: transparent; margin: 8px 12px; }
+          p { margin: 0 0 6px; } ul, ol { padding-left: 18px; margin: 0 0 6px; }
+        `,
+        on: {
+          instanceReady: function() {
+            // Style the iframe body for dark theme
+            this.document.getBody().setStyle('background', 'transparent');
+          }
+        }
+      });
+    }
+
+    // ── Task detail drawer ──
+    function openTaskDetail(id) {
+      const task = tasks.find(t => t.id === id);
+      if (!task) return;
+      activeDetailTaskId = id;
+
+      document.getElementById('detailTitle').textContent = task.title;
+
+      // Meta pills
+      const priorityColors = { high: 'var(--danger)', medium: '#f59e0b', low: '#22c55e' };
+      const dueTs = task.due_date ? new Date(task.due_date) : null;
+      const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+      const isOverdue = dueTs && !task.completed && dueTs < todayStart;
+      document.getElementById('detailMeta').innerHTML = `
+        <span class="task-priority priority-${task.priority}">${task.priority}</span>
+        ${task.completed ? '<span class="badge-done" style="font-size:11px;padding:2px 8px;border-radius:4px;background:rgba(34,197,94,0.1);color:#22c55e;border:1px solid rgba(34,197,94,0.2);">Done</span>' : ''}
+        ${dueTs ? `<span style="font-size:12px;color:${isOverdue ? 'var(--danger)' : 'var(--text-3)'};">Due ${formatDate(task.due_date)}</span>` : ''}
+      `;
+
+      // Description — rendered as raw HTML (CVE-2021-33829 surface)
+      const descSection = document.getElementById('detailDescSection');
+      const descEl      = document.getElementById('detailDescription');
+      if (task.description) {
+        descEl.innerHTML = task.description; // intentionally unsanitized
+        descSection.style.display = '';
+      } else {
+        descSection.style.display = 'none';
+      }
+
+      document.getElementById('taskDetailOverlay').classList.add('open');
+      document.getElementById('taskDetailDrawer').classList.add('open');
+    }
+
+    function closeTaskDetail() {
+      activeDetailTaskId = null;
+      document.getElementById('taskDetailOverlay').classList.remove('open');
+      document.getElementById('taskDetailDrawer').classList.remove('open');
+    }
+
+    function editTaskFromDetail() {
+      const task = tasks.find(t => t.id === activeDetailTaskId);
+      if (task) { closeTaskDetail(); editTask(task.id); }
+    }
+
+    function openCommentsFromDetail() {
+      const task = tasks.find(t => t.id === activeDetailTaskId);
+      if (task) { closeTaskDetail(); openComments(task.id, task.title); }
+    }
+
+    async function deleteTaskFromDetail() {
+      const id = activeDetailTaskId;
+      closeTaskDetail();
+      await deleteTask(id);
+    }
 
     // ── Theme ──
     const saved = localStorage.getItem('theme') || 'dark';
@@ -787,8 +982,8 @@
             <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTask(${task.id}, this)">
           </div>
           <div class="task-content">
-            <div class="task-title">${escapeHtml(task.title)}</div>
-            ${task.description ? `<p class="task-description">${escapeHtml(task.description)}</p>` : ''}
+            <div class="task-title" style="cursor:pointer;" onclick="openTaskDetail(${task.id})">${escapeHtml(task.title)}</div>
+            ${task.description ? `<div class="task-description-rich">${task.description}</div>` : ''}
             <div class="task-meta">
               <span class="task-priority priority-${task.priority}">${task.priority}</span>
               ${task.due_date ? `<span class="task-due${isOverdue ? ' overdue' : isDueToday ? ' due-today' : ''}">Due ${formatDate(task.due_date)}</span><span class="task-sep">·</span>` : ''}
@@ -1001,18 +1196,30 @@
         document.getElementById('modalTitle').textContent = 'Edit task';
         document.getElementById('taskId').value = task.id;
         document.getElementById('taskTitle').value = task.title;
-        document.getElementById('taskDescription').value = task.description || '';
         document.getElementById('taskPriority').value = task.priority;
         document.getElementById('taskDueDate').value = task.due_date ? task.due_date.split('T')[0] : '';
       } else {
         document.getElementById('modalTitle').textContent = 'New task';
       }
       document.getElementById('taskModal').style.display = 'flex';
-      // Autofocus title input after animation frame so modal is visible
-      requestAnimationFrame(() => document.getElementById('taskTitle').focus());
+      requestAnimationFrame(() => {
+        document.getElementById('taskTitle').focus();
+        initEditor();
+        // Populate editor after it's ready
+        if (task && task.description) {
+          const setData = () => {
+            if (editor && editor.status === 'ready') { editor.setData(task.description); }
+            else { setTimeout(setData, 50); }
+          };
+          setData();
+        }
+      });
     }
 
-    function closeTaskModal() { document.getElementById('taskModal').style.display = 'none'; }
+    function closeTaskModal() {
+      document.getElementById('taskModal').style.display = 'none';
+      if (editor) { try { editor.destroy(); editor = null; } catch {} }
+    }
     async function editTask(id) { const task = tasks.find(t => t.id === id); if (task) showTaskModal(task); }
 
     async function toggleTask(id, checkbox) {
@@ -1068,7 +1275,7 @@
       submitBtn.textContent = 'Saving…';
       const data = {
         title:       document.getElementById('taskTitle').value,
-        description: document.getElementById('taskDescription').value,
+        description: editor ? editor.getData() : document.getElementById('taskDescription').value,
         priority:    document.getElementById('taskPriority').value,
         due_date:    document.getElementById('taskDueDate').value || null
       };
@@ -1099,14 +1306,17 @@
 
       if (e.key === 'Escape') {
         // Close whichever layer is topmost
-        const confirmModal = document.getElementById('confirmModal');
-        const taskModal    = document.getElementById('taskModal');
-        const drawer       = document.getElementById('commentsDrawer');
+        const confirmModal  = document.getElementById('confirmModal');
+        const taskModal     = document.getElementById('taskModal');
+        const detailDrawer  = document.getElementById('taskDetailDrawer');
+        const drawer        = document.getElementById('commentsDrawer');
         if (confirmModal.style.display === 'flex') {
           confirmModal.style.display = 'none';
           document.getElementById('confirmCancel').click();
         } else if (taskModal.style.display === 'flex') {
           closeTaskModal();
+        } else if (detailDrawer.classList.contains('open')) {
+          closeTaskDetail();
         } else if (drawer.classList.contains('open')) {
           closeComments();
         }
