@@ -586,6 +586,50 @@ app.get('/api/tasks/:id', authenticateToken, (req, res) => {
   });
 });
 
+// ── Task description sanitizer ──
+// Strips the most obvious XSS vectors from HTML task descriptions while
+// deliberately NOT accounting for jQuery's htmlPrefilter() mutation.
+//
+// What it catches:
+//   <img src=x onerror=alert(1)>              → onerror stripped → inert
+//   <svg onload=alert(1)>                     → onload stripped → inert
+//   <a href="javascript:alert(1)">click</a>   → href stripped → inert
+//   <script>alert(1)</script>                 → tag stripped entirely
+//
+// What it intentionally misses — the CVE-2020-11022 bypass:
+//   <style><style/><img src=x onerror=alert(1)>
+//
+//   The sanitizer sees this as an opening <style> tag followed by content
+//   it treats as a style block. The <img onerror> sits inside what looks
+//   like a style rule — the sanitizer's regex never matches it as a tag
+//   with an event handler because it's reading raw string, not parsed DOM.
+//
+//   jQuery's htmlPrefilter() then rewrites <style/> → <style></style>
+//   on the client before DOM insertion, closing the style block early and
+//   promoting the <img onerror> into the live DOM as an executable element.
+//
+//   The key insight: the sanitizer evaluates the string as text.
+//   jQuery evaluates it as a tag tree after mutation. They disagree on
+//   what the string means — and the attacker exploits that disagreement.
+function sanitizeDescription(html) {
+  if (!html) return html;
+
+  // 1. Strip <script> blocks entirely
+  html = html.replace(/<script[\s\S]*?<\/script>/gi, '');
+
+  // 2. Strip event handler attributes (onerror, onload, onclick, etc.)
+  //    Matches: on<word> = "..." or on<word> = '...' or on<word>=value
+  html = html.replace(/\s+on\w+\s*=\s*"[^"]*"/gi, '');
+  html = html.replace(/\s+on\w+\s*=\s*'[^']*'/gi, '');
+  html = html.replace(/\s+on\w+\s*=\s*[^\s>]*/gi, '');
+
+  // 3. Strip javascript: and data: URIs from href/src/action attributes
+  html = html.replace(/(href|src|action)\s*=\s*["']?\s*javascript:[^"'\s>]*/gi, '');
+  html = html.replace(/(href|src|action)\s*=\s*["']?\s*data:[^"'\s>]*/gi, '');
+
+  return html;
+}
+
 app.post('/api/tasks', authenticateToken, resolveWorkspace, (req, res) => {
   const { title, description, priority, due_date } = req.body;
   if (!title) return res.status(400).json({ error: 'Title is required' });
@@ -593,7 +637,7 @@ app.post('/api/tasks', authenticateToken, resolveWorkspace, (req, res) => {
   const taskPriority = validPriorities.includes(priority) ? priority : 'medium';
   db.run(
     'INSERT INTO tasks (user_id, workspace_id, title, description, priority, due_date) VALUES (?, ?, ?, ?, ?, ?)',
-    [req.user.id, req.workspaceId, title, description || '', taskPriority, due_date || null],
+    [req.user.id, req.workspaceId, title, sanitizeDescription(description) || '', taskPriority, due_date || null],
     function(err) {
       if (err) return res.status(500).json({ error: 'Failed to create task' });
       res.json({ id: this.lastID, message: 'Task created successfully' });
@@ -609,7 +653,7 @@ app.put('/api/tasks/:id', authenticateToken, (req, res) => {
     const updates = [];
     const params = [];
     if (title !== undefined) { updates.push('title = ?'); params.push(title); }
-    if (description !== undefined) { updates.push('description = ?'); params.push(description); }
+    if (description !== undefined) { updates.push('description = ?'); params.push(sanitizeDescription(description)); }
     if (priority !== undefined) {
       if (['low', 'medium', 'high'].includes(priority)) { updates.push('priority = ?'); params.push(priority); }
     }
