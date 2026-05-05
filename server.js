@@ -82,22 +82,6 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.use((req, res, next) => {
-  res.setHeader(
-    'Content-Security-Policy',
-    [
-      "default-src 'self'",
-      "script-src 'self' https://code.jquery.com https://cdn.jsdelivr.net",
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "font-src 'self' https://fonts.gstatic.com",
-      "img-src 'self' data:",
-      "connect-src 'self' wss://entityy.site ws://entityy.site",
-      "object-src 'none'",
-    ].join('; ')
-  );
-  next();
-});
-
 // Database setup
 const db = new sqlite3.Database('./todoer.db', (err) => {
   if (err) console.error('Database connection error:', err);
