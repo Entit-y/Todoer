@@ -82,6 +82,22 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
+app.use((req, res, next) => {
+  res.setHeader(
+    'Content-Security-Policy',
+    [
+      "default-src 'self'",
+      "script-src 'self' https://code.jquery.com https://cdn.jsdelivr.net",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "font-src 'self' https://fonts.gstatic.com",
+      "img-src 'self' data:",
+      "connect-src 'self' wss://entityy.site ws://entityy.site",
+      "object-src 'none'",
+    ].join('; ')
+  );
+  next();
+});
+
 // Database setup
 const db = new sqlite3.Database('./todoer.db', (err) => {
   if (err) console.error('Database connection error:', err);
@@ -242,8 +258,6 @@ db.serialize(() => {
   db.run(`ALTER TABLE files ADD COLUMN workspace_id INTEGER REFERENCES workspaces(id) ON DELETE CASCADE`, () => {});
 
   // User preferences — stores per-user JSON blobs (filter state, UI prefs etc.)
-  // VULNERABLE: value column stores raw JSON, deserialized client-side via
-  // $.extend(true, defaults, prefs) — CVE-2019-11358 prototype pollution surface
   db.run(`CREATE TABLE IF NOT EXISTS user_preferences (
     user_id   INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     value     TEXT NOT NULL DEFAULT '{}'
@@ -596,23 +610,6 @@ app.get('/api/tasks/:id', authenticateToken, (req, res) => {
 
 // ============ PREFERENCES ROUTES ============
 // Stores per-user UI preferences (filter state, sort order, etc.) as raw JSON.
-//
-// VULNERABLE by design — CVE-2019-11358 (jQuery < 3.4.0 prototype pollution):
-// The client merges server preferences into defaults via:
-//   $.extend(true, defaultFilters, serverPreferences)
-//
-// If an attacker POSTs {"__proto__": {"tagNameCheck": /.*/, "attributeNameCheck": /.*/}}
-// as their preferences, jQuery's deep merge walks into __proto__ and assigns
-// those properties directly onto Object.prototype — poisoning every object
-// in the page session.
-//
-// This then triggers CVE-2026-41238 (DOMPurify 3.0.1-3.3.3):
-// DOMPurify's CUSTOM_ELEMENT_HANDLING config falls back to {} which inherits
-// from the now-polluted Object.prototype, causing DOMPurify to permit any
-// custom element and event handler through sanitization.
-//
-// Payload stored here → returned to client → $.extend poisons prototype →
-// DOMPurify bypassed → <x-pwned onfocus=alert(document.cookie) autofocus> fires
 
 app.get('/api/preferences', authenticateToken, (req, res) => {
   db.get('SELECT value FROM user_preferences WHERE user_id = ?', [req.user.id], (err, row) => {
@@ -623,7 +620,6 @@ app.get('/api/preferences', authenticateToken, (req, res) => {
 });
 
 app.post('/api/preferences', authenticateToken, (req, res) => {
-  // Raw body stored without sanitization — __proto__ keys survive JSON.stringify
   const value = JSON.stringify(req.body);
   db.run(
     'INSERT OR REPLACE INTO user_preferences (user_id, value) VALUES (?, ?)',
