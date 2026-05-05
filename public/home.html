@@ -6,7 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tasks — Todoer</title>
   <link rel="stylesheet" href="/styles.css">
-  <script src="https://cdn.ckeditor.com/4.16.0/standard/ckeditor.js"></script>
   <style>
     /* ── Toast ── */
     .toast {
@@ -359,13 +358,6 @@
       box-shadow: 0 0 0 3px var(--accent-dim);
       outline: none;
     }
-    /* ── CKEditor container ── */
-    .cke_chrome { border-radius: var(--radius-sm) !important; border-color: var(--border) !important; }
-    .cke_top, .cke_bottom { background: var(--surface-2) !important; border-color: var(--border) !important; }
-    .cke_editable { background: var(--surface) !important; color: var(--text-1) !important; font-family: var(--font) !important; font-size: 13.5px !important; min-height: 120px; }
-    .cke_combo_text, .cke_button_label, .cke_toolbar_separator { color: var(--text-2) !important; }
-    [data-theme="light"] .cke_editable { background: #fff !important; color: #111 !important; }
-
     /* ── Rich description on task cards ── */
     .task-description-rich {
       font-size: 12.5px; color: var(--text-2);
@@ -729,71 +721,6 @@
     // ── CKEditor 4.16.0 init ──
     // Pinned to vulnerable version — CVE-2021-33829
     // Payload: Xss<!--{cke_protected}--!><img src=1 onerror=alert(document.cookie)> -->Attack
-    let editor = null;
-    function initEditor() {
-      if (editor) { try { editor.destroy(); } catch {} }
-      editor = CKEDITOR.replace('taskDescription', {
-        versionCheck: false, // suppress upgrade nag — intentionally pinned to vulnerable version
-        toolbar: [
-          { name: 'basicstyles', items: ['Bold','Italic','Underline','Strike','-','RemoveFormat'] },
-          { name: 'paragraph',   items: ['NumberedList','BulletedList','-','Blockquote'] },
-          { name: 'links',       items: ['Link','Unlink'] },
-          { name: 'insert',      items: ['HorizontalRule'] },
-          { name: 'styles',      items: ['Format'] },
-          { name: 'source',      items: ['Source'] }
-        ],
-        height: 160,
-        removePlugins: 'elementspath,resize',
-        skin: 'moono-lisa',
-        contentsCss: `
-          body {
-            font-family: 'Sora', 'Inter', sans-serif;
-            font-size: 13.5px;
-            color: #c9d1d9;
-            background: #161b22;
-            margin: 8px 12px;
-            line-height: 1.6;
-          }
-          p { margin: 0 0 6px; }
-          ul, ol { padding-left: 18px; margin: 0 0 6px; }
-          a { color: #58a6ff; }
-        `
-      });
-
-      // Dark-theme the toolbar chrome once the editor iframe is ready
-      editor.on('instanceReady', function() {
-        // Inject dark styles into the editor's parent DOM (the CKEditor chrome lives outside the iframe)
-        const editorEl = document.getElementById(editor.id);
-        if (!editorEl) return;
-        const wrap = editorEl.closest('.cke');
-        if (!wrap) return;
-        const style = document.createElement('style');
-        style.textContent = `
-          .cke_chrome       { border-color: #30363d !important; border-radius: 6px !important; overflow: hidden; }
-          .cke_top          { background: #161b22 !important; border-bottom: 1px solid #30363d !important; }
-          .cke_bottom       { background: #161b22 !important; border-top: 1px solid #30363d !important; }
-          .cke_inner        { background: #0d1117 !important; }
-          .cke_contents     { background: #161b22 !important; }
-          .cke_button       { border-radius: 4px !important; }
-          .cke_button:hover { background: #21262d !important; }
-          .cke_button_on    { background: #1f6feb !important; }
-          .cke_button__source_label,
-          .cke_button_label { color: #8b949e !important; }
-          .cke_combo_text   { color: #8b949e !important; background: transparent !important; }
-          .cke_combo_button { background: transparent !important; border-color: #30363d !important; }
-          .cke_combo_button:hover { background: #21262d !important; }
-          .cke_toolbar_separator { background: #30363d !important; }
-          .cke_path         { background: #161b22 !important; }
-          .cke_path_item,
-          .cke_path_empty   { color: #8b949e !important; }
-          .cke_wysiwyg_frame,
-          .cke_wysiwyg_div  { background: #161b22 !important; }
-          .cke_source       { background: #0d1117 !important; color: #c9d1d9 !important; font-family: 'JetBrains Mono', monospace !important; font-size: 12.5px !important; border: none !important; }
-        `;
-        document.head.appendChild(style);
-      });
-    }
-
     // ── Task detail drawer ──
     function openTaskDetail(id) {
       const task = tasks.find(t => t.id === id);
@@ -1240,21 +1167,15 @@
       document.getElementById('taskModal').style.display = 'flex';
       requestAnimationFrame(() => {
         document.getElementById('taskTitle').focus();
-        initEditor();
-        // Populate editor after it's ready
         if (task && task.description) {
-          const setData = () => {
-            if (editor && editor.status === 'ready') { editor.setData(task.description); }
-            else { setTimeout(setData, 50); }
-          };
-          setData();
+          document.getElementById('taskDescription').value = task.description;
         }
       });
     }
 
     function closeTaskModal() {
       document.getElementById('taskModal').style.display = 'none';
-      if (editor) { try { editor.destroy(); editor = null; } catch {} }
+      document.getElementById('taskDescription').value = '';
     }
     async function editTask(id) { const task = tasks.find(t => t.id === id); if (task) showTaskModal(task); }
 
@@ -1311,7 +1232,7 @@
       submitBtn.textContent = 'Saving…';
       const data = {
         title:       document.getElementById('taskTitle').value,
-        description: editor ? editor.getData() : document.getElementById('taskDescription').value,
+        description: document.getElementById('taskDescription').value,
         priority:    document.getElementById('taskPriority').value,
         due_date:    document.getElementById('taskDueDate').value || null
       };
