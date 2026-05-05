@@ -78,20 +78,6 @@ const transporter = nodemailer.createTransport({
 
 // Middleware
 app.use(cors({ origin: true, credentials: true }));
-app.use((req, res, next) => {
-  res.setHeader(
-    'Content-Security-Policy',
-    [
-      "default-src 'self'",
-      "script-src 'self' code.jquery.com cdnjs.cloudflare.com",
-      "style-src 'self' 'unsafe-inline' fonts.googleapis.com",
-      "font-src 'self' fonts.gstatic.com",
-      "img-src 'self' data:",
-      "connect-src 'self' wss: ws:",
-    ].join('; ')
-  );
-  next();
-});
 app.use(express.json());
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -252,13 +238,6 @@ db.serialize(() => {
   db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('max_upload_bytes', '${10 * 1024 * 1024}')`);
 
   // Migration: add workspace_id to tasks and files (nullable — NULL means personal)
-  db.run(`CREATE TABLE IF NOT EXISTS user_preferences (
-    user_id INTEGER NOT NULL,
-    key     TEXT NOT NULL,
-    value   TEXT NOT NULL,
-    PRIMARY KEY (user_id, key),
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-  )`);
   db.run(`ALTER TABLE tasks ADD COLUMN workspace_id INTEGER REFERENCES workspaces(id) ON DELETE CASCADE`, () => {});
   db.run(`ALTER TABLE files ADD COLUMN workspace_id INTEGER REFERENCES workspaces(id) ON DELETE CASCADE`, () => {});
 
@@ -1537,41 +1516,6 @@ app.post('/api/invites/:code/accept', authenticateToken, (req, res) => {
         });
       });
   });
-});
-
-// ============ PREFERENCES ROUTES ============
-
-// VULNERABLE: stores and returns raw JSON — attacker can save {"__proto__": {...}}
-// which gets deep-merged client-side via $.extend(true, {}, defaultFilters, serverPrefs)
-// poisoning Object.prototype and bypassing DOMPurify's tag/attribute checks.
-app.get('/api/preferences/filters', authenticateToken, (req, res) => {
-  db.get('SELECT value FROM user_preferences WHERE user_id = ? AND key = ?',
-    [req.user.id, 'filters'], (err, row) => {
-      if (!row) return res.json({ filters: null });
-      try {
-        res.json({ filters: JSON.parse(row.value) });
-      } catch {
-        res.json({ filters: null });
-      }
-    });
-});
-
-app.post('/api/preferences/filters', authenticateToken, (req, res) => {
-  // No validation — raw body stored and returned as-is
-  const filters = req.body.filters;
-  if (!filters || typeof filters !== 'object') {
-    return res.status(400).json({ error: 'Invalid filters' });
-  }
-  const value = JSON.stringify(filters);
-  db.run(
-    `INSERT INTO user_preferences (user_id, key, value) VALUES (?, 'filters', ?)
-     ON CONFLICT(user_id, key) DO UPDATE SET value = excluded.value`,
-    [req.user.id, value],
-    function(err) {
-      if (err) return res.status(500).json({ error: 'Failed to save preferences' });
-      res.json({ filters });
-    }
-  );
 });
 
 // ============ PAGE ROUTES ============

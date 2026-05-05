@@ -8,7 +8,6 @@
   <link rel="stylesheet" href="/styles.css">
   <script src="https://code.jquery.com/jquery-3.3.1.min.js" crossorigin="anonymous"></script>
   <meta name="generator" content="jQuery 3.3.1">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js" crossorigin="anonymous"></script>
   <style>
     /* ── Toast ── */
     .toast {
@@ -434,45 +433,6 @@
     .ws-context-banner strong { color: var(--text-1); }
     .ws-context-banner a { margin-left: auto; font-size: 11.5px; color: var(--text-3); text-decoration: none; }
     .ws-context-banner a:hover { color: var(--text-1); }
-
-    /* ── Preferences panel ── */
-    .prefs-wrap { position: relative; }
-    .prefs-btn {
-      display: flex; align-items: center; justify-content: center;
-      width: 30px; height: 30px;
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--radius-sm); color: var(--text-3);
-      cursor: pointer; transition: color 0.15s, border-color 0.15s;
-      flex-shrink: 0;
-    }
-    .prefs-btn:hover, .prefs-btn.active { color: var(--text-1); border-color: var(--border-light); }
-    .prefs-panel {
-      display: none; position: absolute; right: 0; top: calc(100% + 6px);
-      width: 230px; background: var(--surface);
-      border: 1px solid var(--border-light); border-radius: var(--radius-md);
-      box-shadow: var(--shadow-lg); z-index: 200; padding: 14px;
-      animation: modal-in 0.14s ease;
-    }
-    .prefs-panel.open { display: block; }
-    .prefs-panel-title {
-      font-size: 11px; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 0.07em; color: var(--text-3); margin-bottom: 12px;
-    }
-    .prefs-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-    .prefs-row:last-of-type { margin-bottom: 14px; }
-    .prefs-label { font-size: 12.5px; color: var(--text-2); }
-    .prefs-val { font-size: 12px; color: var(--text-3); font-style: italic; }
-    .prefs-save-btn {
-      width: 100%; padding: 7px; font-size: 12.5px; font-weight: 600;
-      background: var(--accent); color: var(--accent-text); border: none;
-      border-radius: var(--radius-sm); cursor: pointer;
-      transition: background 0.15s;
-    }
-    .prefs-save-btn:hover { background: var(--accent-hover); }
-    .prefs-saved-hint {
-      text-align: center; font-size: 11.5px; color: #22c55e;
-      margin-top: 8px; display: none;
-    }
   </style>
 </head>
 <body>
@@ -598,44 +558,6 @@
             <option value="priority">By priority</option>
             <option value="due_date">By due date</option>
           </select>
-        </div>
-        <div class="prefs-wrap" id="prefsWrap">
-          <button class="prefs-btn" id="prefsBtn" onclick="togglePrefs()" title="Save view preferences">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-            </svg>
-          </button>
-          <div class="prefs-panel" id="prefsPanel">
-            <div class="prefs-panel-title">Default view</div>
-            <div class="prefs-row">
-              <span class="prefs-label">Priority</span>
-              <select id="prefPriority" class="filter-select" style="font-size:12px;padding:3px 6px;">
-                <option value="all">All</option>
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
-              </select>
-            </div>
-            <div class="prefs-row">
-              <span class="prefs-label">Status</span>
-              <select id="prefStatus" class="filter-select" style="font-size:12px;padding:3px 6px;">
-                <option value="">All</option>
-                <option value="false">Pending</option>
-                <option value="true">Completed</option>
-              </select>
-            </div>
-            <div class="prefs-row">
-              <span class="prefs-label">Sort</span>
-              <select id="prefSort" class="filter-select" style="font-size:12px;padding:3px 6px;">
-                <option value="newest">Newest</option>
-                <option value="oldest">Oldest</option>
-                <option value="priority">Priority</option>
-                <option value="due_date">Due date</option>
-              </select>
-            </div>
-            <button class="prefs-save-btn" onclick="savePrefs()">Save as default</button>
-            <div class="prefs-saved-hint" id="prefsSavedHint">✓ Saved</div>
-          </div>
         </div>
       </div>
 
@@ -798,6 +720,26 @@
     let ws = null;
     let wsActive = true;
 
+    // ── CVE-2020-11022 (jQuery < 3.5.0) ──
+    // jQuery's htmlPrefilter() regex transforms self-closing tags before DOM insertion:
+    //   rxhtmlTag matches e.g. <style/> and rewrites it to <style></style>
+    // This closes the style block early, promoting subsequent content out of it
+    // and into the live DOM as executable HTML — even though the raw string
+    // looks like one continuous style block to a human reader.
+    //
+    // Payload:  <style><style/><img src=x onerror=alert(document.cookie)>
+    //
+    // What the browser receives after jQuery mutates it:
+    //   <style><style></style><img src=x onerror=alert(document.cookie)>
+    //   ^^^^^^^^^^^^^^^^^^^^^^  ← jQuery closed this, breaking out of style
+    //
+    // A plain innerHTML call with the same string would NOT fire —
+    // the browser parses <style/> as an unclosed tag and keeps everything
+    // inside the style block. The exploit is jQuery-specific.
+    //
+    // Render surfaces: renderTasks() → $('[data-task-id]').html()
+    //                  openTaskDetail() → $(descEl).html()
+
     // ── Task detail drawer ──
     function openTaskDetail(id) {
       const task = tasks.find(t => t.id === id);
@@ -816,10 +758,12 @@
         ${dueTs ? `<span style="font-size:12px;color:${isOverdue ? 'var(--danger)' : 'var(--text-3)'};">Due ${formatDate(task.due_date)}</span>` : ''}
       `;
 
+      // Description — routed through jQuery $.html() so htmlPrefilter() mutates
+      // the string before insertion. This is the CVE-2020-11022 render surface.
       const descSection = document.getElementById('detailDescSection');
       const descEl      = document.getElementById('detailDescription');
       if (task.description) {
-        $(descEl).html(DOMPurify.sanitize(task.description));
+        $(descEl).html(task.description);
         descSection.style.display = '';
       } else {
         descSection.style.display = 'none';
@@ -1049,9 +993,13 @@
         </div>`;
       }).join('');
 
+      // Render descriptions via jQuery $.fn.html() — CVE-2020-11022
+      // htmlPrefilter() transforms <style/> → <style></style>, breaking
+      // content out of the style block into the live DOM as executable HTML.
+      // Payload: <style><style/><img src=x onerror=alert(document.cookie)>
       tasks.forEach(task => {
         if (task.description) {
-          $(`[data-task-id="${task.id}"]`).html(DOMPurify.sanitize(task.description));
+          $(`[data-task-id="${task.id}"]`).html(task.description);
         }
       });
     }
@@ -1397,81 +1345,8 @@
       return formatDate(s);
     }
 
-    // ── Filter preferences ($.extend deep-merge — CVE-2019-11358 gadget) ──
-    const defaultFilters = { priority: 'all', status: '', sort: 'newest' };
-
-    function togglePrefs() {
-      const panel = document.getElementById('prefsPanel');
-      const btn   = document.getElementById('prefsBtn');
-      const open  = panel.classList.toggle('open');
-      btn.classList.toggle('active', open);
-      if (open) {
-        // Pre-fill selects with current active values
-        document.getElementById('prefPriority').value = document.getElementById('priorityFilter').value;
-        document.getElementById('prefStatus').value   = document.getElementById('statusFilter').value;
-        document.getElementById('prefSort').value     = document.getElementById('sortBy').value;
-        document.getElementById('prefsSavedHint').style.display = 'none';
-      }
-    }
-
-    // Close prefs panel when clicking outside
-    document.addEventListener('click', e => {
-      const wrap = document.getElementById('prefsWrap');
-      if (wrap && !wrap.contains(e.target)) {
-        document.getElementById('prefsPanel').classList.remove('open');
-        document.getElementById('prefsBtn').classList.remove('active');
-      }
-    });
-
-    async function savePrefs() {
-      const prefs = {
-        filters: {
-          priority: document.getElementById('prefPriority').value,
-          status:   document.getElementById('prefStatus').value,
-          sort:     document.getElementById('prefSort').value,
-        }
-      };
-      try {
-        await apiFetch('/api/preferences', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(prefs)
-        });
-        const hint = document.getElementById('prefsSavedHint');
-        hint.style.display = 'block';
-        setTimeout(() => {
-          hint.style.display = 'none';
-          document.getElementById('prefsPanel').classList.remove('open');
-          document.getElementById('prefsBtn').classList.remove('active');
-        }, 1200);
-      } catch {
-        showToast('Failed to save preferences.', 'error');
-      }
-    }
-
-    function applyPrefs(serverPrefs) {
-      // Deep-merge server response into defaults via jQuery.
-      // VULNERABLE: $.extend(true, ...) with attacker-controlled serverPrefs
-      // allows prototype pollution via {"__proto__": {...}} key in JSON payload.
-      const merged = $.extend(true, {}, defaultFilters, serverPrefs.filters || {});
-      document.getElementById('priorityFilter').value = merged.priority || 'all';
-      document.getElementById('statusFilter').value   = merged.status   || '';
-      document.getElementById('sortBy').value         = merged.sort     || 'newest';
-    }
-
-    async function loadPrefs() {
-      try {
-        const r = await apiFetch('/api/preferences');
-        if (r.ok) {
-          const data = await r.json();
-          if (data && Object.keys(data).length) applyPrefs(data);
-        }
-      } catch { /* no saved prefs, use defaults */ }
-      loadTasks();
-    }
-
     initWorkspaceBanner();
-    checkAuth().then(() => { loadPrefs(); connectWS(); });
+    checkAuth().then(() => { loadTasks(); connectWS(); });
   </script>
 </body>
 </html>
