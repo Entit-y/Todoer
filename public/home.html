@@ -8,6 +8,8 @@
   <link rel="stylesheet" href="/styles.css">
   <script src="https://code.jquery.com/jquery-3.3.1.min.js" crossorigin="anonymous"></script>
   <meta name="generator" content="jQuery 3.3.1">
+  <!-- DOMPurify — sanitize user-supplied HTML in task descriptions -->
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.1/dist/purify.min.js" crossorigin="anonymous"></script>
   <style>
     /* ── Toast ── */
     .toast {
@@ -360,12 +362,11 @@
       box-shadow: 0 0 0 3px var(--accent-dim);
       outline: none;
     }
-    /* ── Rich description on task cards ── */
+    /* Rich description — supports basic HTML formatting */
     .task-description-rich {
       font-size: 12.5px; color: var(--text-2);
       margin: 4px 0 6px; line-height: 1.55;
       max-height: 48px; overflow: hidden;
-    /* Rich description rendered via jQuery $.html() — CVE-2020-11022 XSS surface */
     }
     .task-description-rich p  { margin: 0; }
     .task-description-rich ul,
@@ -404,7 +405,7 @@
       font-size: 10.5px; font-weight: 600; text-transform: uppercase;
       letter-spacing: 0.06em; color: var(--text-3); margin-bottom: 8px;
     }
-    /* Rich HTML description rendered in drawer — jQuery $.html() XSS surface (CVE-2020-11022) */
+    /* Task detail description — supports rich HTML formatting */
     .task-detail-description {
       font-size: 13.5px; color: var(--text-2); line-height: 1.65;
       background: var(--surface-2); border: 1px solid var(--border);
@@ -433,6 +434,45 @@
     .ws-context-banner strong { color: var(--text-1); }
     .ws-context-banner a { margin-left: auto; font-size: 11.5px; color: var(--text-3); text-decoration: none; }
     .ws-context-banner a:hover { color: var(--text-1); }
+
+    /* ── Preferences panel ── */
+    .prefs-wrap { position: relative; }
+    .prefs-btn {
+      display: flex; align-items: center; justify-content: center;
+      width: 30px; height: 30px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); color: var(--text-3);
+      cursor: pointer; transition: color 0.15s, border-color 0.15s;
+      flex-shrink: 0;
+    }
+    .prefs-btn:hover, .prefs-btn.active { color: var(--text-1); border-color: var(--border-light); }
+    .prefs-panel {
+      display: none; position: absolute; right: 0; top: calc(100% + 6px);
+      width: 230px; background: var(--surface);
+      border: 1px solid var(--border-light); border-radius: var(--radius-md);
+      box-shadow: var(--shadow-lg); z-index: 200; padding: 14px;
+      animation: modal-in 0.14s ease;
+    }
+    .prefs-panel.open { display: block; }
+    .prefs-panel-title {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.07em; color: var(--text-3); margin-bottom: 12px;
+    }
+    .prefs-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .prefs-row:last-of-type { margin-bottom: 14px; }
+    .prefs-label { font-size: 12.5px; color: var(--text-2); }
+    .prefs-val { font-size: 12px; color: var(--text-3); font-style: italic; }
+    .prefs-save-btn {
+      width: 100%; padding: 7px; font-size: 12.5px; font-weight: 600;
+      background: var(--accent); color: var(--accent-text); border: none;
+      border-radius: var(--radius-sm); cursor: pointer;
+      transition: background 0.15s;
+    }
+    .prefs-save-btn:hover { background: var(--accent-hover); }
+    .prefs-saved-hint {
+      text-align: center; font-size: 11.5px; color: #22c55e;
+      margin-top: 8px; display: none;
+    }
   </style>
 </head>
 <body>
@@ -559,6 +599,33 @@
             <option value="due_date">By due date</option>
           </select>
         </div>
+        <div class="filter-divider"></div>
+        <!-- View preferences — saves current filter state as defaults via $.extend merge -->
+        <div class="prefs-wrap" id="prefsWrap">
+          <button class="prefs-btn" id="prefsBtn" title="Save view preferences" onclick="togglePrefsPanel()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
+            </svg>
+          </button>
+          <div class="prefs-panel" id="prefsPanel">
+            <div class="prefs-panel-title">View preferences</div>
+            <div class="prefs-row">
+              <span class="prefs-label">Priority</span>
+              <span class="prefs-val" id="prefsPriorityVal">—</span>
+            </div>
+            <div class="prefs-row">
+              <span class="prefs-label">Status</span>
+              <span class="prefs-val" id="prefsStatusVal">—</span>
+            </div>
+            <div class="prefs-row">
+              <span class="prefs-label">Sort</span>
+              <span class="prefs-val" id="prefsSortVal">—</span>
+            </div>
+            <button class="prefs-save-btn" onclick="savePreferences()">Save as default</button>
+            <div class="prefs-saved-hint" id="prefsSavedHint">Saved!</div>
+          </div>
+        </div>
       </div>
 
       <div id="tasksList" class="tasks-list"></div>
@@ -643,7 +710,7 @@
     <div class="task-detail-body">
       <div class="task-detail-section" id="detailDescSection">
         <div class="task-detail-section-label">Description</div>
-        <!-- innerHTML for title/meta only; description rendered via jQuery $.html() — CVE-2020-11022 -->
+        <!-- description rendered via jQuery for rich HTML support -->
         <div class="task-detail-description" id="detailDescription"></div>
       </div>
       <div class="task-detail-section">
@@ -720,26 +787,6 @@
     let ws = null;
     let wsActive = true;
 
-    // ── CVE-2020-11022 (jQuery < 3.5.0) ──
-    // jQuery's htmlPrefilter() regex transforms self-closing tags before DOM insertion:
-    //   rxhtmlTag matches e.g. <style/> and rewrites it to <style></style>
-    // This closes the style block early, promoting subsequent content out of it
-    // and into the live DOM as executable HTML — even though the raw string
-    // looks like one continuous style block to a human reader.
-    //
-    // Payload:  <style><style/><img src=x onerror=alert(document.cookie)>
-    //
-    // What the browser receives after jQuery mutates it:
-    //   <style><style></style><img src=x onerror=alert(document.cookie)>
-    //   ^^^^^^^^^^^^^^^^^^^^^^  ← jQuery closed this, breaking out of style
-    //
-    // A plain innerHTML call with the same string would NOT fire —
-    // the browser parses <style/> as an unclosed tag and keeps everything
-    // inside the style block. The exploit is jQuery-specific.
-    //
-    // Render surfaces: renderTasks() → $('[data-task-id]').html()
-    //                  openTaskDetail() → $(descEl).html()
-
     // ── Task detail drawer ──
     function openTaskDetail(id) {
       const task = tasks.find(t => t.id === id);
@@ -758,12 +805,11 @@
         ${dueTs ? `<span style="font-size:12px;color:${isOverdue ? 'var(--danger)' : 'var(--text-3)'};">Due ${formatDate(task.due_date)}</span>` : ''}
       `;
 
-      // Description — routed through jQuery $.html() so htmlPrefilter() mutates
-      // the string before insertion. This is the CVE-2020-11022 render surface.
+      // Description — render rich HTML via jQuery
       const descSection = document.getElementById('detailDescSection');
       const descEl      = document.getElementById('detailDescription');
       if (task.description) {
-        $(descEl).html(task.description);
+        $(descEl).html(DOMPurify.sanitize(task.description));
         descSection.style.display = '';
       } else {
         descSection.style.display = 'none';
@@ -882,7 +928,6 @@
         sidebarAv.style.background = avatarColor(key);
         sidebarAv.style.border = 'none';
         document.getElementById('sidebarEmail').textContent = data.user.email;
-        // VULNERABLE: innerHTML — stored XSS if username is a payload
         if (data.user.username) {
           document.getElementById('sidebarName').innerHTML = '@' + data.user.username;
         } else {
@@ -993,13 +1038,10 @@
         </div>`;
       }).join('');
 
-      // Render descriptions via jQuery $.fn.html() — CVE-2020-11022
-      // htmlPrefilter() transforms <style/> → <style></style>, breaking
-      // content out of the style block into the live DOM as executable HTML.
-      // Payload: <style><style/><img src=x onerror=alert(document.cookie)>
+      // Render rich HTML descriptions — sanitize before insertion
       tasks.forEach(task => {
         if (task.description) {
-          $(`[data-task-id="${task.id}"]`).html(task.description);
+          $(`[data-task-id="${task.id}"]`).html(DOMPurify.sanitize(task.description));
         }
       });
     }
@@ -1345,8 +1387,88 @@
       return formatDate(s);
     }
 
+    // ── View preferences ──
+    // Default filter state — merged with server prefs on load
+    const defaultFilters = { priority: 'all', status: '', sort: 'newest' };
+
+    // Fetches saved preferences and applies them to the filter controls.
+    // Uses jQuery deep extend to merge server prefs over the defaults.
+    async function loadPreferences() {
+      try {
+        const r = await fetch('/api/preferences');
+        if (!r.ok) return;
+        const serverPrefs = await r.json();
+        const merged = $.extend(true, {}, defaultFilters, serverPrefs);
+        const priorityEl = document.getElementById('priorityFilter');
+        const statusEl   = document.getElementById('statusFilter');
+        const sortEl     = document.getElementById('sortBy');
+        if (merged.priority && priorityEl) priorityEl.value = merged.priority;
+        if (merged.status   !== undefined && statusEl) statusEl.value = merged.status;
+        if (merged.sort     && sortEl) sortEl.value = merged.sort;
+      } catch (e) {
+        console.warn('Could not load preferences:', e);
+      }
+    }
+
+    async function savePreferences() {
+      const prefs = {
+        priority: document.getElementById('priorityFilter').value,
+        status:   document.getElementById('statusFilter').value,
+        sort:     document.getElementById('sortBy').value
+      };
+      try {
+        await fetch('/api/preferences', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(prefs)
+        });
+        const hint = document.getElementById('prefsSavedHint');
+        hint.style.display = 'block';
+        setTimeout(() => { hint.style.display = 'none'; closePrefsPanel(); }, 1200);
+      } catch (e) {
+        console.error('Failed to save preferences:', e);
+      }
+    }
+
+    function updatePrefsPanelValues() {
+      const priorityEl = document.getElementById('priorityFilter');
+      const statusEl   = document.getElementById('statusFilter');
+      const sortEl     = document.getElementById('sortBy');
+      document.getElementById('prefsPriorityVal').textContent =
+        priorityEl.options[priorityEl.selectedIndex]?.text || '—';
+      document.getElementById('prefsStatusVal').textContent =
+        statusEl.options[statusEl.selectedIndex]?.text || '—';
+      document.getElementById('prefsSortVal').textContent =
+        sortEl.options[sortEl.selectedIndex]?.text || '—';
+    }
+
+    function togglePrefsPanel() {
+      const panel = document.getElementById('prefsPanel');
+      const btn   = document.getElementById('prefsBtn');
+      const isOpen = panel.classList.contains('open');
+      if (isOpen) {
+        panel.classList.remove('open');
+        btn.classList.remove('active');
+      } else {
+        updatePrefsPanelValues();
+        panel.classList.add('open');
+        btn.classList.add('active');
+      }
+    }
+
+    function closePrefsPanel() {
+      document.getElementById('prefsPanel').classList.remove('open');
+      document.getElementById('prefsBtn').classList.remove('active');
+    }
+
+    // Close preferences panel on outside click
+    document.addEventListener('click', (e) => {
+      const wrap = document.getElementById('prefsWrap');
+      if (wrap && !wrap.contains(e.target)) closePrefsPanel();
+    });
+
     initWorkspaceBanner();
-    checkAuth().then(() => { loadTasks(); connectWS(); });
+    checkAuth().then(() => { loadPreferences().then(() => loadTasks()); connectWS(); });
   </script>
 </body>
 </html>
