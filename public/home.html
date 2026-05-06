@@ -6,9 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tasks — Todoer</title>
   <link rel="stylesheet" href="/styles.css">
-  <script src="/vendor/jquery-3.3.1.min.js"></script>
-  <meta name="generator" content="jQuery 3.3.1">
-  <script src="/vendor/purify-3.1.1.min.js"></script>
+  <!-- Handlebars 4.5.3 — template engine for task descriptions with cross-task references -->
+  <script src="https://cdn.jsdelivr.net/npm/handlebars@4.5.3/dist/handlebars.min.js" crossorigin="anonymous"></script>
   <style>
     /* ── Toast ── */
     .toast {
@@ -434,44 +433,6 @@
     .ws-context-banner a { margin-left: auto; font-size: 11.5px; color: var(--text-3); text-decoration: none; }
     .ws-context-banner a:hover { color: var(--text-1); }
 
-    /* ── Preferences panel ── */
-    .prefs-wrap { position: relative; }
-    .prefs-btn {
-      display: flex; align-items: center; justify-content: center;
-      width: 30px; height: 30px;
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--radius-sm); color: var(--text-3);
-      cursor: pointer; transition: color 0.15s, border-color 0.15s;
-      flex-shrink: 0;
-    }
-    .prefs-btn:hover, .prefs-btn.active { color: var(--text-1); border-color: var(--border-light); }
-    .prefs-panel {
-      display: none; position: absolute; right: 0; top: calc(100% + 6px);
-      width: 230px; background: var(--surface);
-      border: 1px solid var(--border-light); border-radius: var(--radius-md);
-      box-shadow: var(--shadow-lg); z-index: 200; padding: 14px;
-      animation: modal-in 0.14s ease;
-    }
-    .prefs-panel.open { display: block; }
-    .prefs-panel-title {
-      font-size: 11px; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 0.07em; color: var(--text-3); margin-bottom: 12px;
-    }
-    .prefs-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-    .prefs-row:last-of-type { margin-bottom: 14px; }
-    .prefs-label { font-size: 12.5px; color: var(--text-2); }
-    .prefs-val { font-size: 12px; color: var(--text-3); font-style: italic; }
-    .prefs-save-btn {
-      width: 100%; padding: 7px; font-size: 12.5px; font-weight: 600;
-      background: var(--accent); color: var(--accent-text); border: none;
-      border-radius: var(--radius-sm); cursor: pointer;
-      transition: background 0.15s;
-    }
-    .prefs-save-btn:hover { background: var(--accent-hover); }
-    .prefs-saved-hint {
-      text-align: center; font-size: 11.5px; color: #22c55e;
-      margin-top: 8px; display: none;
-    }
   </style>
 </head>
 <body>
@@ -598,33 +559,6 @@
             <option value="due_date">By due date</option>
           </select>
         </div>
-        <div class="filter-divider"></div>
-        <!-- View preferences — saves current filter state as defaults via $.extend merge -->
-        <div class="prefs-wrap" id="prefsWrap">
-          <button class="prefs-btn" id="prefsBtn" title="Save view preferences" onclick="togglePrefsPanel()">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="3"/>
-              <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
-            </svg>
-          </button>
-          <div class="prefs-panel" id="prefsPanel">
-            <div class="prefs-panel-title">View preferences</div>
-            <div class="prefs-row">
-              <span class="prefs-label">Priority</span>
-              <span class="prefs-val" id="prefsPriorityVal">—</span>
-            </div>
-            <div class="prefs-row">
-              <span class="prefs-label">Status</span>
-              <span class="prefs-val" id="prefsStatusVal">—</span>
-            </div>
-            <div class="prefs-row">
-              <span class="prefs-label">Sort</span>
-              <span class="prefs-val" id="prefsSortVal">—</span>
-            </div>
-            <button class="prefs-save-btn" onclick="savePreferences()">Save as default</button>
-            <div class="prefs-saved-hint" id="prefsSavedHint">Saved!</div>
-          </div>
-        </div>
       </div>
 
       <div id="tasksList" class="tasks-list"></div>
@@ -668,7 +602,7 @@
         </div>
         <div class="form-group">
           <label for="taskDescription">Description</label>
-          <textarea id="taskDescription" rows="3" placeholder="Add details…"></textarea>
+          <textarea id="taskDescription" rows="3" placeholder="Add details… Use {{task.ID.title}} to reference another task."></textarea>
         </div>
         <div class="form-row">
           <div class="form-group">
@@ -709,7 +643,6 @@
     <div class="task-detail-body">
       <div class="task-detail-section" id="detailDescSection">
         <div class="task-detail-section-label">Description</div>
-        <!-- description rendered via jQuery for rich HTML support -->
         <div class="task-detail-description" id="detailDescription"></div>
       </div>
       <div class="task-detail-section">
@@ -780,6 +713,7 @@
 
   <script>
     let tasks = [];
+    let taskContextById = {};  // all tasks keyed by ID — context for {{task.ID.title}} references
     let currentUser = null;
     let activeTaskId = null;
     let activeDetailTaskId = null;
@@ -804,11 +738,11 @@
         ${dueTs ? `<span style="font-size:12px;color:${isOverdue ? 'var(--danger)' : 'var(--text-3)'};">Due ${formatDate(task.due_date)}</span>` : ''}
       `;
 
-      // Description — render rich HTML via jQuery
+      // Description — compiled as a Handlebars template so {{task.ID.title}} references resolve
       const descSection = document.getElementById('detailDescSection');
       const descEl      = document.getElementById('detailDescription');
       if (task.description) {
-        $(descEl).html(DOMPurify.sanitize(task.description));
+        descEl.innerHTML = renderDescription(task.description);
         descSection.style.display = '';
       } else {
         descSection.style.display = 'none';
@@ -1037,10 +971,11 @@
         </div>`;
       }).join('');
 
-      // Render rich HTML descriptions — sanitize before insertion
+      // Render descriptions — compiled as Handlebars templates so cross-task references resolve
       tasks.forEach(task => {
         if (task.description) {
-          $(`[data-task-id="${task.id}"]`).html(DOMPurify.sanitize(task.description));
+          const el = document.querySelector(`[data-task-id="${task.id}"]`);
+          if (el) el.innerHTML = renderDescription(task.description);
         }
       });
     }
@@ -1386,113 +1321,35 @@
       return formatDate(s);
     }
 
-// ── View preferences ──
-    // Default filter state — merged with server prefs on load
-    const defaultFilters = { priority: 'all', status: '', sort: 'newest' };
-
-    // Fetches saved preferences and applies them to the filter controls.
-    // Uses jQuery deep extend to merge server prefs over the defaults.
-    async function loadPreferences() {
+    // ── Cross-task reference context ──
+    // Fetches all accessible tasks and builds a lookup keyed by ID.
+    // Descriptions are compiled as Handlebars templates with compat:true so that
+    // {{task.42.title}} resolves the title of task 42 inline.
+    async function loadTaskContext() {
       try {
-        const r = await fetch('/api/preferences');
+        const r = await apiFetch('/api/tasks/all');
         if (!r.ok) return;
-        // Use raw text + $.parseJSON (not JSON.parse) so that if the stored value
-        // contains __proto__, jQuery constructs a real prototype reference.
-        // $.extend(true, ...) then walks into __proto__ and pollutes Object.prototype
-        // — CVE-2019-11358 gadget.
-        const raw = await r.text();
-        const serverPrefs = $.parseJSON(raw);
-        const merged = $.extend(true, {}, defaultFilters, serverPrefs);
-
-        // Reconstruct RegExp objects from serialized {source, flags} if polluted.
-        // JSON can't serialize regex directly — attacker encodes as {source, flags}
-        // and relies on this reconstruction step to produce real RegExp objects.
-        // DOMPurify's isRegexOrFunction() check requires actual RegExp, not plain {}.
-        if (Object.prototype.tagNameCheck && Object.prototype.tagNameCheck.source !== undefined) {
-          Object.prototype.tagNameCheck = new RegExp(
-            Object.prototype.tagNameCheck.source,
-            Object.prototype.tagNameCheck.flags || ''
-          );
-        }
-        if (Object.prototype.attributeNameCheck && Object.prototype.attributeNameCheck.source !== undefined) {
-          Object.prototype.attributeNameCheck = new RegExp(
-            Object.prototype.attributeNameCheck.source,
-            Object.prototype.attributeNameCheck.flags || ''
-          );
-        }
-
-        const priorityEl = document.getElementById('priorityFilter');
-        const statusEl   = document.getElementById('statusFilter');
-        const sortEl     = document.getElementById('sortBy');
-        if (merged.priority && priorityEl) priorityEl.value = merged.priority;
-        if (merged.status   !== undefined && statusEl) statusEl.value = merged.status;
-        if (merged.sort     && sortEl) sortEl.value = merged.sort;
+        const all = await r.json();
+        taskContextById = {};
+        all.forEach(t => { taskContextById[t.id] = { title: t.title, priority: t.priority, due_date: t.due_date, completed: t.completed }; });
       } catch (e) {
-        console.warn('Could not load preferences:', e);
+        console.warn('Could not load task context:', e);
       }
     }
 
-    async function savePreferences() {
-      const prefs = {
-        priority: document.getElementById('priorityFilter').value,
-        status:   document.getElementById('statusFilter').value,
-        sort:     document.getElementById('sortBy').value
-      };
+    // Compile description as a Handlebars template and render against the task context.
+    // compat:true enables depthedLookup so {{task.ID.prop}} resolves across depth levels.
+    function renderDescription(description) {
       try {
-        // Send as text/plain so the server stores verbatim without JSON.parse
-        // This preserves __proto__ keys if an attacker crafts the body directly
-        await fetch('/api/preferences', {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify(prefs)
-        });
-        const hint = document.getElementById('prefsSavedHint');
-        hint.style.display = 'block';
-        setTimeout(() => { hint.style.display = 'none'; closePrefsPanel(); }, 1200);
+        const template = Handlebars.compile(description, { compat: true });
+        return template({ task: taskContextById });
       } catch (e) {
-        console.error('Failed to save preferences:', e);
+        return escapeHtml(description);
       }
     }
-
-    function updatePrefsPanelValues() {
-      const priorityEl = document.getElementById('priorityFilter');
-      const statusEl   = document.getElementById('statusFilter');
-      const sortEl     = document.getElementById('sortBy');
-      document.getElementById('prefsPriorityVal').textContent =
-        priorityEl.options[priorityEl.selectedIndex]?.text || '—';
-      document.getElementById('prefsStatusVal').textContent =
-        statusEl.options[statusEl.selectedIndex]?.text || '—';
-      document.getElementById('prefsSortVal').textContent =
-        sortEl.options[sortEl.selectedIndex]?.text || '—';
-    }
-
-    function togglePrefsPanel() {
-      const panel = document.getElementById('prefsPanel');
-      const btn   = document.getElementById('prefsBtn');
-      const isOpen = panel.classList.contains('open');
-      if (isOpen) {
-        panel.classList.remove('open');
-        btn.classList.remove('active');
-      } else {
-        updatePrefsPanelValues();
-        panel.classList.add('open');
-        btn.classList.add('active');
-      }
-    }
-
-    function closePrefsPanel() {
-      document.getElementById('prefsPanel').classList.remove('open');
-      document.getElementById('prefsBtn').classList.remove('active');
-    }
-
-    // Close preferences panel on outside click
-    document.addEventListener('click', (e) => {
-      const wrap = document.getElementById('prefsWrap');
-      if (wrap && !wrap.contains(e.target)) closePrefsPanel();
-    });
 
     initWorkspaceBanner();
-    checkAuth().then(() => { loadPreferences().then(() => loadTasks()); connectWS(); });
+    checkAuth().then(() => { loadTaskContext(); loadTasks(); connectWS(); });
   </script>
 </body>
 </html>

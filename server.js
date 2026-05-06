@@ -240,12 +240,6 @@ db.serialize(() => {
   // Migration: add workspace_id to tasks and files (nullable — NULL means personal)
   db.run(`ALTER TABLE tasks ADD COLUMN workspace_id INTEGER REFERENCES workspaces(id) ON DELETE CASCADE`, () => {});
   db.run(`ALTER TABLE files ADD COLUMN workspace_id INTEGER REFERENCES workspaces(id) ON DELETE CASCADE`, () => {});
-
-  // User preferences — stores per-user JSON blobs (filter state, UI prefs etc.)
-  db.run(`CREATE TABLE IF NOT EXISTS user_preferences (
-    user_id   INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-    value     TEXT NOT NULL DEFAULT '{}'
-  )`);
 });
 
 // File upload configuration
@@ -558,91 +552,23 @@ const resolveWorkspace = (req, res, next) => {
 
 // ============ TASKS ROUTES ============
 
-app.get('/api/tasks', authenticateToken, resolveWorkspace, (req, res) => {
-  const { search, priority, completed, sort } = req.query;
-  const wsFilter = req.workspaceId !== null ? 'AND t.workspace_id = ?' : 'AND t.workspace_id IS NULL';
-  let query = `
-    SELECT t.*, COUNT(tc.id) as comment_count
-    FROM tasks t
-    LEFT JOIN task_comments tc ON tc.task_id = t.id
-    WHERE t.user_id = ? ${wsFilter}`;
+// ============ TASKS ROUTES ============
+
+// Returns all tasks the user can access in the current workspace context,
+// without filters — used to build the cross-task reference context for descriptions.
+app.get('/api/tasks/all', authenticateToken, resolveWorkspace, (req, res) => {
+  const wsFilter = req.workspaceId !== null ? 'AND workspace_id = ?' : 'AND workspace_id IS NULL';
   const params = [req.user.id];
   if (req.workspaceId !== null) params.push(req.workspaceId);
-  if (search) { query += ' AND (t.title LIKE ? OR t.description LIKE ?)'; params.push(`%${search}%`, `%${search}%`); }
-  if (priority && priority !== 'all') { query += ' AND t.priority = ?'; params.push(priority); }
-  if (completed !== undefined && completed !== '') { query += ' AND t.completed = ?'; params.push(completed === 'true' ? 1 : 0); }
-  query += ' GROUP BY t.id';
-  const sortOptions = {
-    'newest':   'ORDER BY t.created_at DESC',
-    'oldest':   'ORDER BY t.created_at ASC',
-    'priority': "ORDER BY CASE t.priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 END",
-    'due_date': 'ORDER BY t.due_date ASC'
-  };
-  query += ' ' + (sortOptions[sort] || sortOptions['newest']);
-  db.all(query, params, (err, tasks) => {
-    if (err) return res.status(500).json({ error: 'Failed to fetch tasks' });
-    res.json(tasks);
-  });
+  db.all(
+    `SELECT id, title, priority, due_date, completed FROM tasks WHERE user_id = ? ${wsFilter} ORDER BY created_at DESC`,
+    params,
+    (err, tasks) => {
+      if (err) return res.status(500).json({ error: 'Failed to fetch tasks' });
+      res.json(tasks);
+    }
+  );
 });
-
-app.get('/api/tasks/:id', authenticateToken, (req, res) => {
-  db.get('SELECT * FROM tasks WHERE id = ? AND user_id = ?', [req.params.id, req.user.id], (err, task) => {
-    if (err || !task) return res.status(404).json({ error: 'Task not found' });
-    res.json(task);
-  });
-});
-
-// ============ PREFERENCES ROUTES ============
-// Stores per-user UI preferences (filter state, sort order, etc.) as raw text.
-//
-// VULNERABLE by design — CVE-2019-11358 (jQuery < 3.4.0 prototype pollution):
-// The value is stored verbatim and returned as raw text. The client parses it
-// via $.parseJSON() and merges via $.extend(true, {}, defaults, parsed).
-//
-// jQuery 3.3.1's $.extend() does not guard against __proto__ keys — when the
-// parsed object contains __proto__, jQuery walks into it and assigns its
-// properties directly onto Object.prototype, poisoning every subsequent object.
-//
-// This then enables CVE-2026-41238 (DOMPurify 3.0.1-3.3.3):
-// DOMPurify's CUSTOM_ELEMENT_HANDLING falls back to {} which inherits from the
-// now-polluted Object.prototype — allowing custom elements with event handlers
-// through sanitization.
-//
-// Attack:
-//   POST /api/preferences  Content-Type: text/plain
-//   Body: {"priority":"all","__proto__":{"tagNameCheck":{},"attributeNameCheck":{}}}
-//
-//   → stored verbatim → returned as text → $.parseJSON constructs real __proto__
-//   → $.extend walks into __proto__ → Object.prototype polluted
-//   → DOMPurify.sanitize('<x-x onfocus=alert(document.cookie) autofocus>') bypassed
-
-app.get('/api/preferences', authenticateToken, (req, res) => {
-  db.get('SELECT value FROM user_preferences WHERE user_id = ?', [req.user.id], (err, row) => {
-    if (err) return res.status(500).json({ error: 'Failed to fetch preferences' });
-    // Return raw text — client parses via $.parseJSON to preserve __proto__ keys
-    res.setHeader('Content-Type', 'text/plain');
-    res.send(row ? row.value : '{}');
-  });
-});
-
-app.post('/api/preferences', authenticateToken, (req, res) => {
-  // Store raw body text verbatim — no JSON.parse so __proto__ keys survive
-  let raw = '';
-  req.on('data', chunk => { raw += chunk; });
-  req.on('end', () => {
-    if (!raw) raw = '{}';
-    db.run(
-      'INSERT OR REPLACE INTO user_preferences (user_id, value) VALUES (?, ?)',
-      [req.user.id, raw],
-      function(err) {
-        if (err) return res.status(500).json({ error: 'Failed to save preferences' });
-        res.json({ message: 'Preferences saved' });
-      }
-    );
-  });
-});
-
-// ============ TASKS ROUTES ============
 
 app.get('/api/tasks', authenticateToken, resolveWorkspace, (req, res) => {
   const { search, priority, completed, sort } = req.query;
