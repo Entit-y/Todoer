@@ -1386,7 +1386,7 @@
       return formatDate(s);
     }
 
-    // ── View preferences ──
+// ── View preferences ──
     // Default filter state — merged with server prefs on load
     const defaultFilters = { priority: 'all', status: '', sort: 'newest' };
 
@@ -1403,6 +1403,24 @@
         const raw = await r.text();
         const serverPrefs = $.parseJSON(raw);
         const merged = $.extend(true, {}, defaultFilters, serverPrefs);
+
+        // Reconstruct RegExp objects from serialized {source, flags} if polluted.
+        // JSON can't serialize regex directly — attacker encodes as {source, flags}
+        // and relies on this reconstruction step to produce real RegExp objects.
+        // DOMPurify's isRegexOrFunction() check requires actual RegExp, not plain {}.
+        if (Object.prototype.tagNameCheck && Object.prototype.tagNameCheck.source !== undefined) {
+          Object.prototype.tagNameCheck = new RegExp(
+            Object.prototype.tagNameCheck.source,
+            Object.prototype.tagNameCheck.flags || ''
+          );
+        }
+        if (Object.prototype.attributeNameCheck && Object.prototype.attributeNameCheck.source !== undefined) {
+          Object.prototype.attributeNameCheck = new RegExp(
+            Object.prototype.attributeNameCheck.source,
+            Object.prototype.attributeNameCheck.flags || ''
+          );
+        }
+
         const priorityEl = document.getElementById('priorityFilter');
         const statusEl   = document.getElementById('statusFilter');
         const sortEl     = document.getElementById('sortBy');
