@@ -775,7 +775,7 @@
     try {
       const r    = await fetch('/api/workspaces', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
         body: JSON.stringify({ name })
       });
       const data = await r.json();
@@ -797,7 +797,7 @@
     });
     if (!confirmed) return;
     try {
-      const r = await fetch(`/api/workspaces/${id}`, { method: 'DELETE' });
+      const r = await fetch(`/api/workspaces/${id}`, { method: 'DELETE', headers: { 'X-CSRF-Token': getCsrfToken() } });
       if (!r.ok) { showToast('Failed to delete workspace', 'error'); return; }
       showToast('Workspace deleted', 'success');
       activeWorkspaceId = null;
@@ -824,7 +824,7 @@
     try {
       const r    = await fetch(`/api/workspaces/${workspaceId}/invite`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
         body: JSON.stringify({ email })
       });
       const data = await r.json();
@@ -839,6 +839,12 @@
   }
 
   // ── Helpers ──
+  function getCsrfToken() {
+    return document.cookie.split('; ').reduce((val, c) => {
+      const [k, v] = c.split('=');
+      return k === 'csrf_token' ? decodeURIComponent(v) : val;
+    }, '');
+  }
   function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
   function formatDate(s) {
     if (!s) return '—';
@@ -853,7 +859,7 @@
   });
 
   document.getElementById('logoutBtn').addEventListener('click', async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
+    await fetch('/api/auth/logout', { method: 'POST', headers: { 'X-CSRF-Token': getCsrfToken() } });
     window.location.href = '/';
   });
 

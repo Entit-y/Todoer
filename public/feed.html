@@ -598,7 +598,7 @@
       try {
         await fetch('/api/feed', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
           body: JSON.stringify({ content })
         });
         input.value = '';
@@ -609,7 +609,14 @@
     }
 
     async function deleteMessage(id) {
-      await fetch(`/api/feed/${id}`, { method: 'DELETE' });
+      await fetch(`/api/feed/${id}`, { method: 'DELETE', headers: { 'X-CSRF-Token': getCsrfToken() } });
+    }
+
+    function getCsrfToken() {
+      return document.cookie.split('; ').reduce((val, c) => {
+        const [k, v] = c.split('=');
+        return k === 'csrf_token' ? decodeURIComponent(v) : val;
+      }, '');
     }
 
     function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }

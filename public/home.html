@@ -841,10 +841,19 @@
       try { return JSON.parse(localStorage.getItem(WS_KEY)) || null; } catch { return null; }
     }
 
+    function getCsrfToken() {
+      return document.cookie.split('; ').reduce((val, c) => {
+        const [k, v] = c.split('=');
+        return k === 'csrf_token' ? decodeURIComponent(v) : val;
+      }, '');
+    }
+
     function apiFetch(url, options = {}) {
       const active = getActiveWorkspace();
       const headers = { ...(options.headers || {}) };
       if (active) headers['X-Workspace-Id'] = active.id;
+      const csrf = getCsrfToken();
+      if (csrf) headers['X-CSRF-Token'] = csrf;
       return fetch(url, { ...options, headers });
     }
 
@@ -1111,7 +1120,7 @@
       try {
         await fetch(`/api/tasks/${activeTaskId}/comments`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
           body: JSON.stringify({ content })
         });
         input.value = '';
@@ -1123,7 +1132,7 @@
 
     async function deleteComment(commentId) {
       if (!activeTaskId) return;
-      await fetch(`/api/tasks/${activeTaskId}/comments/${commentId}`, { method: 'DELETE' });
+      await fetch(`/api/tasks/${activeTaskId}/comments/${commentId}`, { method: 'DELETE', headers: { 'X-CSRF-Token': getCsrfToken() } });
     }
 
     function handleCommentKey(e) {
@@ -1314,7 +1323,7 @@
     document.getElementById('logoutBtn').addEventListener('click', async () => {
       wsActive = false;  // stop WS reconnect
       if (ws) ws.close();
-      await fetch('/api/auth/logout', { method: 'POST' });
+      await fetch('/api/auth/logout', { method: 'POST', headers: { 'X-CSRF-Token': getCsrfToken() } });
       window.location.href = '/';
     });
 

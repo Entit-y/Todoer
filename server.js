@@ -9,6 +9,7 @@ const tarStream = require('tar-stream');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
+const crypto = require('crypto');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const nodemailer = require('nodemailer');
@@ -50,6 +51,28 @@ function broadcast(data, filterFn = () => true) {
     }
   });
 }
+
+// ── CSRF protection (double-submit cookie pattern) ──
+function generateCsrfToken() {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+function setCsrfCookie(res, token) {
+  res.cookie('csrf_token', token, {
+    httpOnly: false,   // must be readable by client JS
+    sameSite: 'strict',
+    maxAge: 7 * 24 * 60 * 60 * 1000
+  });
+}
+
+const validateCsrf = (req, res, next) => {
+  const cookieToken  = req.cookies.csrf_token;
+  const headerToken  = req.headers['x-csrf-token'];
+  if (!cookieToken || !headerToken || cookieToken !== headerToken) {
+    return res.status(403).json({ error: 'Invalid CSRF token' });
+  }
+  next();
+};
  
 wss.on('connection', (ws, req) => {
   const ip = req.socket.remoteAddress;
@@ -359,6 +382,8 @@ app.post('/api/auth/login', (req, res) => {
     if (!user.verified) return res.status(403).json({ error: 'Email not verified', email: user.email, unverified: true });
     const token = jwt.sign({ id: user.id, email: user.email, username: user.username || null }, JWT_SECRET, { expiresIn: '7d' });
     res.cookie('token', token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 });
+    const csrfToken = generateCsrfToken();
+    setCsrfCookie(res, csrfToken);
     res.json({ message: 'Login successful', user: { id: user.id, email: user.email, username: user.username || null } });
   });
 });
@@ -387,6 +412,8 @@ app.post('/api/auth/verify-email', (req, res) => {
           db.run('DELETE FROM email_verifications WHERE user_id = ?', [user.id]);
           const token = jwt.sign({ id: user.id, email: user.email, username: user.username || null }, JWT_SECRET, { expiresIn: '7d' });
           res.cookie('token', token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 });
+          const csrfToken = generateCsrfToken();
+          setCsrfCookie(res, csrfToken);
           res.json({ message: 'Email verified successfully' });
         });
       }
@@ -450,7 +477,7 @@ app.get('/api/profile', authenticateToken, (req, res) => {
 // VULNERABLE: username update — no auth re-confirmation, no rate limiting,
 // no character validation. Allows setting username to XSS payloads.
 // Also: distinct error for taken username enables enumeration.
-app.put('/api/profile/username', authenticateToken, (req, res) => {
+app.put('/api/profile/username', authenticateToken, validateCsrf, (req, res) => {
   const { username } = req.body;
   if (!username) return res.status(400).json({ error: 'Username is required' });
   db.get('SELECT id FROM users WHERE username = ? AND id != ?', [username, req.user.id], (err, existing) => {
@@ -461,12 +488,13 @@ app.put('/api/profile/username', authenticateToken, (req, res) => {
       if (err) return res.status(500).json({ error: 'Failed to update username' });
       const newToken = jwt.sign({ id: req.user.id, email: req.user.email, username }, JWT_SECRET, { expiresIn: '7d' });
       res.cookie('token', newToken, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 });
+      setCsrfCookie(res, generateCsrfToken());
       res.json({ message: 'Username updated successfully', username });
     });
   });
 });
 
-app.all('/api/profile/email', authenticateToken, (req, res) => {
+app.all('/api/profile/email', authenticateToken, validateCsrf, (req, res) => {
   if (!['PUT', 'POST'].includes(req.method)) return res.status(405).json({ error: 'Method not allowed' });
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: 'Email is required' });
@@ -477,12 +505,13 @@ app.all('/api/profile/email', authenticateToken, (req, res) => {
       if (err) return res.status(500).json({ error: 'Failed to update email' });
       const newToken = jwt.sign({ id: req.user.id, email, username: req.user.username || null }, JWT_SECRET, { expiresIn: '7d' });
       res.cookie('token', newToken, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 });
+      setCsrfCookie(res, generateCsrfToken());
       res.json({ message: 'Email updated successfully', email });
     });
   });
 });
 
-app.put('/api/profile/password', authenticateToken, async (req, res) => {
+app.put('/api/profile/password', authenticateToken, validateCsrf, async (req, res) => {
   const { currentPassword, newPassword } = req.body;
   if (!currentPassword || !newPassword) return res.status(400).json({ error: 'Current and new password are required' });
   if (newPassword.length < 6) return res.status(400).json({ error: 'New password must be at least 6 characters' });
@@ -498,7 +527,7 @@ app.put('/api/profile/password', authenticateToken, async (req, res) => {
   });
 });
 
-app.post('/api/profile/set-password', authenticateToken, async (req, res) => {
+app.post('/api/profile/set-password', authenticateToken, validateCsrf, async (req, res) => {
   const { newPassword } = req.body;
   if (!newPassword || newPassword.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
   const hashed = await bcrypt.hash(newPassword, 10);
@@ -508,7 +537,7 @@ app.post('/api/profile/set-password', authenticateToken, async (req, res) => {
   });
 });
 
-app.delete('/api/profile/account', authenticateToken, (req, res) => {
+app.delete('/api/profile/account', authenticateToken, validateCsrf, (req, res) => {
   const { password } = req.body;
   db.get('SELECT password FROM users WHERE id = ?', [req.user.id], async (err, user) => {
     if (err || !user) return res.status(404).json({ error: 'User not found' });
@@ -615,7 +644,7 @@ app.get('/api/tasks/:id', authenticateToken, (req, res) => {
   });
 });
 
-app.post('/api/tasks', authenticateToken, resolveWorkspace, (req, res) => {
+app.post('/api/tasks', authenticateToken, validateCsrf, resolveWorkspace, (req, res) => {
   const { title, description, priority, due_date } = req.body;
   if (!title) return res.status(400).json({ error: 'Title is required' });
   const validPriorities = ['low', 'medium', 'high'];
@@ -634,7 +663,7 @@ app.post('/api/tasks', authenticateToken, resolveWorkspace, (req, res) => {
   );
 });
 
-app.put('/api/tasks/:id', authenticateToken, (req, res) => {
+app.put('/api/tasks/:id', authenticateToken, validateCsrf, (req, res) => {
   const { title, description, priority, completed, due_date } = req.body;
   const taskId = req.params.id;
   db.get('SELECT * FROM tasks WHERE id = ? AND user_id = ?', [taskId, req.user.id], (err, task) => {
@@ -661,7 +690,7 @@ app.put('/api/tasks/:id', authenticateToken, (req, res) => {
   });
 });
 
-app.delete('/api/tasks/:id', authenticateToken, (req, res) => {
+app.delete('/api/tasks/:id', authenticateToken, validateCsrf, (req, res) => {
   db.get('SELECT workspace_id FROM tasks WHERE id = ? AND user_id = ?', [req.params.id, req.user.id], (err, task) => {
     if (err || !task) return res.status(404).json({ error: 'Task not found' });
     db.run('DELETE FROM tasks WHERE id = ? AND user_id = ?', [req.params.id, req.user.id], function(err) {
@@ -693,7 +722,7 @@ app.get('/api/files', authenticateToken, resolveWorkspace, (req, res) => {
   });
 });
 
-app.post('/api/files/upload', authenticateToken, resolveWorkspace, dynamicUpload('file'), (req, res) => {
+app.post('/api/files/upload', authenticateToken, validateCsrf, resolveWorkspace, dynamicUpload('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
   db.run(
     'INSERT INTO files (user_id, workspace_id, filename, original_name, filepath, size) VALUES (?, ?, ?, ?, ?, ?)',
@@ -721,7 +750,7 @@ app.get('/api/files/:id/download', authenticateToken, resolveWorkspace, (req, re
   });
 });
 
-app.delete('/api/files/:id', authenticateToken, (req, res) => {
+app.delete('/api/files/:id', authenticateToken, validateCsrf, (req, res) => {
   db.get('SELECT * FROM files WHERE id = ? AND user_id = ?', [req.params.id, req.user.id], (err, file) => {
     if (err || !file) return res.status(404).json({ error: 'File not found' });
     if (fs.existsSync(file.filepath)) fs.unlinkSync(file.filepath);
@@ -828,7 +857,7 @@ function extractTar(filePath, extractDir, isGzip) {
   });
 }
 
-app.post('/api/files/extract/:id', authenticateToken, resolveWorkspace, async (req, res) => {
+app.post('/api/files/extract/:id', authenticateToken, validateCsrf, resolveWorkspace, async (req, res) => {
   db.get('SELECT * FROM files WHERE id = ? AND user_id = ?', [req.params.id, req.user.id], async (err, file) => {
     if (err || !file) return res.status(404).json({ error: 'File not found' });
 
@@ -886,7 +915,7 @@ function getAllFiles(dir, arrayOfFiles = []) {
 }
 
 // Create archive from files
-app.post('/api/files/create-archive', authenticateToken, (req, res) => {
+app.post('/api/files/create-archive', authenticateToken, validateCsrf, (req, res) => {
   const { fileIds, archiveName } = req.body;
   if (!fileIds || !Array.isArray(fileIds) || fileIds.length === 0) return res.status(400).json({ error: 'No files selected' });
   const placeholders = fileIds.map(() => '?').join(',');
@@ -1092,6 +1121,7 @@ app.get('/auth/oauth/callback', async (req, res) => {
           () => {
             const token = jwt.sign({ id: existingUser.id, email: existingUser.email }, JWT_SECRET);
             res.cookie('token', token, { httpOnly: true });
+            setCsrfCookie(res, generateCsrfToken());
             res.redirect('/home');
           }
         );
@@ -1110,6 +1140,7 @@ app.get('/auth/oauth/callback', async (req, res) => {
               () => {
                 const token = jwt.sign({ id: userId, email: googleUser.email.toLowerCase() }, JWT_SECRET);
                 res.cookie('token', token, { httpOnly: true });
+                setCsrfCookie(res, generateCsrfToken());
                 res.redirect('/home');
               }
             );
@@ -1194,7 +1225,7 @@ app.get('/api/tasks/:id/comments', authenticateToken, (req, res) => {
 });
  
 // Post a comment on a task
-app.post('/api/tasks/:id/comments', authenticateToken, (req, res) => {
+app.post('/api/tasks/:id/comments', authenticateToken, validateCsrf, (req, res) => {
   const { content } = req.body;
   if (!content || !content.trim()) return res.status(400).json({ error: 'Comment cannot be empty' });
   // Verify task belongs to user
@@ -1221,7 +1252,7 @@ app.post('/api/tasks/:id/comments', authenticateToken, (req, res) => {
 });
  
 // Delete a comment
-app.delete('/api/tasks/:taskId/comments/:commentId', authenticateToken, (req, res) => {
+app.delete('/api/tasks/:taskId/comments/:commentId', authenticateToken, validateCsrf, (req, res) => {
   db.get('SELECT * FROM task_comments WHERE id = ? AND user_id = ?', [req.params.commentId, req.user.id], (err, comment) => {
     if (!comment) return res.status(404).json({ error: 'Comment not found' });
     db.run('DELETE FROM task_comments WHERE id = ?', [req.params.commentId], function(err) {
@@ -1254,7 +1285,7 @@ app.get('/api/feed', authenticateToken, (req, res) => {
 });
  
 // Post a feed message
-app.post('/api/feed', authenticateToken, (req, res) => {
+app.post('/api/feed', authenticateToken, validateCsrf, (req, res) => {
   const { content } = req.body;
   if (!content || !content.trim()) return res.status(400).json({ error: 'Message cannot be empty' });
   if (content.trim().length > 280) return res.status(400).json({ error: 'Message too long (max 280 characters)' });
@@ -1277,7 +1308,7 @@ app.post('/api/feed', authenticateToken, (req, res) => {
 });
  
 // Delete a feed message
-app.delete('/api/feed/:id', authenticateToken, (req, res) => {
+app.delete('/api/feed/:id', authenticateToken, validateCsrf, (req, res) => {
   db.get('SELECT * FROM feed_messages WHERE id = ? AND user_id = ?', [req.params.id, req.user.id], (err, message) => {
     if (!message) return res.status(404).json({ error: 'Message not found' });
     db.run('DELETE FROM feed_messages WHERE id = ?', [req.params.id], function(err) {
@@ -1291,7 +1322,7 @@ app.delete('/api/feed/:id', authenticateToken, (req, res) => {
 // ============ WORKSPACE ROUTES ============
  
 // Create workspace
-app.post('/api/workspaces', authenticateToken, (req, res) => {
+app.post('/api/workspaces', authenticateToken, validateCsrf, (req, res) => {
   const { name } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ error: 'Workspace name is required' });
   db.run('INSERT INTO workspaces (name, owner_id) VALUES (?, ?)', [name.trim(), req.user.id], function(err) {
@@ -1355,7 +1386,7 @@ app.get('/api/workspaces/:id', authenticateToken, (req, res) => {
 });
  
 // Delete workspace (owner only)
-app.delete('/api/workspaces/:id', authenticateToken, (req, res) => {
+app.delete('/api/workspaces/:id', authenticateToken, validateCsrf, (req, res) => {
   db.get('SELECT * FROM workspaces WHERE id = ? AND owner_id = ?', [req.params.id, req.user.id], (err, workspace) => {
     if (!workspace) return res.status(403).json({ error: 'Only the workspace owner can delete it' });
     db.run('DELETE FROM workspaces WHERE id = ?', [req.params.id], function(err) {
@@ -1368,7 +1399,7 @@ app.delete('/api/workspaces/:id', authenticateToken, (req, res) => {
 // ============ INVITATION ROUTES ============
  
 // Send invitation
-app.post('/api/workspaces/:id/invite', authenticateToken, async (req, res) => {
+app.post('/api/workspaces/:id/invite', authenticateToken, validateCsrf, async (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: 'Email is required' });
  
@@ -1459,7 +1490,7 @@ app.get('/api/invites/:code', (req, res) => {
 // redirects this POST to an arbitrary endpoint with the victim's session cookie.
 // Example: inviteCode=ABC123/../../../profile/account?a=
 // Results in: POST /api/profile/account?a=/accept with victim's session → account deleted.
-app.post('/api/invites/:code/accept', authenticateToken, (req, res) => {
+app.post('/api/invites/:code/accept', authenticateToken, validateCsrf, (req, res) => {
   const { code } = req.params;
   const { email } = req.body;
   db.get(`

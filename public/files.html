@@ -481,10 +481,19 @@
       try { return JSON.parse(localStorage.getItem(WS_KEY)) || null; } catch { return null; }
     }
 
+    function getCsrfToken() {
+      return document.cookie.split('; ').reduce((val, c) => {
+        const [k, v] = c.split('=');
+        return k === 'csrf_token' ? decodeURIComponent(v) : val;
+      }, '');
+    }
+
     function apiFetch(url, options = {}) {
       const active = getActiveWorkspace();
       const headers = { ...(options.headers || {}) };
       if (active) headers['X-Workspace-Id'] = active.id;
+      const csrf = getCsrfToken();
+      if (csrf) headers['X-CSRF-Token'] = csrf;
       return fetch(url, { ...options, headers });
     }
 
@@ -782,7 +791,7 @@
     });
 
     document.getElementById('logoutBtn').addEventListener('click', async () => {
-      await fetch('/api/auth/logout', { method: 'POST' });
+      await fetch('/api/auth/logout', { method: 'POST', headers: { 'X-CSRF-Token': getCsrfToken() } });
       window.location.href = '/';
     });
 

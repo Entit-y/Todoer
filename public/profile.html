@@ -342,6 +342,13 @@
     }
 
     // ── Forms ──
+    function getCsrfToken() {
+      return document.cookie.split('; ').reduce((val, c) => {
+        const [k, v] = c.split('=');
+        return k === 'csrf_token' ? decodeURIComponent(v) : val;
+      }, '');
+    }
+
     document.getElementById('usernameForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const msg = document.getElementById('usernameMessage');
@@ -349,12 +356,11 @@
       const username = document.getElementById('newUsername').value.trim();
       if (!username) { msg.textContent = 'Username cannot be empty'; msg.className = 'message error'; msg.style.display = 'block'; return; }
       try {
-        const r = await fetch('/api/profile/username', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username }) });
+        const r = await fetch('/api/profile/username', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() }, body: JSON.stringify({ username }) });
         const data = await r.json();
         if (r.ok) {
           msg.textContent = 'Username updated.';
           msg.className = 'message success';
-          // VULNERABLE: innerHTML — executes payload on update too
           document.getElementById('profileUsername').innerHTML = '@' + data.username;
         } else {
           msg.textContent = data.error || 'Failed to update username';
@@ -369,7 +375,7 @@
       const msg = document.getElementById('emailMessage');
       msg.style.display = 'none'; msg.className = 'message';
       try {
-        const r = await fetch('/api/profile/email', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: document.getElementById('newEmail').value }) });
+        const r = await fetch('/api/profile/email', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() }, body: JSON.stringify({ email: document.getElementById('newEmail').value }) });
         const data = await r.json();
         if (r.ok) { msg.textContent = 'Email updated.'; msg.className = 'message success'; document.getElementById('profileEmail').textContent = document.getElementById('newEmail').value; }
         else { msg.textContent = data.error || 'Failed to update email'; msg.className = 'message error'; }
@@ -385,7 +391,7 @@
       const cp = document.getElementById('confirmNewPassword').value;
       if (np !== cp) { msg.textContent = 'Passwords do not match'; msg.className = 'message error'; msg.style.display = 'block'; return; }
       try {
-        const r = await fetch('/api/profile/password', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ currentPassword: document.getElementById('currentPassword').value, newPassword: np }) });
+        const r = await fetch('/api/profile/password', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() }, body: JSON.stringify({ currentPassword: document.getElementById('currentPassword').value, newPassword: np }) });
         const data = await r.json();
         if (r.ok) { msg.textContent = 'Password changed.'; msg.className = 'message success'; document.getElementById('passwordForm').reset(); }
         else { msg.textContent = data.error || 'Failed to change password'; msg.className = 'message error'; }
@@ -407,7 +413,7 @@
       if (!confirmed) return;
 
       try {
-        const r = await fetch('/api/profile/account', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: document.getElementById('deletePassword').value }) });
+        const r = await fetch('/api/profile/account', { method: 'DELETE', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() }, body: JSON.stringify({ password: document.getElementById('deletePassword').value }) });
         const data = await r.json();
         if (r.ok) {
           showToast('Account deleted. Redirecting…');
@@ -421,7 +427,7 @@
     });
 
     document.getElementById('logoutBtn').addEventListener('click', async () => {
-      await fetch('/api/auth/logout', { method: 'POST' });
+      await fetch('/api/auth/logout', { method: 'POST', headers: { 'X-CSRF-Token': getCsrfToken() } });
       window.location.href = '/';
     });
 
