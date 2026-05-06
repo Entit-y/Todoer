@@ -155,6 +155,7 @@
     .task-date { color: var(--text-3); }
     .task-sep { color: var(--border-light); }
     .task-id-label { color: var(--text-3); font-size: 10.5px; font-variant-numeric: tabular-nums; }
+    .task-creator { color: var(--text-3); font-size: 10.5px; }
 
     /* ── Actions — subtle at rest, visible on hover ── */
     .task-actions {
@@ -809,9 +810,6 @@
       ws = new WebSocket(`${proto}://${location.host}`);
       ws.onmessage = (e) => {
         const data = JSON.parse(e.data);
-        const active = getActiveWorkspace();
-        const myWsId = active ? active.id : null;
-
         if (data.type === 'task_comment:new' && data.taskId === activeTaskId) {
           appendComment(data.comment);
           updateDrawerCommentCount(1);
@@ -820,14 +818,6 @@
           document.getElementById(`comment-${data.commentId}`)?.remove();
           checkCommentsEmpty();
           updateDrawerCommentCount(-1);
-        }
-        if ((data.type === 'task:new' || data.type === 'task:updated' || data.type === 'task:deleted')
-            && myWsId !== null && data.workspaceId === myWsId) {
-          loadTaskContext();
-          loadTasks();
-        }
-        if (data.type === 'file:new' && myWsId !== null && data.workspaceId === myWsId) {
-          if (typeof loadFiles === 'function') loadFiles();
         }
       };
       ws.onclose = () => { if (wsActive) setTimeout(connectWS, 3000); };
@@ -966,6 +956,7 @@
               <span class="task-date">${formatDate(task.created_at)}</span>
               <span class="task-sep">·</span>
               <span class="task-id-label">#${task.id}</span>
+              ${task.workspace_id && task.creator_username ? `<span class="task-sep">·</span><span class="task-creator">@${escapeHtml(task.creator_username)}</span>` : ''}
             </div>
           </div>
           <div class="task-actions">

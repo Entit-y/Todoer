@@ -576,16 +576,18 @@ app.get('/api/tasks', authenticateToken, resolveWorkspace, (req, res) => {
   let query, params;
   if (req.workspaceId !== null) {
     query = `
-      SELECT t.*, COUNT(tc.id) as comment_count
+      SELECT t.*, COUNT(tc.id) as comment_count, u.username as creator_username
       FROM tasks t
       LEFT JOIN task_comments tc ON tc.task_id = t.id
+      LEFT JOIN users u ON u.id = t.user_id
       WHERE t.workspace_id = ?`;
     params = [req.workspaceId];
   } else {
     query = `
-      SELECT t.*, COUNT(tc.id) as comment_count
+      SELECT t.*, COUNT(tc.id) as comment_count, u.username as creator_username
       FROM tasks t
       LEFT JOIN task_comments tc ON tc.task_id = t.id
+      LEFT JOIN users u ON u.id = t.user_id
       WHERE t.user_id = ? AND t.workspace_id IS NULL`;
     params = [req.user.id];
   }
@@ -623,12 +625,7 @@ app.post('/api/tasks', authenticateToken, resolveWorkspace, (req, res) => {
     [req.user.id, req.workspaceId, title, description || '', taskPriority, due_date || null],
     function(err) {
       if (err) return res.status(500).json({ error: 'Failed to create task' });
-      const taskId = this.lastID;
-      res.json({ id: taskId, message: 'Task created successfully' });
-      if (req.workspaceId !== null) {
-        broadcast({ type: 'task:new', workspaceId: req.workspaceId },
-          c => c.user && c.user.id !== req.user.id);
-      }
+      res.json({ id: this.lastID, message: 'Task created successfully' });
     }
   );
 });
@@ -652,25 +649,15 @@ app.put('/api/tasks/:id', authenticateToken, (req, res) => {
     db.run(`UPDATE tasks SET ${updates.join(', ')} WHERE id = ? AND user_id = ?`, params, function(err) {
       if (err) return res.status(500).json({ error: 'Failed to update task' });
       res.json({ message: 'Task updated successfully' });
-      if (task.workspace_id !== null) {
-        broadcast({ type: 'task:updated', workspaceId: task.workspace_id },
-          c => c.user && c.user.id !== req.user.id);
-      }
     });
   });
 });
 
 app.delete('/api/tasks/:id', authenticateToken, (req, res) => {
-  db.get('SELECT workspace_id FROM tasks WHERE id = ? AND user_id = ?', [req.params.id, req.user.id], (err, task) => {
-    if (err || !task) return res.status(404).json({ error: 'Task not found' });
-    db.run('DELETE FROM tasks WHERE id = ? AND user_id = ?', [req.params.id, req.user.id], function(err) {
-      if (err) return res.status(500).json({ error: 'Failed to delete task' });
-      res.json({ message: 'Task deleted successfully' });
-      if (task.workspace_id !== null) {
-        broadcast({ type: 'task:deleted', workspaceId: task.workspace_id },
-          c => c.user && c.user.id !== req.user.id);
-      }
-    });
+  db.run('DELETE FROM tasks WHERE id = ? AND user_id = ?', [req.params.id, req.user.id], function(err) {
+    if (err) return res.status(500).json({ error: 'Failed to delete task' });
+    if (this.changes === 0) return res.status(404).json({ error: 'Task not found' });
+    res.json({ message: 'Task deleted successfully' });
   });
 });
 
@@ -700,10 +687,6 @@ app.post('/api/files/upload', authenticateToken, resolveWorkspace, dynamicUpload
     function(err) {
       if (err) { fs.unlinkSync(req.file.path); return res.status(500).json({ error: 'Failed to save file record' }); }
       res.json({ id: this.lastID, message: 'File uploaded successfully', file: { id: this.lastID, filename: req.file.filename, original_name: req.file.originalname, size: req.file.size } });
-      if (req.workspaceId !== null) {
-        broadcast({ type: 'file:new', workspaceId: req.workspaceId },
-          c => c.user && c.user.id !== req.user.id);
-      }
     }
   );
 });
