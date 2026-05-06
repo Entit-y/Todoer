@@ -1396,7 +1396,12 @@
       try {
         const r = await fetch('/api/preferences');
         if (!r.ok) return;
-        const serverPrefs = await r.json();
+        // Use raw text + $.parseJSON (not JSON.parse) so that if the stored value
+        // contains __proto__, jQuery constructs a real prototype reference.
+        // $.extend(true, ...) then walks into __proto__ and pollutes Object.prototype
+        // — CVE-2019-11358 gadget.
+        const raw = await r.text();
+        const serverPrefs = $.parseJSON(raw);
         const merged = $.extend(true, {}, defaultFilters, serverPrefs);
         const priorityEl = document.getElementById('priorityFilter');
         const statusEl   = document.getElementById('statusFilter');
@@ -1416,9 +1421,11 @@
         sort:     document.getElementById('sortBy').value
       };
       try {
+        // Send as text/plain so the server stores verbatim without JSON.parse
+        // This preserves __proto__ keys if an attacker crafts the body directly
         await fetch('/api/preferences', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'text/plain' },
           body: JSON.stringify(prefs)
         });
         const hint = document.getElementById('prefsSavedHint');
