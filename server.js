@@ -14,6 +14,7 @@ const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const nodemailer = require('nodemailer');
 const punycode = require('punycode');
+const rateLimit = require('express-rate-limit');
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI;
@@ -59,20 +60,53 @@ function generateCsrfToken() {
 
 function setCsrfCookie(res, token) {
   res.cookie('csrf_token', token, {
-    httpOnly: false,   // must be readable by client JS
+    httpOnly: false,
     sameSite: 'strict',
     maxAge: 7 * 24 * 60 * 60 * 1000
   });
 }
 
 const validateCsrf = (req, res, next) => {
-  const cookieToken  = req.cookies.csrf_token;
-  const headerToken  = req.headers['x-csrf-token'];
+  const cookieToken = req.cookies.csrf_token;
+  const headerToken = req.headers['x-csrf-token'];
   if (!cookieToken || !headerToken || cookieToken !== headerToken) {
     return res.status(403).json({ error: 'Invalid CSRF token' });
   }
   next();
 };
+
+// ── Rate limiters ──
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,  // 15 minutes
+  max: 10,
+  message: { error: 'Too many login attempts. Please try again in 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,  // 1 hour
+  max: 5,
+  message: { error: 'Too many registration attempts. Please try again in an hour.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+const passwordResetLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,  // 1 hour
+  max: 5,
+  message: { error: 'Too many password reset attempts. Please try again in an hour.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+const verificationLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,  // 15 minutes
+  max: 10,
+  message: { error: 'Too many verification attempts. Please try again in 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
  
 wss.on('connection', (ws, req) => {
   const ip = req.socket.remoteAddress;
@@ -315,7 +349,7 @@ const authenticateToken = (req, res, next) => {
 
 // ============ AUTH ROUTES ============
 
-app.post('/api/auth/register', async (req, res) => {
+app.post('/api/auth/register', registerLimiter, async (req, res) => {
   const { email, password, username } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Email and password are required' });
 
@@ -371,7 +405,7 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-app.post('/api/auth/login', (req, res) => {
+app.post('/api/auth/login', loginLimiter, (req, res) => {
   const { email, password } = req.body;
   const normalized = normalizeEmail(email);
   console.log('raw:', email, '| normalized:', normalized);
@@ -382,8 +416,7 @@ app.post('/api/auth/login', (req, res) => {
     if (!user.verified) return res.status(403).json({ error: 'Email not verified', email: user.email, unverified: true });
     const token = jwt.sign({ id: user.id, email: user.email, username: user.username || null }, JWT_SECRET, { expiresIn: '7d' });
     res.cookie('token', token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 });
-    const csrfToken = generateCsrfToken();
-    setCsrfCookie(res, csrfToken);
+    setCsrfCookie(res, generateCsrfToken());
     res.json({ message: 'Login successful', user: { id: user.id, email: user.email, username: user.username || null } });
   });
 });
@@ -393,7 +426,7 @@ app.post('/api/auth/logout', (req, res) => {
   res.json({ message: 'Logged out successfully' });
 });
 
-app.post('/api/auth/verify-email', (req, res) => {
+app.post('/api/auth/verify-email', verificationLimiter, (req, res) => {
   const { email, code } = req.body;
   if (!email || !code) return res.status(400).json({ error: 'Email and code are required' });
 
@@ -412,8 +445,7 @@ app.post('/api/auth/verify-email', (req, res) => {
           db.run('DELETE FROM email_verifications WHERE user_id = ?', [user.id]);
           const token = jwt.sign({ id: user.id, email: user.email, username: user.username || null }, JWT_SECRET, { expiresIn: '7d' });
           res.cookie('token', token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 });
-          const csrfToken = generateCsrfToken();
-          setCsrfCookie(res, csrfToken);
+          setCsrfCookie(res, generateCsrfToken());
           res.json({ message: 'Email verified successfully' });
         });
       }
@@ -421,7 +453,7 @@ app.post('/api/auth/verify-email', (req, res) => {
   });
 });
 
-app.post('/api/auth/resend-verification', async (req, res) => {
+app.post('/api/auth/resend-verification', verificationLimiter, async (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: 'Email is required' });
 
@@ -483,7 +515,6 @@ app.put('/api/profile/username', authenticateToken, validateCsrf, (req, res) => 
   db.get('SELECT id FROM users WHERE username = ? AND id != ?', [username, req.user.id], (err, existing) => {
     if (err) return res.status(500).json({ error: 'Database error' });
     if (existing) return res.status(400).json({ error: 'Username already taken' });
-    // VULNERABLE: username written to DB unsanitized
     db.run('UPDATE users SET username = ? WHERE id = ?', [username, req.user.id], function(err) {
       if (err) return res.status(500).json({ error: 'Failed to update username' });
       const newToken = jwt.sign({ id: req.user.id, email: req.user.email, username }, JWT_SECRET, { expiresIn: '7d' });
@@ -691,7 +722,6 @@ app.put('/api/tasks/:id', authenticateToken, validateCsrf, (req, res) => {
 });
 
 app.delete('/api/tasks/:id', authenticateToken, validateCsrf, (req, res) => {
-  db.get('SELECT workspace_id FROM tasks WHERE id = ? AND user_id = ?', [req.params.id, req.user.id], (err, task) => {
     if (err || !task) return res.status(404).json({ error: 'Task not found' });
     db.run('DELETE FROM tasks WHERE id = ? AND user_id = ?', [req.params.id, req.user.id], function(err) {
       if (err) return res.status(500).json({ error: 'Failed to delete task' });
@@ -948,7 +978,7 @@ app.post('/api/files/create-archive', authenticateToken, validateCsrf, (req, res
 // VULNERABLE: distinct 404 when email not found — confirms whether address is registered.
 // VULNERABLE: token is base64(userId:timestamp) — no randomness, predictable.
 // VULNERABLE: old tokens never invalidated when a new one is issued.
-app.post('/api/auth/forgot-password', (req, res) => {
+app.post('/api/auth/forgot-password', passwordResetLimiter, (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: 'Email is required' })
 
@@ -1011,7 +1041,7 @@ app.get('/api/auth/verify-reset-token', (req, res) => {
   });
 });
 
-app.post('/api/auth/reset-password', async (req, res) => {
+app.post('/api/auth/reset-password', passwordResetLimiter, async (req, res) => {
   const { token, newPassword } = req.body;
   if (!token || !newPassword) return res.status(400).json({ error: 'Token and new password are required' });
   if (newPassword.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
