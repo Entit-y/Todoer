@@ -557,29 +557,38 @@ const resolveWorkspace = (req, res, next) => {
 // Returns all tasks the user can access in the current workspace context,
 // without filters — used to build the cross-task reference context for descriptions.
 app.get('/api/tasks/all', authenticateToken, resolveWorkspace, (req, res) => {
-  const wsFilter = req.workspaceId !== null ? 'AND workspace_id = ?' : 'AND workspace_id IS NULL';
-  const params = [req.user.id];
-  if (req.workspaceId !== null) params.push(req.workspaceId);
-  db.all(
-    `SELECT id, title, priority, due_date, completed FROM tasks WHERE user_id = ? ${wsFilter} ORDER BY created_at DESC`,
-    params,
-    (err, tasks) => {
-      if (err) return res.status(500).json({ error: 'Failed to fetch tasks' });
-      res.json(tasks);
-    }
-  );
+  let query, params;
+  if (req.workspaceId !== null) {
+    query = `SELECT id, title, priority, due_date, completed FROM tasks WHERE workspace_id = ? ORDER BY created_at DESC`;
+    params = [req.workspaceId];
+  } else {
+    query = `SELECT id, title, priority, due_date, completed FROM tasks WHERE user_id = ? AND workspace_id IS NULL ORDER BY created_at DESC`;
+    params = [req.user.id];
+  }
+  db.all(query, params, (err, tasks) => {
+    if (err) return res.status(500).json({ error: 'Failed to fetch tasks' });
+    res.json(tasks);
+  });
 });
 
 app.get('/api/tasks', authenticateToken, resolveWorkspace, (req, res) => {
   const { search, priority, completed, sort } = req.query;
-  const wsFilter = req.workspaceId !== null ? 'AND t.workspace_id = ?' : 'AND t.workspace_id IS NULL';
-  let query = `
-    SELECT t.*, COUNT(tc.id) as comment_count
-    FROM tasks t
-    LEFT JOIN task_comments tc ON tc.task_id = t.id
-    WHERE t.user_id = ? ${wsFilter}`;
-  const params = [req.user.id];
-  if (req.workspaceId !== null) params.push(req.workspaceId);
+  let query, params;
+  if (req.workspaceId !== null) {
+    query = `
+      SELECT t.*, COUNT(tc.id) as comment_count
+      FROM tasks t
+      LEFT JOIN task_comments tc ON tc.task_id = t.id
+      WHERE t.workspace_id = ?`;
+    params = [req.workspaceId];
+  } else {
+    query = `
+      SELECT t.*, COUNT(tc.id) as comment_count
+      FROM tasks t
+      LEFT JOIN task_comments tc ON tc.task_id = t.id
+      WHERE t.user_id = ? AND t.workspace_id IS NULL`;
+    params = [req.user.id];
+  }
   if (search) { query += ' AND (t.title LIKE ? OR t.description LIKE ?)'; params.push(`%${search}%`, `%${search}%`); }
   if (priority && priority !== 'all') { query += ' AND t.priority = ?'; params.push(priority); }
   if (completed !== undefined && completed !== '') { query += ' AND t.completed = ?'; params.push(completed === 'true' ? 1 : 0); }
@@ -652,10 +661,14 @@ app.delete('/api/tasks/:id', authenticateToken, (req, res) => {
 
 app.get('/api/files', authenticateToken, resolveWorkspace, (req, res) => {
   const { search } = req.query;
-  const wsFilter = req.workspaceId !== null ? 'AND workspace_id = ?' : 'AND workspace_id IS NULL';
-  let query = `SELECT * FROM files WHERE user_id = ? ${wsFilter}`;
-  const params = [req.user.id];
-  if (req.workspaceId !== null) params.push(req.workspaceId);
+  let query, params;
+  if (req.workspaceId !== null) {
+    query = `SELECT * FROM files WHERE workspace_id = ?`;
+    params = [req.workspaceId];
+  } else {
+    query = `SELECT * FROM files WHERE user_id = ? AND workspace_id IS NULL`;
+    params = [req.user.id];
+  }
   if (search) { query += ' AND original_name LIKE ?'; params.push(`%${search}%`); }
   query += ' ORDER BY created_at DESC';
   db.all(query, params, (err, files) => {
