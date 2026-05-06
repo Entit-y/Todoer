@@ -810,6 +810,9 @@
       ws = new WebSocket(`${proto}://${location.host}`);
       ws.onmessage = (e) => {
         const data = JSON.parse(e.data);
+        const active = getActiveWorkspace();
+        const myWsId = active ? active.id : null;
+
         if (data.type === 'task_comment:new' && data.taskId === activeTaskId) {
           appendComment(data.comment);
           updateDrawerCommentCount(1);
@@ -818,6 +821,14 @@
           document.getElementById(`comment-${data.commentId}`)?.remove();
           checkCommentsEmpty();
           updateDrawerCommentCount(-1);
+        }
+        if ((data.type === 'task:new' || data.type === 'task:updated' || data.type === 'task:deleted')
+            && myWsId !== null && data.workspaceId === myWsId) {
+          loadTaskContext();
+          loadTasks();
+        }
+        if (data.type === 'file:new' && myWsId !== null && data.workspaceId === myWsId) {
+          if (typeof loadFiles === 'function') loadFiles();
         }
       };
       ws.onclose = () => { if (wsActive) setTimeout(connectWS, 3000); };
@@ -1346,7 +1357,7 @@
     function renderDescription(description) {
       try {
         const template = Handlebars.compile(description, { compat: true });
-        return template({ task: taskContextById });
+        return DOMPurify.sanitize(template({ task: taskContextById }));
       } catch (e) {
         return escapeHtml(description);
       }

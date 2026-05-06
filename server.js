@@ -626,6 +626,10 @@ app.post('/api/tasks', authenticateToken, resolveWorkspace, (req, res) => {
     function(err) {
       if (err) return res.status(500).json({ error: 'Failed to create task' });
       res.json({ id: this.lastID, message: 'Task created successfully' });
+      if (req.workspaceId !== null) {
+        broadcast({ type: 'task:new', workspaceId: req.workspaceId },
+          c => c.user && c.user.id !== req.user.id);
+      }
     }
   );
 });
@@ -649,15 +653,25 @@ app.put('/api/tasks/:id', authenticateToken, (req, res) => {
     db.run(`UPDATE tasks SET ${updates.join(', ')} WHERE id = ? AND user_id = ?`, params, function(err) {
       if (err) return res.status(500).json({ error: 'Failed to update task' });
       res.json({ message: 'Task updated successfully' });
+      if (task.workspace_id !== null) {
+        broadcast({ type: 'task:updated', workspaceId: task.workspace_id },
+          c => c.user && c.user.id !== req.user.id);
+      }
     });
   });
 });
 
 app.delete('/api/tasks/:id', authenticateToken, (req, res) => {
-  db.run('DELETE FROM tasks WHERE id = ? AND user_id = ?', [req.params.id, req.user.id], function(err) {
-    if (err) return res.status(500).json({ error: 'Failed to delete task' });
-    if (this.changes === 0) return res.status(404).json({ error: 'Task not found' });
-    res.json({ message: 'Task deleted successfully' });
+  db.get('SELECT workspace_id FROM tasks WHERE id = ? AND user_id = ?', [req.params.id, req.user.id], (err, task) => {
+    if (err || !task) return res.status(404).json({ error: 'Task not found' });
+    db.run('DELETE FROM tasks WHERE id = ? AND user_id = ?', [req.params.id, req.user.id], function(err) {
+      if (err) return res.status(500).json({ error: 'Failed to delete task' });
+      res.json({ message: 'Task deleted successfully' });
+      if (task.workspace_id !== null) {
+        broadcast({ type: 'task:deleted', workspaceId: task.workspace_id },
+          c => c.user && c.user.id !== req.user.id);
+      }
+    });
   });
 });
 
@@ -687,6 +701,10 @@ app.post('/api/files/upload', authenticateToken, resolveWorkspace, dynamicUpload
     function(err) {
       if (err) { fs.unlinkSync(req.file.path); return res.status(500).json({ error: 'Failed to save file record' }); }
       res.json({ id: this.lastID, message: 'File uploaded successfully', file: { id: this.lastID, filename: req.file.filename, original_name: req.file.originalname, size: req.file.size } });
+      if (req.workspaceId !== null) {
+        broadcast({ type: 'file:new', workspaceId: req.workspaceId },
+          c => c.user && c.user.id !== req.user.id);
+      }
     }
   );
 });
