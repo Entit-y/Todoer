@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="/styles.css">
   <!-- Handlebars 4.5.3 — template engine for task descriptions with cross-task references -->
   <script src="https://cdn.jsdelivr.net/npm/handlebars@4.5.3/dist/handlebars.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.4.2/dist/purify.min.js" crossorigin="anonymous"></script>
   <style>
     /* ── Toast ── */
     .toast {
@@ -1342,7 +1343,7 @@
     function renderDescription(description) {
       try {
         const template = Handlebars.compile(description, { compat: true });
-        return template({ task: taskContextById });
+        return DOMPurify.sanitize(template({ task: taskContextById }));
       } catch (e) {
         return escapeHtml(description);
       }
