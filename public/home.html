@@ -1344,7 +1344,7 @@
     function renderDescription(description) {
       try {
         const template = Handlebars.compile(description, { compat: true });
-        return template({ task: taskContextById });
+        return DOMPurify.sanitize(template({ task: taskContextById }));
       } catch (e) {
         return escapeHtml(description);
       }
