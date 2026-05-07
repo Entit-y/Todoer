@@ -164,11 +164,19 @@
       errEl.style.display = 'none';
 
       try {
-        // VULNERABLE: inviteCode interpolated directly into URL without validation.
-        // A path traversal payload here redirects this POST to any endpoint.
+        // Read CSRF token from cookie — standard double-submit pattern.
+        // VULNERABLE: this also means the CSRF token is automatically carried
+        // when inviteCode contains a path traversal payload, making the
+        // redirected POST fully authenticated and CSRF-valid against any endpoint.
+        const csrfToken = document.cookie.split('; ')
+          .find(r => r.startsWith('csrf_token='))?.split('=')[1];
+
         const r = await fetch(`/api/invites/${inviteCode}/accept`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(csrfToken ? { 'x-csrf-token': csrfToken } : {})
+          },
           body: JSON.stringify({ email })
         });
         const data = await r.json();
