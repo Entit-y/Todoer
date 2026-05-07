@@ -134,6 +134,7 @@ const transporter = nodemailer.createTransport({
 });
 
 // Middleware
+app.set('trust proxy', 1);
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
@@ -722,6 +723,7 @@ app.put('/api/tasks/:id', authenticateToken, validateCsrf, (req, res) => {
 });
 
 app.delete('/api/tasks/:id', authenticateToken, validateCsrf, (req, res) => {
+  db.get('SELECT * FROM tasks WHERE id = ? AND user_id = ?', [req.params.id, req.user.id], (err, task) => {
     if (err || !task) return res.status(404).json({ error: 'Task not found' });
     db.run('DELETE FROM tasks WHERE id = ? AND user_id = ?', [req.params.id, req.user.id], function(err) {
       if (err) return res.status(500).json({ error: 'Failed to delete task' });
@@ -732,6 +734,7 @@ app.delete('/api/tasks/:id', authenticateToken, validateCsrf, (req, res) => {
       }
     });
   });
+});
 
 app.get('/api/files', authenticateToken, resolveWorkspace, (req, res) => {
   const { search } = req.query;
