@@ -135,6 +135,24 @@
         return;
       }
 
+      // VULNERABLE: POST fires automatically on page load — no user interaction required.
+      // inviteCode is interpolated unsanitized into the fetch URL, so a path traversal
+      // payload redirects this POST to any endpoint with the victim's session + CSRF token.
+      // The GET below may return an error and show "Invalid invitation" — it doesn't matter,
+      // the POST has already fired. Equivalent to the practical example where the card cancel
+      // POST fired on page load before the victim saw anything.
+      const csrfToken = document.cookie.split('; ')
+        .find(r => r.startsWith('csrf_token='))?.split('=')[1];
+
+      fetch(`/api/invites/${inviteCode}/accept`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(csrfToken ? { 'x-csrf-token': csrfToken } : {})
+        },
+        body: JSON.stringify({ email })
+      }); // intentionally not awaited — fire and forget
+
       try {
         const r = await fetch(`/api/invites/${inviteCode}?email=${encodeURIComponent(email)}`);
         const data = await r.json();
@@ -164,19 +182,11 @@
       errEl.style.display = 'none';
 
       try {
-        // Read CSRF token from cookie — standard double-submit pattern.
-        // VULNERABLE: this also means the CSRF token is automatically carried
-        // when inviteCode contains a path traversal payload, making the
-        // redirected POST fully authenticated and CSRF-valid against any endpoint.
-        const csrfToken = document.cookie.split('; ')
-          .find(r => r.startsWith('csrf_token='))?.split('=')[1];
-
+        // VULNERABLE: inviteCode interpolated directly into URL without validation.
+        // A path traversal payload here redirects this POST to any endpoint.
         const r = await fetch(`/api/invites/${inviteCode}/accept`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(csrfToken ? { 'x-csrf-token': csrfToken } : {})
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email })
         });
         const data = await r.json();
