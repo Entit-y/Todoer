@@ -732,7 +732,6 @@ app.delete('/api/tasks/:id', authenticateToken, validateCsrf, (req, res) => {
       }
     });
   });
-});
 
 app.get('/api/files', authenticateToken, resolveWorkspace, (req, res) => {
   const { search } = req.query;
