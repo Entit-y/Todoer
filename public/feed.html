@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Feed — Todoer</title>
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    .feed-layout {
+      display: grid;
+      grid-template-columns: 1fr 240px;
+      gap: 24px;
+      align-items: start;
+      padding-bottom: 40px;
+    }
+
+    .feed-main { min-width: 0; }
+
+    /* ── Compose box ── */
+    .compose-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 14px 16px 12px;
+      margin-bottom: 8px;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .compose-box:focus-within {
+      border-color: var(--border-light);
+      box-shadow: 0 0 0 3px var(--accent-dim);
+    }
+
+    .compose-row { display: flex; gap: 11px; align-items: flex-start; }
+
+    .compose-avatar {
+      width: 30px; height: 30px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; flex-shrink: 0; margin-top: 3px;
+      letter-spacing: -0.01em;
+    }
+
+    .compose-input {
+      flex: 1; background: transparent; border: none; outline: none;
+      color: var(--text-1); font-family: var(--font); font-size: 14px;
+      resize: none; line-height: 1.6; min-height: 48px; max-height: 200px; padding-top: 4px;
+    }
+    .compose-input::placeholder { color: var(--text-3); }
+
+    .compose-footer {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border);
+    }
+
+    .compose-count-wrap { display: flex; align-items: center; gap: 8px; }
+    .compose-hint { font-size: 11px; color: var(--text-3); }
+
+    .compose-count-ring { width: 20px; height: 20px; flex-shrink: 0; }
+
+    .compose-count {
+      font-size: 11.5px; color: var(--text-3);
+      font-variant-numeric: tabular-nums; transition: color 0.15s;
+      min-width: 20px;
+    }
+    .compose-count.warn { color: #f59e0b; }
+    .compose-count.over { color: var(--danger); }
+
+    /* ── Feed divider ── */
+    .feed-divider {
+      display: flex; align-items: center; gap: 10px;
+      margin: 16px 0 12px; color: var(--text-3);
+      font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+    }
+    .feed-divider::before, .feed-divider::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
+
+    /* ── Feed list ── */
+    .feed-list { display: flex; flex-direction: column; gap: 1px; }
+
+    .feed-message {
+      background: transparent;
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
+      transition: background 0.12s;
+      animation: slideIn 0.2s ease;
+      position: relative;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .feed-message:hover { background: var(--surface-2); }
+
+    /* Own messages get a subtle left accent */
+    .feed-message.own-message {
+      background: var(--accent-dim);
+      border-radius: var(--radius-md);
+    }
+    .feed-message.own-message:hover { background: var(--surface-2); }
+    .feed-message.own-message::before {
+      content: ''; position: absolute;
+      left: 0; top: 10px; bottom: 10px;
+      width: 2px; border-radius: 0 2px 2px 0;
+      background: var(--border-light);
+    }
+
+    .message-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+
+    .message-avatar {
+      width: 30px; height: 30px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; flex-shrink: 0;
+      letter-spacing: -0.01em;
+    }
+
+    .message-meta { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 6px; }
+    .message-author { font-size: 13px; font-weight: 600; color: var(--text-1); white-space: nowrap; }
+    .message-time   { font-size: 11px; color: var(--text-3); white-space: nowrap; margin-left: auto; flex-shrink: 0; }
+
+    .message-delete {
+      background: none; border: none; color: var(--text-3);
+      cursor: pointer; padding: 4px; border-radius: var(--radius-sm);
+      opacity: 0; transition: opacity 0.15s, color 0.15s, background 0.15s; flex-shrink: 0;
+    }
+    .feed-message:hover .message-delete { opacity: 1; }
+    .message-delete:hover { color: var(--danger); background: var(--danger-dim); }
+
+    .message-content {
+      font-size: 13.5px; color: var(--text-1);
+      line-height: 1.65; word-break: break-word; white-space: pre-wrap;
+      padding-left: 40px;
+    }
+
+    /* ── Empty state ── */
+    .feed-empty {
+      text-align: center; padding: 56px 20px 48px; color: var(--text-3);
+    }
+    .feed-empty-icon {
+      width: 40px; height: 40px; margin: 0 auto 14px;
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      color: var(--text-3);
+    }
+    .feed-empty p { font-size: 13.5px; margin-bottom: 4px; color: var(--text-2); }
+    .feed-empty span { font-size: 12px; color: var(--text-3); }
+
+    /* ── Load more ── */
+    .feed-load-more { text-align: center; margin-top: 16px; }
+    .feed-load-more-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: none; border: 1px solid var(--border);
+      border-radius: var(--radius-md); padding: 8px 16px;
+      color: var(--text-3); font-family: var(--font); font-size: 12.5px;
+      cursor: pointer; transition: border-color 0.15s, color 0.15s, background 0.15s;
+    }
+    .feed-load-more-btn:hover {
+      border-color: var(--border-light); color: var(--text-1); background: var(--surface-2);
+    }
+
+    /* ── Info sidebar ── */
+    .feed-info-sidebar {
+      position: sticky; top: 36px;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+
+    .info-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 14px 16px;
+    }
+
+    .info-card h3 {
+      font-size: 10.5px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--text-3); margin-bottom: 10px;
+    }
+
+    .info-stat {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 6px 0; border-bottom: 1px solid var(--border);
+      font-size: 12.5px;
+    }
+    .info-stat:last-child { border-bottom: none; padding-bottom: 0; }
+    .info-stat-label { color: var(--text-3); }
+    .info-stat-value { color: var(--text-1); font-weight: 600; font-variant-numeric: tabular-nums; }
+    .info-stat-value.online { color: #22c55e; }
+
+    .info-rule {
+      display: flex; align-items: flex-start; gap: 8px;
+      padding: 5px 0; font-size: 12.5px; color: var(--text-2); line-height: 1.5;
+      border-bottom: 1px solid var(--border);
+    }
+    .info-rule:last-child { border-bottom: none; padding-bottom: 0; }
+    .info-rule-num {
+      font-size: 10px; font-weight: 700; color: var(--text-3);
+      background: var(--surface-2); border-radius: 4px;
+      padding: 1px 5px; flex-shrink: 0; margin-top: 2px;
+    }
+
+    /* ── Live badge ── */
+    .live-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 11px; font-weight: 600; color: #22c55e; letter-spacing: 0.06em;
+      background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.18);
+      border-radius: 20px; padding: 3px 9px;
+    }
+
+    .live-dot {
+      width: 5px; height: 5px; background: #22c55e;
+      border-radius: 50%; animation: pulse 2s infinite; flex-shrink: 0;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.35; transform: scale(0.75); }
+    }
+
+    /* ── Avatar colors ── */
+    .av-0 { background: rgba(99,102,241,0.18);  color: #818cf8; }
+    .av-1 { background: rgba(236,72,153,0.15);  color: #f472b6; }
+    .av-2 { background: rgba(20,184,166,0.15);  color: #2dd4bf; }
+    .av-3 { background: rgba(245,158,11,0.15);  color: #fbbf24; }
+    .av-4 { background: rgba(239,68,68,0.12);   color: #f87171; }
+    .av-5 { background: rgba(34,197,94,0.12);   color: #4ade80; }
+    .av-6 { background: rgba(249,115,22,0.15);  color: #fb923c; }
+    .av-7 { background: rgba(168,85,247,0.15);  color: #c084fc; }
+
+    @media (max-width: 900px) {
+      .feed-layout { grid-template-columns: 1fr; }
+      .feed-info-sidebar { position: static; }
+    }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <object data="/assets/logo.svg" type="image/svg+xml" style="width:24px;height:24px;pointer-events:none;flex-shrink:0;"></object>
+      <span class="sidebar-brand-text">Todoer</span>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a href="/home" class="nav-link">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/>
+        </svg>
+        Tasks
+      </a>
+      <a href="/feed" class="nav-link active">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+        Feed
+      </a>
+      <a href="/files" class="nav-link">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/>
+        </svg>
+        Files
+      </a>
+      <a href="/workspaces" class="nav-link">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        Workspaces
+      </a>
+      <a href="/profile" class="nav-link">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+        Profile
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="sidebar-user-avatar" id="sidebarAvatar">?</div>
+        <div class="sidebar-user-info">
+          <div class="sidebar-user-name" id="sidebarName">—</div>
+          <div class="sidebar-user-email" id="sidebarEmail">—</div>
+        </div>
+      </div>
+      <div class="sidebar-footer-actions">
+        <button class="sidebar-logout" id="logoutBtn">Sign out</button>
+        <button class="theme-toggle" id="themeToggle" title="Toggle theme">
+          <svg id="iconSun" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
+            <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </svg>
+          <svg id="iconMoon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main-content">
+    <main class="container">
+      <div class="page-header" style="margin-bottom:24px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <h1>Feed</h1>
+          <div class="live-badge"><span class="live-dot"></span> Live</div>
+        </div>
+      </div>
+
+      <div class="feed-layout">
+        <div class="feed-main">
+          <div class="compose-box">
+            <div class="compose-row">
+              <div class="compose-avatar" id="composeAvatar">?</div>
+              <textarea class="compose-input" id="composeInput" placeholder="What's on your mind?"
+                maxlength="280" onkeydown="handleComposeKey(event)" oninput="updateCount()"></textarea>
+            </div>
+            <div class="compose-footer">
+              <div class="compose-count-wrap">
+                <svg class="compose-count-ring" id="composeRing" viewBox="0 0 20 20" fill="none">
+                  <circle cx="10" cy="10" r="8" stroke="var(--border)" stroke-width="2"/>
+                  <circle cx="10" cy="10" r="8" stroke="var(--border-light)" stroke-width="2"
+                    stroke-dasharray="50.27" stroke-dashoffset="50.27"
+                    stroke-linecap="round" transform="rotate(-90 10 10)"
+                    id="composeRingFill" style="transition: stroke-dashoffset 0.15s, stroke 0.15s;"/>
+                </svg>
+                <span class="compose-count" id="composeCount">280</span>
+              </div>
+              <button class="btn btn-primary" onclick="submitMessage()" id="postBtn" style="padding:6px 18px; font-size:13px;">Post</button>
+            </div>
+          </div>
+
+          <div class="feed-list" id="feedList"></div>
+
+          <div class="feed-load-more" id="loadMoreWrap" style="display:none;">
+            <button class="feed-load-more-btn" onclick="loadMore()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="17 11 12 6 7 11"/><polyline points="17 18 12 13 7 18"/>
+              </svg>
+              Load older messages
+            </button>
+          </div>
+        </div>
+
+        <aside class="feed-info-sidebar">
+          <div class="info-card">
+            <h3>Activity</h3>
+            <div class="info-stat">
+              <span class="info-stat-label">Online now</span>
+              <span class="info-stat-value online" id="statOnline">—</span>
+            </div>
+            <div class="info-stat">
+              <span class="info-stat-label">Messages today</span>
+              <span class="info-stat-value" id="statToday">—</span>
+            </div>
+            <div class="info-stat">
+              <span class="info-stat-label">Total messages</span>
+              <span class="info-stat-value" id="statTotal">—</span>
+            </div>
+          </div>
+          <div class="info-card">
+            <h3>Guidelines</h3>
+            <div class="info-rule">
+              <span class="info-rule-num">1</span>
+              Keep it respectful
+            </div>
+            <div class="info-rule">
+              <span class="info-rule-num">2</span>
+              280 character limit
+            </div>
+            <div class="info-rule">
+              <span class="info-rule-num">3</span>
+              You can delete your own messages
+            </div>
+            <div class="info-rule">
+              <span class="info-rule-num">4</span>
+              Visible to all platform users
+            </div>
+          </div>
+        </aside>
+      </div>
+    </main>
+  </div>
+
+</div>
+
+  <script>
+    let currentUser = null;
+    let ws = null;
+    let oldestMessageId = null;
+    let hasMore = false;
+
+    const saved = localStorage.getItem('theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', saved);
+    updateThemeIcon(saved);
+
+    document.getElementById('themeToggle').addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+      updateThemeIcon(next);
+    });
+
+    function updateThemeIcon(theme) {
+      document.getElementById('iconSun').style.display  = theme === 'light' ? 'block' : 'none';
+      document.getElementById('iconMoon').style.display = theme === 'dark'  ? 'block' : 'none';
+    }
+
+    function avatarClass(str) {
+      let h = 0;
+      for (let i = 0; i < (str || '').length; i++) h = (h * 31 + str.charCodeAt(i)) & 0xffffffff;
+      return 'av-' + (Math.abs(h) % 8);
+    }
+
+    // Avatar colors
+    const AV_COLORS = ['#6366f1','#8b5cf6','#ec4899','#ef4444','#f59e0b','#10b981','#06b6d4','#3b82f6'];
+    function avatarColor(str) {
+      let h = 0;
+      for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+      return AV_COLORS[h % AV_COLORS.length];
+    }
+
+    function connectWS() {
+      const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+      ws = new WebSocket(`${proto}://${location.host}`);
+      ws.onmessage = (e) => {
+        const data = JSON.parse(e.data);
+        if (data.type === 'feed:new') prependMessage(data.message);
+        if (data.type === 'feed:delete') { document.getElementById(`msg-${data.messageId}`)?.remove(); checkEmpty(); }
+        if (data.type === 'presence' && data.online != null) {
+          const el = document.getElementById('statOnline');
+          if (el) el.textContent = data.online;
+        }
+      };
+      ws.onopen = () => { const el = document.getElementById('statOnline'); if (el) el.textContent = '1'; };
+      ws.onclose = () => setTimeout(connectWS, 3000);
+      ws.onerror = () => ws.close();
+    }
+
+    async function checkAuth() {
+      try {
+        const r = await fetch('/api/auth/me');
+        if (!r.ok) { window.location.href = '/'; return; }
+        const data = await r.json();
+        currentUser = data.user;
+        const initials = (data.user.username || data.user.email || '?')[0].toUpperCase();
+        const av = document.getElementById('composeAvatar');
+        av.textContent = initials;
+        av.className = 'compose-avatar ' + avatarClass(data.user.username || data.user.email || '');
+        const sidebarAv = document.getElementById('sidebarAvatar');
+        sidebarAv.textContent = initials;
+        sidebarAv.style.background = avatarColor(data.user.username || data.user.email || '?');
+        sidebarAv.style.border = 'none';
+        document.getElementById('sidebarEmail').textContent = data.user.email || '';
+        if (data.user.username) {
+          document.getElementById('sidebarName').innerHTML = '@' + data.user.username;
+        } else {
+          document.getElementById('sidebarName').textContent = data.user.email;
+        }
+      } catch { window.location.href = '/'; }
+    }
+    async function loadFeed() {
+      try {
+        const r = await fetch('/api/feed?limit=50');
+        const messages = await r.json();
+        if (messages.length) { oldestMessageId = messages[0].id; hasMore = messages.length === 50; }
+        renderFeed(messages);
+      } catch (e) { console.error(e); }
+    }
+
+    async function loadMore() {
+      if (!oldestMessageId) return;
+      try {
+        const r = await fetch(`/api/feed?limit=50&before=${oldestMessageId}`);
+        const messages = await r.json();
+        if (messages.length) {
+          oldestMessageId = messages[0].id;
+          hasMore = messages.length === 50;
+          const list = document.getElementById('feedList');
+          messages.forEach(m => list.appendChild(buildMessage(m)));
+        } else { hasMore = false; }
+        document.getElementById('loadMoreWrap').style.display = hasMore ? 'block' : 'none';
+      } catch (e) { console.error(e); }
+    }
+
+    function emptyStateHTML() {
+      return `<div class="feed-empty">
+        <div class="feed-empty-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+        </div>
+        <p>No messages yet</p>
+        <span>Be the first to say something</span>
+      </div>`;
+    }
+
+    function renderFeed(messages) {
+      const list = document.getElementById('feedList');
+      list.innerHTML = '';
+      if (!messages.length) { list.innerHTML = emptyStateHTML(); return; }
+      [...messages].reverse().forEach(m => list.appendChild(buildMessage(m)));
+      document.getElementById('loadMoreWrap').style.display = hasMore ? 'block' : 'none';
+      updateStats(messages);
+    }
+
+    function updateStats(messages) {
+      const total = messages.length;
+      const today = messages.filter(m => {
+        const d = new Date(m.created_at);
+        const n = new Date();
+        return d.getDate() === n.getDate() && d.getMonth() === n.getMonth() && d.getFullYear() === n.getFullYear();
+      }).length;
+      const el = document.getElementById('statTotal');
+      const elToday = document.getElementById('statToday');
+      if (el) el.textContent = total + (hasMore ? '+' : '');
+      if (elToday) elToday.textContent = today;
+    }
+
+    function checkEmpty() {
+      const list = document.getElementById('feedList');
+      if (!list.querySelector('.feed-message')) list.innerHTML = emptyStateHTML();
+    }
+
+    function prependMessage(message) {
+      const list = document.getElementById('feedList');
+      const empty = list.querySelector('.feed-empty');
+      if (empty) empty.remove();
+      list.prepend(buildMessage(message));
+      const elToday = document.getElementById('statToday');
+      if (elToday && elToday.textContent !== '—') elToday.textContent = (parseInt(elToday.textContent) || 0) + 1;
+      const elTotal = document.getElementById('statTotal');
+      if (elTotal && elTotal.textContent !== '—') elTotal.textContent = (parseInt(elTotal.textContent) || 0) + 1;
+    }
+
+    function buildMessage(message) {
+      const isOwn = currentUser && message.user_id === currentUser.id;
+      // Use username for initials, fallback to '?' (email is never displayed)
+      const initials = (message.username || '?')[0].toUpperCase();
+      // Display name: username if available, otherwise a generic label
+      const displayName = message.username ? '@' + message.username : 'Anonymous';
+      // Avatar class uses only username (email not used for styling)
+      const avClass = avatarClass(message.username || '');
+      const el = document.createElement('div');
+      el.className = 'feed-message' + (isOwn ? ' own-message' : '');
+      el.id = `msg-${message.id}`;
+      el.innerHTML = `
+        <div class="message-header">
+          <div class="message-avatar ${avClass}">${initials}</div>
+          <div class="message-meta">
+            <span class="message-author">${escapeHtml(displayName)}</span>
+            <!-- Email span removed entirely -->
+            <span class="message-time">${timeAgo(message.created_at)}</span>
+          </div>
+          ${isOwn ? `<button class="message-delete" onclick="deleteMessage(${message.id})" title="Delete">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            </svg>
+          </button>` : ''}
+        </div>
+        <div class="message-content">${escapeHtml(message.content)}</div>`;
+      return el;
+    }
+
+    function updateCount() {
+      const input = document.getElementById('composeInput');
+      const count = document.getElementById('composeCount');
+      const ring  = document.getElementById('composeRingFill');
+      const used  = input.value.length;
+      const remaining = 280 - used;
+      const circumference = 50.27;
+      const filled = Math.min(used / 280, 1);
+      const offset = circumference * (1 - filled);
+      ring.style.strokeDashoffset = offset;
+      ring.style.stroke = remaining < 0 ? 'var(--danger)' : remaining <= 20 ? '#f59e0b' : 'var(--accent)';
+      count.textContent = remaining <= 20 ? remaining : '';
+      count.className = 'compose-count' + (remaining <= 20 ? (remaining < 0 ? ' over' : ' warn') : '');
+    }
+
+    function handleComposeKey(e) {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); submitMessage(); }
+    }
+
+    async function submitMessage() {
+      const input = document.getElementById('composeInput');
+      const content = input.value.trim();
+      if (!content || content.length > 280) return;
+      const btn = document.getElementById('postBtn');
+      btn.disabled = true;
+      try {
+        await fetch('/api/feed', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+          body: JSON.stringify({ content })
+        });
+        input.value = '';
+        updateCount();
+      } catch (e) { console.error(e); }
+      btn.disabled = false;
+      input.focus();
+    }
+
+    async function deleteMessage(id) {
+      await fetch(`/api/feed/${id}`, { method: 'DELETE', headers: { 'X-CSRF-Token': getCsrfToken() } });
+    }
+
+    function getCsrfToken() {
+      return document.cookie.split('; ').reduce((val, c) => {
+        const [k, v] = c.split('=');
+        return k === 'csrf_token' ? decodeURIComponent(v) : val;
+      }, '');
+    }
+
+    function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+
+    function timeAgo(s) {
+      const diff = (Date.now() - new Date(s).getTime()) / 1000;
+      if (diff < 60) return 'just now';
+      if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+      if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+      return new Date(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      window.location.href = '/';
+    });
+
+    checkAuth().then(() => { loadFeed(); connectWS(); });
+  </script>
+</body>
+</html>

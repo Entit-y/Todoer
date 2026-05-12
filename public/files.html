@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Files — Todoer</title>
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    /* ── Toast ── */
+    .toast {
+      position: fixed; bottom: 24px; right: 24px;
+      background: var(--surface-3); border: 1px solid var(--border-light);
+      color: var(--text-1); padding: 12px 18px;
+      border-radius: var(--radius-md); font-size: 13.5px;
+      box-shadow: var(--shadow-md); z-index: 3000;
+      opacity: 0; transform: translateY(8px);
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none; max-width: 320px;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.success { border-color: rgba(34,197,94,0.3); color: #22c55e; }
+    .toast.error   { border-color: var(--danger-border); color: var(--danger); }
+
+    /* ── Confirm Modal ── */
+    .confirm-modal {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+      justify-content: center; align-items: center;
+      z-index: 1500; padding: 20px;
+    }
+    .confirm-box {
+      background: var(--surface); border: 1px solid var(--border-light);
+      border-radius: var(--radius-lg); padding: 28px;
+      width: 100%; max-width: 380px;
+      box-shadow: var(--shadow-lg); animation: modal-in 0.18s ease;
+    }
+    @keyframes modal-in {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .confirm-box h3 { font-size: 15px; font-weight: 600; color: var(--text-1); margin-bottom: 8px; letter-spacing: -0.02em; }
+    .confirm-box p  { font-size: 13.5px; color: var(--text-2); margin-bottom: 24px; line-height: 1.5; }
+    .confirm-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+    /* ── Search bar ── */
+    .search-bar {
+      display: flex; gap: 8px; margin-bottom: 20px;
+    }
+    .search-wrap {
+      flex: 1; position: relative;
+    }
+    .search-wrap .search-icon {
+      position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+      color: var(--text-3); pointer-events: none;
+    }
+    .search-wrap .search-input {
+      padding-left: 32px;
+    }
+
+    /* ── Upload progress ── */
+    .upload-progress {
+      display: none;
+      position: fixed; bottom: 80px; right: 24px;
+      background: var(--surface-3); border: 1px solid var(--border-light);
+      border-radius: var(--radius-md); padding: 12px 16px;
+      box-shadow: var(--shadow-md); z-index: 3000;
+      min-width: 220px;
+    }
+    .upload-progress.show { display: block; }
+    .upload-progress-label {
+      font-size: 12.5px; color: var(--text-2); margin-bottom: 8px;
+      display: flex; align-items: center; gap: 7px;
+    }
+    .upload-progress-bar-wrap {
+      height: 3px; background: var(--surface-2);
+      border-radius: 2px; overflow: hidden;
+    }
+    .upload-progress-bar {
+      height: 100%; background: var(--accent);
+      border-radius: 2px; transition: width 0.2s;
+      width: 0%;
+    }
+    .upload-progress-bar.indeterminate {
+      width: 40%;
+      animation: indeterminate 1.2s infinite linear;
+    }
+    @keyframes indeterminate {
+      0%   { transform: translateX(-100%); }
+      100% { transform: translateX(350%); }
+    }
+
+    /* ── File count badge ── */
+    .file-count-badge {
+      font-size: 12px; font-weight: 600; color: var(--text-3);
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: 20px; padding: 2px 9px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── Files grid ── */
+    .files-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 8px;
+    }
+
+    .file-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-md); padding: 18px 14px 14px;
+      display: flex; flex-direction: column;
+      align-items: center; text-align: center;
+      transition: border-color 0.12s, background 0.12s, transform 0.12s;
+      cursor: default; position: relative;
+    }
+    .file-card:hover {
+      border-color: var(--border-light);
+      background: var(--surface-2);
+    }
+    .file-card:hover .file-actions { opacity: 1; }
+    .file-card.extracted-file { border-color: var(--border-light); }
+
+    .file-type-tag {
+      position: absolute; top: 10px; right: 10px;
+      font-size: 9px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: 4px; padding: 1px 5px; color: var(--text-3);
+    }
+
+    .file-icon { margin-bottom: 10px; }
+    .file-name {
+      font-size: 12.5px; font-weight: 500; color: var(--text-1);
+      margin-bottom: 3px; word-break: break-word;
+      letter-spacing: -0.01em; line-height: 1.4;
+      display: -webkit-box; -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .file-size { font-size: 11px; color: var(--text-3); margin-bottom: 1px; }
+    .file-date { font-size: 11px; color: var(--text-3); }
+    .file-source {
+      font-size: 10.5px; color: var(--text-3); margin-top: 3px;
+      display: flex; align-items: center; gap: 3px;
+    }
+    .file-source-dot {
+      width: 4px; height: 4px; border-radius: 50%;
+      background: var(--border-light); flex-shrink: 0;
+    }
+
+    .file-actions {
+      display: flex; gap: 3px; margin-top: 12px;
+      padding-top: 10px; border-top: 1px solid var(--border);
+      width: 100%; justify-content: center;
+      opacity: 0.3; transition: opacity 0.15s;
+    }
+
+    /* ── Empty state ── */
+    .empty-state {
+      grid-column: 1 / -1;
+      text-align: center; padding: 72px 20px 60px;
+    }
+    .empty-state-icon {
+      width: 52px; height: 52px; margin: 0 auto 18px;
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center;
+    }
+    .empty-state-icon svg { opacity: 0.4; }
+    .empty-state p { font-size: 14px; color: var(--text-2); margin-bottom: 6px; font-weight: 600; letter-spacing: -0.02em; }
+    .empty-state span { font-size: 12.5px; color: var(--text-3); display: block; margin-bottom: 20px; }
+
+    /* ── Skeleton ── */
+    @keyframes shimmer {
+      0%   { background-position: -600px 0; }
+      100% { background-position: 600px 0; }
+    }
+    .skeleton {
+      background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%);
+      background-size: 600px 100%;
+      animation: shimmer 1.4s infinite linear;
+      border-radius: 4px;
+    }
+    .skeleton-file-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-md); padding: 18px 14px 14px;
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+    }
+    .skeleton-file-icon { width: 44px; height: 44px; border-radius: var(--radius-sm); margin-bottom: 2px; }
+    .skeleton-file-name { height: 12px; width: 80%; }
+    .skeleton-file-name-2 { height: 12px; width: 55%; }
+    .skeleton-file-meta  { height: 10px; width: 40%; }
+    .skeleton-file-actions {
+      width: 100%; height: 1px; background: var(--border); margin-top: 4px;
+    }
+    /* ── Workspace context banner ── */
+    .ws-context-banner {
+      display: none; align-items: center; gap: 10px;
+      padding: 8px 14px; margin-bottom: 14px;
+      background: rgba(99,102,241,0.08);
+      border: 1px solid rgba(99,102,241,0.2);
+      border-radius: var(--radius-md);
+      font-size: 12.5px; color: var(--text-2);
+    }
+    .ws-context-banner.show { display: flex; }
+    .ws-context-dot { width: 7px; height: 7px; border-radius: 50%; background: #6366f1; flex-shrink: 0; box-shadow: 0 0 0 3px rgba(99,102,241,0.2); }
+    .ws-context-banner strong { color: var(--text-1); }
+    .ws-context-banner a { margin-left: auto; font-size: 11.5px; color: var(--text-3); text-decoration: none; }
+    .ws-context-banner a:hover { color: var(--text-1); }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <object data="/assets/logo.svg" type="image/svg+xml" style="width:24px;height:24px;pointer-events:none;flex-shrink:0;"></object>
+      <span class="sidebar-brand-text">Todoer</span>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a href="/home" class="nav-link">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/>
+        </svg>
+        Tasks
+      </a>
+      <a href="/feed" class="nav-link">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+        Feed
+      </a>
+      <a href="/files" class="nav-link active">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/>
+        </svg>
+        Files
+      </a>
+      <a href="/workspaces" class="nav-link">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        Workspaces
+      </a>
+      <a href="/profile" class="nav-link">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+        Profile
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="sidebar-user-avatar" id="sidebarAvatar">?</div>
+        <div class="sidebar-user-info">
+          <div class="sidebar-user-name" id="sidebarName">—</div>
+          <div class="sidebar-user-email" id="sidebarEmail">—</div>
+        </div>
+      </div>
+      <div class="sidebar-footer-actions">
+        <button class="sidebar-logout" id="logoutBtn">Sign out</button>
+        <button class="theme-toggle" id="themeToggle" title="Toggle theme">
+          <svg id="iconSun" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
+            <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </svg>
+          <svg id="iconMoon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main-content">
+    <div class="container">
+
+      <div class="page-header">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <h1 id="pageTitle">My Files</h1>
+          <span class="file-count-badge" id="fileCountBadge" style="display:none;"></span>
+        </div>
+        <div class="header-actions" id="fileHeaderActions">
+          <button class="btn btn-secondary" id="createArchiveBtn" onclick="showCreateArchiveModal()">Create archive</button>
+          <label class="btn btn-primary upload-btn" id="uploadBtn">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            Upload
+            <input type="file" id="fileInput" style="display:none;" onchange="uploadFile(this.files[0])">
+          </label>
+        </div>
+      </div>
+
+      <div class="ws-context-banner" id="wsContextBanner">
+        <div class="ws-context-dot"></div>
+        <span>Workspace: <strong id="wsContextName">—</strong></span>
+        <a href="/workspaces">Switch →</a>
+      </div>
+
+      <div class="search-bar">
+        <div class="search-wrap">
+          <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input type="text" id="searchInput" placeholder="Search files…" class="search-input">
+        </div>
+        <button class="btn btn-secondary" onclick="loadFiles()">Search</button>
+      </div>
+
+      <div id="filesList" class="files-grid"></div>
+
+    </div>
+  </div>
+
+</div>
+
+  <!-- Upload progress -->
+  <div id="uploadProgress" class="upload-progress">
+    <div class="upload-progress-label">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+      <span id="uploadProgressLabel">Uploading…</span>
+    </div>
+    <div class="upload-progress-bar-wrap">
+      <div class="upload-progress-bar indeterminate" id="uploadProgressBar"></div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast"></div>
+
+  <!-- Confirm Modal -->
+  <div id="confirmModal" class="confirm-modal">
+    <div class="confirm-box">
+      <h3 id="confirmTitle"></h3>
+      <p id="confirmMessage"></p>
+      <div class="confirm-actions">
+        <button class="btn btn-secondary" id="confirmCancel">Cancel</button>
+        <button class="btn" id="confirmOk">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Image Viewer Modal -->
+  <div id="imageViewerModal" class="image-viewer-modal">
+    <div class="image-viewer-content">
+      <div class="image-viewer-header">
+        <h3 id="imageViewerTitle">Image</h3>
+        <div class="image-viewer-controls">
+          <button class="btn-icon" onclick="zoomIn()" title="Zoom in">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+          </button>
+          <button class="btn-icon" onclick="zoomOut()" title="Zoom out">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+          </button>
+          <button class="btn-icon" onclick="resetZoom()" title="Reset zoom">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          </button>
+          <button class="btn-icon" onclick="closeImageViewer()" title="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="image-viewer-body" id="imageViewerBody">
+        <img id="imageViewerImg" src="" alt="Image">
+      </div>
+      <div class="image-viewer-footer">
+        <span id="imageZoomLevel">100%</span>
+        <span id="imageFileName"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create Archive Modal -->
+  <div id="archiveModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Create archive</h2>
+        <button class="modal-close" onclick="closeArchiveModal()">×</button>
+      </div>
+      <form id="archiveForm">
+        <div class="form-group">
+          <label for="archiveName">Archive name</label>
+          <input type="text" id="archiveName" placeholder="my-archive.zip">
+        </div>
+        <div class="form-group">
+          <label>Files (<span id="selectedCount">0</span> selected)</label>
+          <div id="fileCheckboxList" class="selected-files-list"></div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" onclick="closeArchiveModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create archive</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    let files = [];
+    let userRole = null;  // current user's role in the active workspace (null = personal context)
+    let currentUser = null;
+    let selectedFiles = [];
+    let currentZoom = 100;
+    let currentImageFile = null;
+
+    const imageExtensions = ['jpg','jpeg','png','gif','bmp','webp','svg','ico','tiff','tif'];
+
+    // ── Theme ──
+    const saved = localStorage.getItem('theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', saved);
+    updateThemeIcon(saved);
+
+    document.getElementById('themeToggle').addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+      updateThemeIcon(next);
+    });
+
+    function updateThemeIcon(theme) {
+      document.getElementById('iconSun').style.display  = theme === 'light' ? 'block' : 'none';
+      document.getElementById('iconMoon').style.display = theme === 'dark'  ? 'block' : 'none';
+    }
+
+    // Avatar colors
+    const AV_COLORS = ['#6366f1','#8b5cf6','#ec4899','#ef4444','#f59e0b','#10b981','#06b6d4','#3b82f6'];
+    function avatarColor(str) {
+      let h = 0;
+      for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+      return AV_COLORS[h % AV_COLORS.length];
+    }
+
+    // ── Toast ──
+    let toastTimer;
+    function showToast(message, type = '') {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = 'toast' + (type ? ' ' + type : '');
+      requestAnimationFrame(() => toast.classList.add('show'));
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    // ── Confirm ──
+    function showConfirm({ title, message, confirmText = 'Confirm', danger = false }) {
+      return new Promise(resolve => {
+        document.getElementById('confirmTitle').textContent = title;
+        document.getElementById('confirmMessage').textContent = message;
+        const okBtn = document.getElementById('confirmOk');
+        okBtn.textContent = confirmText;
+        okBtn.className = 'btn ' + (danger ? 'btn-danger' : 'btn-primary');
+        document.getElementById('confirmModal').style.display = 'flex';
+        const cleanup = (result) => {
+          document.getElementById('confirmModal').style.display = 'none';
+          okBtn.removeEventListener('click', onOk);
+          document.getElementById('confirmCancel').removeEventListener('click', onCancel);
+          resolve(result);
+        };
+        const onOk = () => cleanup(true);
+        const onCancel = () => cleanup(false);
+        okBtn.addEventListener('click', onOk);
+        document.getElementById('confirmCancel').addEventListener('click', onCancel);
+      });
+    }
+
+    // ── Workspace context ──
+    const WS_KEY = 'activeWorkspace';
+    function getActiveWorkspace() {
+      try { return JSON.parse(localStorage.getItem(WS_KEY)) || null; } catch { return null; }
+    }
+
+    function getCsrfToken() {
+      return document.cookie.split('; ').reduce((val, c) => {
+        const [k, v] = c.split('=');
+        return k === 'csrf_token' ? decodeURIComponent(v) : val;
+      }, '');
+    }
+
+    function apiFetch(url, options = {}) {
+      const active = getActiveWorkspace();
+      const headers = { ...(options.headers || {}) };
+      if (active) headers['X-Workspace-Id'] = active.id;
+      const csrf = getCsrfToken();
+      if (csrf) headers['X-CSRF-Token'] = csrf;
+      return fetch(url, { ...options, headers });
+    }
+
+    function initWorkspaceBanner() {
+      const active = getActiveWorkspace();
+      const banner = document.getElementById('wsContextBanner');
+      const title  = document.getElementById('pageTitle');
+      if (active) {
+        document.getElementById('wsContextName').textContent = active.name;
+        banner.classList.add('show');
+        title.textContent = active.name + ' — Files';
+      } else {
+        banner.classList.remove('show');
+        title.textContent = 'My Files';
+      }
+    }
+
+    // ── Auth ──
+    async function checkAuth() {
+      try {
+        const r = await fetch('/api/auth/me');
+        if (!r.ok) { window.location.href = '/'; return; }
+        const data = await r.json();
+        currentUser = data.user;
+        const key = data.user.username || data.user.email || '?';
+        const initials = key[0].toUpperCase();
+        const sidebarAv = document.getElementById('sidebarAvatar');
+        sidebarAv.textContent = initials;
+        sidebarAv.style.background = avatarColor(key);
+        sidebarAv.style.border = 'none';
+        document.getElementById('sidebarEmail').textContent = data.user.email || '';
+        // VULNERABLE: innerHTML — XSS vector
+        if (data.user.username) {
+          document.getElementById('sidebarName').innerHTML = '@' + data.user.username;
+        } else {
+          document.getElementById('sidebarName').textContent = data.user.email;
+        }
+      } catch { window.location.href = '/'; }
+    }
+
+    // ── Skeleton ──
+    function showSkeleton() {
+      document.getElementById('filesList').innerHTML = Array(8).fill(`
+        <div class="skeleton-file-card">
+          <div class="skeleton skeleton-file-icon"></div>
+          <div class="skeleton skeleton-file-name"></div>
+          <div class="skeleton skeleton-file-name-2"></div>
+          <div class="skeleton skeleton-file-meta"></div>
+          <div class="skeleton-file-actions"></div>
+        </div>`).join('');
+    }
+
+    // ── Files ──
+    async function loadFiles() {
+      const search = document.getElementById('searchInput').value;
+      const params = new URLSearchParams();
+      if (search) params.append('search', search);
+      showSkeleton();
+      try {
+        const response = await apiFetch(`/api/files?${params.toString()}`);
+        const data = await response.json();
+        files    = data.files;
+        userRole = data.myRole || null;
+        updateUploadVisibility();
+        renderFiles();
+      } catch (error) {
+        console.error('Failed to load files:', error);
+        showToast('Failed to load files.', 'error');
+        document.getElementById('filesList').innerHTML = '';
+      }
+    }
+
+    function isImageFile(filename) {
+      return imageExtensions.includes(filename.split('.').pop().toLowerCase());
+    }
+
+    // ── Role helpers ──
+    function updateUploadVisibility() {
+      const isViewer = userRole === 'viewer';
+      const uploadBtn = document.getElementById('uploadBtn');
+      const createArchiveBtn = document.getElementById('createArchiveBtn');
+      if (uploadBtn) uploadBtn.style.display = isViewer ? 'none' : '';
+      if (createArchiveBtn) createArchiveBtn.style.display = isViewer ? 'none' : '';
+    }
+
+    function canManageFile(file) {
+      if (!userRole) return file.user_id === currentUser?.id;
+      if (userRole === 'viewer') return false;
+      if (['admin', 'owner'].includes(userRole)) return true;
+      return file.user_id === currentUser?.id;
+    }
+
+    function renderFiles() {
+      const filesList = document.getElementById('filesList');
+      const badge = document.getElementById('fileCountBadge');
+
+      if (files.length === 0) {
+        badge.style.display = 'none';
+        filesList.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
+                <polyline points="13 2 13 9 20 9"/>
+              </svg>
+            </div>
+            <p>No files yet</p>
+            <span>Upload a file to get started</span>
+          </div>`;
+        return;
+      }
+
+      badge.textContent = files.length + ' file' + (files.length !== 1 ? 's' : '');
+      badge.style.display = '';
+
+      filesList.innerHTML = files.map(file => {
+        const ext = file.original_name.split('.').pop().toLowerCase();
+        const uploader = file.uploader_username ? '@' + file.uploader_username : file.uploader_email;
+        const activeWs = getActiveWorkspace();
+        return `
+        <div class="file-card ${file.extracted_from ? 'extracted-file' : ''}" data-id="${file.id}">
+          <span class="file-type-tag">${ext}</span>
+          <div class="file-icon">${getFileIcon(file.original_name)}</div>
+          <div style="width:100%;">
+            <div class="file-name" title="${escapeHtml(file.original_name)}">${escapeHtml(file.original_name)}</div>
+            <div class="file-size">${formatFileSize(file.size)}</div>
+            <div class="file-date">${formatDate(file.created_at)}</div>
+            ${activeWs && uploader ? `<div class="file-date" style="margin-top:2px;">by ${escapeHtml(uploader)}</div>` : ''}
+            ${file.extracted_from ? `<div class="file-source"><span class="file-source-dot"></span>Extracted</div>` : ''}
+          </div>
+          <div class="file-actions">
+            ${isImageFile(file.original_name) ? `
+              <button class="btn-icon" onclick="viewImage(${file.id})" title="View">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>` : ''}
+            <button class="btn-icon" onclick="downloadFile(${file.id}, '${file.original_name.replace(/'/g, "\\'")}')" title="Download">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </button>
+            ${isArchive(file.original_name) && !file.extracted_from && canManageFile(file) ? `
+              <button class="btn-icon" onclick="extractArchive(${file.id}, '${escapeHtml(file.original_name)}')" title="Extract">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
+              </button>` : ''}
+            ${canManageFile(file) ? `
+            <button class="btn-icon btn-danger" onclick="deleteFile(${file.id}, '${escapeHtml(file.original_name)}')" title="Delete">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>` : ''}
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    // ── Image viewer ──
+    function viewImage(fileId) {
+      const file = files.find(f => f.id === fileId);
+      if (!file) return;
+      currentImageFile = file; currentZoom = 100;
+      document.getElementById('imageViewerTitle').textContent = file.original_name;
+      document.getElementById('imageFileName').textContent = formatFileSize(file.size);
+      const img = document.getElementById('imageViewerImg');
+      img.src = `/api/files/${fileId}/download?t=${Date.now()}`;
+      img.style.transform = 'scale(1)';
+      document.getElementById('imageZoomLevel').textContent = '100%';
+      document.getElementById('imageViewerModal').style.display = 'flex';
+    }
+
+    function closeImageViewer() {
+      document.getElementById('imageViewerModal').style.display = 'none';
+      document.getElementById('imageViewerImg').src = '';
+      currentImageFile = null; currentZoom = 100;
+    }
+
+    function zoomIn()    { if (currentZoom < 300) { currentZoom += 25; updateZoom(); } }
+    function zoomOut()   { if (currentZoom > 25)  { currentZoom -= 25; updateZoom(); } }
+    function resetZoom() { currentZoom = 100; updateZoom(); }
+
+    function updateZoom() {
+      document.getElementById('imageViewerImg').style.transform = `scale(${currentZoom / 100})`;
+      document.getElementById('imageZoomLevel').textContent = `${currentZoom}%`;
+    }
+
+    // ── File helpers ──
+    function getFileIcon(filename) {
+      const ext = filename.split('.').pop().toLowerCase();
+      const color = {
+        pdf:  ['#ef4444'], zip:  ['#f59e0b'], tar:  ['#f59e0b'],
+        gz:   ['#f59e0b'], txt:  ['#60a5fa'], js:   ['#fbbf24'],
+        jpg:  ['#a78bfa'], jpeg: ['#a78bfa'], png:  ['#a78bfa'],
+        gif:  ['#a78bfa'], webp: ['#a78bfa'], svg:  ['#a78bfa'],
+        mp4:  ['#34d399'], mp3:  ['#34d399'], json: ['#fbbf24'],
+        html: ['#fb923c'], css:  ['#60a5fa'], py:   ['#60a5fa'],
+      };
+      const isImage = imageExtensions.includes(ext);
+      const isArc   = ['zip','tar','gz','rar','7z'].includes(ext);
+      const c = (color[ext] || ['#6b7280'])[0];
+      if (isImage) return `<svg width="40" height="40" viewBox="0 0 24 24" fill="${c}22" stroke="${c}" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`;
+      if (isArc)   return `<svg width="40" height="40" viewBox="0 0 24 24" fill="${c}22" stroke="${c}" stroke-width="1.2"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>`;
+      return `<svg width="40" height="40" viewBox="0 0 24 24" fill="${c}22" stroke="${c}" stroke-width="1.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`;
+    }
+
+    function isArchive(filename) {
+      return ['zip','rar','7z','tar','gz'].includes(filename.split('.').pop().toLowerCase());
+    }
+
+    // ── Upload ──
+    async function uploadFile(file) {
+      if (!file) return;
+      const progress = document.getElementById('uploadProgress');
+      const label = document.getElementById('uploadProgressLabel');
+      const bar = document.getElementById('uploadProgressBar');
+      label.textContent = `Uploading ${file.name}…`;
+      bar.className = 'upload-progress-bar indeterminate';
+      progress.classList.add('show');
+      const formData = new FormData();
+      formData.append('file', file);
+      try {
+        const response = await apiFetch('/api/files/upload', { method: 'POST', body: formData });
+        progress.classList.remove('show');
+        if (response.ok) { loadFiles(); showToast('File uploaded.', 'success'); }
+        else { showToast('Failed to upload file.', 'error'); }
+      } catch {
+        progress.classList.remove('show');
+        showToast('Upload failed.', 'error');
+      }
+      document.getElementById('fileInput').value = '';
+    }
+
+    async function downloadFile(id, name) {
+      try {
+        const response = await apiFetch(`/api/files/${id}/download`);
+        if (!response.ok) { showToast('Download failed.', 'error'); return; }
+        const blob = await response.blob();
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href = url; a.download = name || 'download';
+        document.body.appendChild(a); a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch { showToast('Download failed.', 'error'); }
+    }
+
+    async function extractArchive(id, name) {
+      const confirmed = await showConfirm({ title: 'Extract archive', message: `Extract "${name}"? Files will be added to your file list.`, confirmText: 'Extract' });
+      if (!confirmed) return;
+      showToast('Extracting…');
+      try {
+        const response = await apiFetch(`/api/files/extract/${id}`, { method: 'POST' });
+        const data = await response.json();
+        if (response.ok) { loadFiles(); showToast(`Extracted ${data.files.length} file(s).`, 'success'); }
+        else { showToast(data.error || 'Extraction failed.', 'error'); }
+      } catch { showToast('Extraction failed.', 'error'); }
+    }
+
+    async function deleteFile(id, name) {
+      const confirmed = await showConfirm({ title: 'Delete file', message: `"${name}" will be permanently deleted.`, confirmText: 'Delete', danger: true });
+      if (!confirmed) return;
+      try {
+        await apiFetch(`/api/files/${id}`, { method: 'DELETE' });
+        loadFiles(); showToast('File deleted.', 'success');
+      } catch { showToast('Failed to delete file.', 'error'); }
+    }
+
+    // ── Archive ──
+    function showCreateArchiveModal() {
+      selectedFiles = [];
+      renderFileCheckboxes();
+      document.getElementById('archiveModal').style.display = 'flex';
+    }
+
+    function closeArchiveModal() { document.getElementById('archiveModal').style.display = 'none'; }
+
+    function renderFileCheckboxes() {
+      const list = document.getElementById('fileCheckboxList');
+      document.getElementById('selectedCount').textContent = selectedFiles.length;
+      if (!files.length) { list.innerHTML = '<p style="color:var(--text-3);font-size:13px;padding:8px 0;">No files available.</p>'; return; }
+      list.innerHTML = files.map(f => `
+        <div class="selected-file-item" style="cursor:pointer;" onclick="toggleFileSelection(${f.id})">
+          <span>${escapeHtml(f.original_name)}</span>
+          <input type="checkbox" ${selectedFiles.includes(f.id) ? 'checked' : ''} style="pointer-events:none;accent-color:var(--accent);flex-shrink:0;">
+        </div>`).join('');
+    }
+
+    function toggleFileSelection(id) {
+      const index = selectedFiles.indexOf(id);
+      if (index === -1) { selectedFiles.push(id); } else { selectedFiles.splice(index, 1); }
+      renderFileCheckboxes();
+    }
+
+    document.getElementById('archiveForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (selectedFiles.length === 0) { showToast('Select at least one file.', 'error'); return; }
+      try {
+        const response = await apiFetch('/api/files/create-archive', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fileIds: selectedFiles, archiveName: document.getElementById('archiveName').value || `archive-${Date.now()}.zip` })
+        });
+        if (response.ok) { closeArchiveModal(); loadFiles(); showToast('Archive created.', 'success'); }
+        else { showToast('Failed to create archive.', 'error'); }
+      } catch { showToast('Failed to create archive.', 'error'); }
+    });
+
+    // ── Keyboard & events ──
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        closeImageViewer();
+        closeArchiveModal();
+        document.getElementById('confirmModal').style.display = 'none';
+      }
+    });
+
+    document.getElementById('imageViewerModal').addEventListener('click', e => {
+      if (e.target.id === 'imageViewerModal') closeImageViewer();
+    });
+
+    let searchTimer;
+    document.getElementById('searchInput').addEventListener('input', () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(loadFiles, 300);
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      wsActive = false;
+      if (ws) ws.close();
+      await fetch('/api/auth/logout', { method: 'POST', headers: { 'X-CSRF-Token': getCsrfToken() } });
+      window.location.href = '/';
+    });
+
+    // ── Formatters ──
+    function escapeHtml(text) { const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
+    function formatFileSize(bytes) {
+      if (!bytes) return '0 B';
+      const k = 1024, sizes = ['B','KB','MB','GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+    function formatDate(dateStr) {
+      if (!dateStr) return '';
+      return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    // ── WebSocket ──
+    let ws = null;
+    let wsActive = false;
+
+    function connectWS() {
+      const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+      ws = new WebSocket(`${proto}://${location.host}`);
+      wsActive = true;
+      ws.onmessage = (e) => {
+        const data = JSON.parse(e.data);
+        const active = getActiveWorkspace();
+        const myWsId = active ? active.id : null;
+        if (data.type === 'file:new' && myWsId !== null && data.workspaceId === myWsId) {
+          loadFiles();
+        }
+      };
+      ws.onclose = () => { if (wsActive) setTimeout(connectWS, 3000); };
+      ws.onerror = () => ws.close();
+    }
+
+    initWorkspaceBanner();
+    checkAuth();
+    loadFiles();
+    connectWS();
+  </script>
+</body>
+</html>

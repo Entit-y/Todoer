@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile — Todoer</title>
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    /* ── Toast ── */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--surface-3);
+      border: 1px solid var(--border-light);
+      color: var(--text-1);
+      padding: 12px 18px;
+      border-radius: var(--radius-md);
+      font-size: 13.5px;
+      box-shadow: var(--shadow-md);
+      z-index: 3000;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none;
+      max-width: 320px;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.success { border-color: rgba(34,197,94,0.3); color: #22c55e; }
+    .toast.error   { border-color: var(--danger-border); color: var(--danger); }
+
+    /* ── Confirm Modal ── */
+    .confirm-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(4px);
+      justify-content: center;
+      align-items: center;
+      z-index: 1500;
+      padding: 20px;
+    }
+    .confirm-box {
+      background: var(--surface);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      width: 100%;
+      max-width: 380px;
+      box-shadow: var(--shadow-lg);
+      animation: modal-in 0.18s ease;
+    }
+    .confirm-box h3 {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-1);
+      margin-bottom: 8px;
+      letter-spacing: -0.02em;
+    }
+    .confirm-box p {
+      font-size: 13.5px;
+      color: var(--text-2);
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+    .confirm-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <object data="/assets/logo.svg" type="image/svg+xml" style="width:24px;height:24px;pointer-events:none;flex-shrink:0;"></object>
+      <span class="sidebar-brand-text">Todoer</span>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a href="/home" class="nav-link">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/>
+        </svg>
+        Tasks
+      </a>
+      <a href="/feed" class="nav-link">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+        Feed
+      </a>
+      <a href="/files" class="nav-link">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/>
+        </svg>
+        Files
+      </a>
+      <a href="/workspaces" class="nav-link">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        Workspaces
+      </a>
+      <a href="/profile" class="nav-link active">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+        Profile
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="sidebar-user-avatar" id="sidebarAvatar">?</div>
+        <div class="sidebar-user-info">
+          <div class="sidebar-user-name" id="sidebarName">—</div>
+          <div class="sidebar-user-email" id="sidebarEmail">—</div>
+        </div>
+      </div>
+      <div class="sidebar-footer-actions">
+        <button class="sidebar-logout" id="logoutBtn">Sign out</button>
+        <button class="theme-toggle" id="themeToggle" title="Toggle theme">
+          <svg id="iconSun" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
+            <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </svg>
+          <svg id="iconMoon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main-content">
+  <main class="container">
+    <div class="profile-header">
+      <div class="profile-avatar">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+      </div>
+      <div class="profile-info">
+        <h1 id="profileEmail">Loading…</h1>
+        <p id="profileUsername" class="profile-username"></p>
+        <p id="profileDate">Member since —</p>
+      </div>
+    </div>
+
+    <div class="profile-sections">
+      <section class="profile-section">
+        <h2>Username</h2>
+        <form id="usernameForm" class="profile-form">
+          <div class="form-group">
+            <label for="newUsername">Username</label>
+            <input type="text" id="newUsername" placeholder="johndoe" autocomplete="username">
+          </div>
+          <div id="usernameMessage" class="message" style="display:none;"></div>
+          <button type="submit" class="btn btn-primary">Update username</button>
+        </form>
+      </section>
+
+      <section class="profile-section">
+        <h2>Email address</h2>
+        <form id="emailForm" class="profile-form">
+          <div class="form-group">
+            <label for="newEmail">New email</label>
+            <input type="email" id="newEmail" required placeholder="you@newdomain.com">
+          </div>
+          <div id="emailMessage" class="message" style="display:none;"></div>
+          <button type="submit" class="btn btn-primary">Update email</button>
+        </form>
+      </section>
+
+      <section class="profile-section">
+        <h2>Password</h2>
+        <form id="passwordForm" class="profile-form">
+          <div class="form-group">
+            <label for="currentPassword">Current password</label>
+            <input type="password" id="currentPassword" required placeholder="Enter current password">
+          </div>
+          <div class="form-group">
+            <label for="newPassword">New password</label>
+            <input type="password" id="newPassword" required minlength="6" placeholder="At least 6 characters">
+          </div>
+          <div class="form-group">
+            <label for="confirmNewPassword">Confirm new password</label>
+            <input type="password" id="confirmNewPassword" required placeholder="Repeat new password">
+          </div>
+          <div id="passwordMessage" class="message" style="display:none;"></div>
+          <button type="submit" class="btn btn-primary">Change password</button>
+        </form>
+      </section>
+
+      <section class="profile-section" id="connectedAccountsSection">
+        <h2>Connected accounts</h2>
+        <div id="connectedAccountsList">
+          <p style="font-size:13px;color:var(--text-3);">Loading…</p>
+        </div>
+      </section>
+
+      <section class="profile-section danger-zone">
+        <h2>Danger zone</h2>
+        <p>Deleting your account is permanent and cannot be undone.</p>
+        <form id="deleteForm" class="profile-form">
+          <div class="form-group">
+            <label for="deletePassword">Confirm with password</label>
+            <input type="password" id="deletePassword" required placeholder="Your current password">
+          </div>
+          <div id="deleteMessage" class="message" style="display:none;"></div>
+          <button type="submit" class="btn btn-danger">Delete my account</button>
+        </form>
+      </section>
+    </div>
+  </main>
+  </div><!-- /.main-content -->
+</div><!-- /.app-layout -->
+
+  <!-- Toast -->
+  <div id="toast" class="toast"></div>
+
+  <!-- Confirm Modal -->
+  <div id="confirmModal" class="confirm-modal">
+    <div class="confirm-box">
+      <h3 id="confirmTitle"></h3>
+      <p id="confirmMessage"></p>
+      <div class="confirm-actions">
+        <button class="btn btn-secondary" id="confirmCancel">Cancel</button>
+        <button class="btn" id="confirmOk">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ── Theme ──
+    const saved = localStorage.getItem('theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', saved);
+    updateThemeIcon(saved);
+
+    document.getElementById('themeToggle').addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+      updateThemeIcon(next);
+    });
+
+    function updateThemeIcon(theme) {
+      document.getElementById('iconSun').style.display  = theme === 'light' ? 'block' : 'none';
+      document.getElementById('iconMoon').style.display = theme === 'dark'  ? 'block' : 'none';
+    }
+
+    // Avatar colors
+    const AV_COLORS = ['#6366f1','#8b5cf6','#ec4899','#ef4444','#f59e0b','#10b981','#06b6d4','#3b82f6'];
+    function avatarColor(str) {
+      let h = 0;
+      for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+      return AV_COLORS[h % AV_COLORS.length];
+    }
+
+    // ── Toast ──
+    let toastTimer;
+    function showToast(message, type = '') {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = 'toast' + (type ? ' ' + type : '');
+      requestAnimationFrame(() => toast.classList.add('show'));
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    // ── Confirm modal ──
+    function showConfirm({ title, message, confirmText = 'Confirm', danger = false }) {
+      return new Promise(resolve => {
+        document.getElementById('confirmTitle').textContent = title;
+        document.getElementById('confirmMessage').textContent = message;
+        const okBtn = document.getElementById('confirmOk');
+        okBtn.textContent = confirmText;
+        okBtn.className = 'btn ' + (danger ? 'btn-danger' : 'btn-primary');
+        document.getElementById('confirmModal').style.display = 'flex';
+
+        const cleanup = (result) => {
+          document.getElementById('confirmModal').style.display = 'none';
+          okBtn.removeEventListener('click', onOk);
+          document.getElementById('confirmCancel').removeEventListener('click', onCancel);
+          resolve(result);
+        };
+        const onOk     = () => cleanup(true);
+        const onCancel = () => cleanup(false);
+        okBtn.addEventListener('click', onOk);
+        document.getElementById('confirmCancel').addEventListener('click', onCancel);
+      });
+    }
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') document.getElementById('confirmModal').style.display = 'none';
+    });
+
+    // ── Auth ──
+    async function checkAuth() {
+      try {
+        const r = await fetch('/api/auth/me');
+        if (!r.ok) { window.location.href = '/'; return; }
+        const data = await r.json();
+        document.getElementById('profileEmail').textContent = data.user.email;
+        document.getElementById('newEmail').value = data.user.email;
+        const key = data.user.username || data.user.email || '?';
+        const initial = key[0].toUpperCase();
+        const sidebarAv = document.getElementById('sidebarAvatar');
+        sidebarAv.textContent = initial;
+        sidebarAv.style.background = avatarColor(key);
+        sidebarAv.style.border = 'none';
+        document.getElementById('sidebarEmail').textContent = data.user.email;
+        const usernameEl = document.getElementById('profileUsername');
+        const navEl = document.getElementById('sidebarName');
+        if (data.user.username) {
+          usernameEl.innerHTML = '@' + data.user.username;
+          navEl.innerHTML = '@' + data.user.username;
+          document.getElementById('newUsername').value = data.user.username;
+        } else {
+          usernameEl.textContent = 'No username set';
+          navEl.textContent = data.user.email;
+        }
+        loadProfile();
+      } catch { window.location.href = '/'; }
+    }
+
+    async function loadProfile() {
+      try {
+        const r = await fetch('/api/profile');
+        const data = await r.json();
+        document.getElementById('profileDate').textContent = `Member since ${formatDate(data.created_at)}`;
+
+        const list = document.getElementById('connectedAccountsList');
+        const googleAccount = (data.oauth_accounts || []).find(a => a.provider === 'google');
+
+        list.innerHTML = `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <svg width="18" height="18" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;">
+                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+              </svg>
+              <div>
+                <div style="font-size:13.5px;font-weight:500;color:var(--text-1);">Google</div>
+                <div style="font-size:12px;color:var(--text-3);margin-top:2px;">
+                  ${googleAccount ? escapeHtml(googleAccount.provider_email || 'Connected') : 'Not connected'}
+                </div>
+              </div>
+            </div>
+            ${googleAccount
+              ? `<span style="font-size:11.5px;font-weight:600;padding:3px 10px;border-radius:20px;background:rgba(34,197,94,0.08);color:#22c55e;border:1px solid rgba(34,197,94,0.2);">Connected</span>`
+              : `<a href="/auth/oauth/google" class="btn btn-secondary" style="font-size:12px;padding:5px 12px;">Connect</a>`}
+          </div>`;
+      } catch (e) { console.error(e); }
+    }
+
+    // ── Forms ──
+    function getCsrfToken() {
+      return document.cookie.split('; ').reduce((val, c) => {
+        const [k, v] = c.split('=');
+        return k === 'csrf_token' ? decodeURIComponent(v) : val;
+      }, '');
+    }
+
+    function escapeHtml(t) {
+      const d = document.createElement('div');
+      d.textContent = t;
+      return d.innerHTML;
+    }
+
+    document.getElementById('usernameForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('usernameMessage');
+      msg.style.display = 'none'; msg.className = 'message';
+      const username = document.getElementById('newUsername').value.trim();
+      if (!username) { msg.textContent = 'Username cannot be empty'; msg.className = 'message error'; msg.style.display = 'block'; return; }
+      try {
+        const r = await fetch('/api/profile/username', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() }, body: JSON.stringify({ username }) });
+        const data = await r.json();
+        if (r.ok) {
+          msg.textContent = 'Username updated.';
+          msg.className = 'message success';
+          document.getElementById('profileUsername').innerHTML = '@' + data.username;
+        } else {
+          msg.textContent = data.error || 'Failed to update username';
+          msg.className = 'message error';
+        }
+        msg.style.display = 'block';
+      } catch { msg.textContent = 'An error occurred.'; msg.className = 'message error'; msg.style.display = 'block'; }
+    });
+
+    document.getElementById('emailForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('emailMessage');
+      msg.style.display = 'none'; msg.className = 'message';
+      try {
+        const r = await fetch('/api/profile/email', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() }, body: JSON.stringify({ email: document.getElementById('newEmail').value }) });
+        const data = await r.json();
+        if (r.ok) { msg.textContent = 'Email updated.'; msg.className = 'message success'; document.getElementById('profileEmail').textContent = document.getElementById('newEmail').value; }
+        else { msg.textContent = data.error || 'Failed to update email'; msg.className = 'message error'; }
+        msg.style.display = 'block';
+      } catch { msg.textContent = 'An error occurred.'; msg.className = 'message error'; msg.style.display = 'block'; }
+    });
+
+    document.getElementById('passwordForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('passwordMessage');
+      msg.style.display = 'none'; msg.className = 'message';
+      const np = document.getElementById('newPassword').value;
+      const cp = document.getElementById('confirmNewPassword').value;
+      if (np !== cp) { msg.textContent = 'Passwords do not match'; msg.className = 'message error'; msg.style.display = 'block'; return; }
+      try {
+        const r = await fetch('/api/profile/password', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() }, body: JSON.stringify({ currentPassword: document.getElementById('currentPassword').value, newPassword: np }) });
+        const data = await r.json();
+        if (r.ok) { msg.textContent = 'Password changed.'; msg.className = 'message success'; document.getElementById('passwordForm').reset(); }
+        else { msg.textContent = data.error || 'Failed to change password'; msg.className = 'message error'; }
+        msg.style.display = 'block';
+      } catch { msg.textContent = 'An error occurred.'; msg.className = 'message error'; msg.style.display = 'block'; }
+    });
+
+    document.getElementById('deleteForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('deleteMessage');
+      msg.style.display = 'none'; msg.className = 'message';
+
+      const confirmed = await showConfirm({
+        title: 'Delete account',
+        message: 'This is permanent and cannot be undone. All your data will be lost.',
+        confirmText: 'Delete my account',
+        danger: true
+      });
+      if (!confirmed) return;
+
+      try {
+        const r = await fetch('/api/profile/account', { method: 'DELETE', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() }, body: JSON.stringify({ password: document.getElementById('deletePassword').value }) });
+        const data = await r.json();
+        if (r.ok) {
+          showToast('Account deleted. Redirecting…');
+          setTimeout(() => window.location.href = '/', 1500);
+        } else {
+          msg.textContent = data.error || 'Failed to delete account';
+          msg.className = 'message error';
+          msg.style.display = 'block';
+        }
+      } catch { msg.textContent = 'An error occurred.'; msg.className = 'message error'; msg.style.display = 'block'; }
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await fetch('/api/auth/logout', { method: 'POST', headers: { 'X-CSRF-Token': getCsrfToken() } });
+      window.location.href = '/';
+    });
+
+    function formatDate(s) {
+      if (!s) return '—';
+      return new Date(s).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    }
+
+    checkAuth();
+  </script>
+</body>
+</html>

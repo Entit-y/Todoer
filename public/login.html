@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign In - Todoer</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="auth">
+
+  <!-- Animated background canvas -->
+  <canvas id="bgCanvas"></canvas>
+
+  <div class="auth-container">
+    <div class="auth-card">
+
+      <a href="/" class="auth-logo" aria-label="Todoer home">
+        <span class="auth-logo-badge">
+          <img src="/assets/logo.svg" alt="Todoer" class="auth-logo-image">
+        </span>
+      </a>
+
+      <h1>Sign in</h1>
+      <p class="subtitle">Enter your credentials to access your account</p>
+
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" required placeholder="you@example.com" autocomplete="email">
+        </div>
+
+        <div class="form-group">
+          <div class="label-row">
+            <label for="password">Password</label>
+            <a href="/forgot-password">Forgot password?</a>
+          </div>
+          <input type="password" id="password" name="password" required placeholder="••••••••" autocomplete="current-password">
+        </div>
+
+        <div id="errorMessage" class="error-message" style="display:none;margin-bottom:16px;"></div>
+
+        <button type="submit" class="btn btn-primary btn-full">Sign in</button>
+      </form>
+
+      <div class="auth-divider">
+        <span>or</span>
+      </div>
+ 
+      <a href="/auth/oauth/google" class="btn btn-oauth btn-full">
+        <svg width="18" height="18" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+          <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+          <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+          <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+          <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+          <path fill="none" d="M0 0h48v48H0z"/>
+        </svg>
+        Continue with Google
+      </a>
+
+      <div class="auth-footer">
+        <p>Don't have an account? <a href="/register">Create one</a></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ── Particle / orb background ── */
+    (function () {
+      const canvas = document.getElementById('bgCanvas');
+      const ctx = canvas.getContext('2d');
+
+      function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+      resize();
+      window.addEventListener('resize', resize);
+
+      const orbs = Array.from({ length: 6 }, (_, i) => ({
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight,
+        r: 180 + Math.random() * 160,
+        dx: (Math.random() - 0.5) * 0.35,
+        dy: (Math.random() - 0.5) * 0.35,
+        hue: [220, 240, 260, 200, 250, 230][i],
+        alpha: 0.07 + Math.random() * 0.06,
+      }));
+
+      const particles = Array.from({ length: 55 }, () => ({
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight,
+        r: 0.8 + Math.random() * 1.4,
+        dx: (Math.random() - 0.5) * 0.18,
+        dy: -0.12 - Math.random() * 0.18,
+        alpha: 0.15 + Math.random() * 0.25,
+      }));
+
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        orbs.forEach(o => {
+          o.x += o.dx; o.y += o.dy;
+          if (o.x < -o.r) o.x = canvas.width + o.r;
+          if (o.x > canvas.width + o.r) o.x = -o.r;
+          if (o.y < -o.r) o.y = canvas.height + o.r;
+          if (o.y > canvas.height + o.r) o.y = -o.r;
+
+          const g = ctx.createRadialGradient(o.x, o.y, 0, o.x, o.y, o.r);
+          g.addColorStop(0, `hsla(${o.hue},70%,65%,${o.alpha})`);
+          g.addColorStop(1, `hsla(${o.hue},70%,65%,0)`);
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.arc(o.x, o.y, o.r, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        particles.forEach(p => {
+          p.x += p.dx; p.y += p.dy;
+          if (p.y < -4) { p.y = canvas.height + 4; p.x = Math.random() * canvas.width; }
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(255,255,255,${p.alpha})`;
+          ctx.fill();
+        });
+
+        requestAnimationFrame(draw);
+      }
+      draw();
+    })();
+
+    /* ── Redirect param ── */
+    const redirectTo = new URLSearchParams(location.search).get('redirect');
+    if (redirectTo) {
+      document.querySelector('.subtitle').textContent = 'Sign in to accept your invitation';
+      const registerLink = document.querySelector('.auth-footer a');
+      registerLink.href = '/register?redirect=' + encodeURIComponent(redirectTo);
+    }
+
+    /* ── Form submit ── */
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const errorMessage = document.getElementById('errorMessage');
+      const btn = e.target.querySelector('button[type="submit"]');
+      errorMessage.style.display = 'none';
+      btn.disabled = true;
+      btn.textContent = 'Signing in\u2026';
+      try {
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          if (data.unverified) {
+            window.location.href = '/verify-email?email=' + encodeURIComponent(data.email);
+            return;
+          }
+          errorMessage.textContent = data.error || 'Login failed';
+          errorMessage.style.display = 'block';
+          btn.disabled = false;
+          btn.textContent = 'Sign in';
+          return;
+        }
+        window.location.href = redirectTo || '/home';
+      } catch {
+        errorMessage.textContent = 'An error occurred. Please try again.';
+        errorMessage.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Sign in';
+      }
+    });
+  </script>
+</body>
+</html>

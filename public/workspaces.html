@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Workspaces — Todoer</title>
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    /* ── Skeleton ── */
+    @keyframes shimmer {
+      0%   { background-position: -600px 0; }
+      100% { background-position: 600px 0; }
+    }
+    .skeleton {
+      background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%);
+      background-size: 600px 100%;
+      animation: shimmer 1.4s infinite linear;
+      border-radius: 4px;
+    }
+    .skeleton-ws-item {
+      padding: 11px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .skeleton-ws-icon { width: 30px; height: 30px; border-radius: var(--radius-sm); flex-shrink: 0; }
+    .skeleton-ws-text { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+    .skeleton-ws-name { height: 11px; width: 70%; }
+    .skeleton-ws-role { height: 9px; width: 35%; }
+
+    .skeleton-detail-header {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 18px; margin-bottom: 4px;
+    }
+    .skeleton-detail-title { height: 14px; width: 40%; margin-bottom: 8px; }
+    .skeleton-detail-meta  { height: 10px; width: 55%; }
+
+    .skeleton-member-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 11px 0; border-bottom: 1px solid var(--border);
+    }
+    .skeleton-member-avatar { width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0; }
+    .skeleton-member-text { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+    .skeleton-member-name  { height: 11px; width: 55%; }
+    .skeleton-member-email { height: 9px;  width: 75%; }
+
+    /* ── Workspace layout ── */
+    .workspaces-layout {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    /* ── Workspace list panel ── */
+    .workspace-list {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      position: sticky;
+      top: 24px;
+    }
+
+    .workspace-list-header {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .workspace-list-header span {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-3);
+    }
+
+    .workspace-item {
+      padding: 11px 14px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.12s;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .workspace-item:last-child { border-bottom: none; }
+    .workspace-item:hover { background: var(--surface-2); }
+    .workspace-item.active {
+      background: var(--surface-2);
+      border-left: 2px solid var(--accent);
+      padding-left: 12px;
+    }
+
+    .workspace-icon {
+      width: 30px; height: 30px;
+      border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; color: #fff;
+      flex-shrink: 0;
+    }
+
+    .workspace-item-info { flex: 1; min-width: 0; }
+
+    .workspace-item-name {
+      font-size: 13px; font-weight: 500; color: var(--text-1);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    .workspace-item-role {
+      font-size: 11px; color: var(--text-3);
+      margin-top: 1px; text-transform: capitalize;
+    }
+
+    .workspace-list-empty {
+      padding: 36px 14px;
+      text-align: center; color: var(--text-3);
+      font-size: 13px; line-height: 1.6;
+    }
+    .workspace-list-empty svg { margin-bottom: 10px; opacity: 0.3; }
+
+    /* ── Detail panel ── */
+    .workspace-detail { display: flex; flex-direction: column; gap: 14px; }
+
+    .detail-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); overflow: hidden;
+    }
+
+    .detail-card-header {
+      padding: 14px 18px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    }
+
+    .detail-card-header h3 {
+      font-size: 13.5px; font-weight: 600; color: var(--text-1); letter-spacing: -0.01em;
+    }
+
+    .detail-card-body { padding: 16px 18px; }
+    .detail-card-list { padding: 0 18px; }
+
+    /* ── Members ── */
+    .member-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 11px 0; border-bottom: 1px solid var(--border);
+    }
+    .member-row:last-child { border-bottom: none; }
+
+    .member-avatar {
+      width: 30px; height: 30px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; color: #fff;
+      flex-shrink: 0;
+    }
+
+    .member-info { flex: 1; min-width: 0; }
+    .member-name { font-size: 13px; font-weight: 500; color: var(--text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .member-email { font-size: 11.5px; color: var(--text-3); }
+
+    .role-badge {
+      font-size: 10.5px; font-weight: 600; padding: 2px 8px;
+      border-radius: 4px; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap;
+    }
+    .role-owner  { background: rgba(234,179,8,0.08);  color: #ca8a04;  border: 1px solid rgba(234,179,8,0.18); }
+    .role-admin  { background: rgba(59,130,246,0.08);  color: #3b82f6;  border: 1px solid rgba(59,130,246,0.18); }
+    .role-member { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border); }
+    .role-viewer { background: rgba(107,114,128,0.08); color: #6b7280;  border: 1px solid rgba(107,114,128,0.18); }
+    [data-theme="light"] .role-owner { color: #92400e; }
+
+    .role-select {
+      font-size: 12px; padding: 4px 7px;
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); color: var(--text-2);
+      cursor: pointer; flex-shrink: 0;
+    }
+    .role-select:focus { outline: none; border-color: var(--border-light); }
+
+    /* ── Invite ── */
+    .invite-row { display: flex; gap: 8px; }
+    .invite-row input { flex: 1; }
+
+    /* ── Pending ── */
+    .invite-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 11px 0; border-bottom: 1px solid var(--border); gap: 12px;
+    }
+    .invite-item:last-child { border-bottom: none; }
+    .invite-email { font-size: 13px; color: var(--text-1); }
+    .invite-meta  { font-size: 11.5px; color: var(--text-3); margin-top: 2px; }
+
+    .badge-pending {
+      font-size: 10.5px; font-weight: 600; padding: 2px 8px;
+      border-radius: 4px; background: rgba(59,130,246,0.08);
+      color: #60a5fa; border: 1px solid rgba(59,130,246,0.18); white-space: nowrap;
+    }
+
+    /* ── No selection ── */
+    .no-selection {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 72px 20px;
+      text-align: center; color: var(--text-3); font-size: 13px;
+    }
+    .no-selection svg { margin-bottom: 12px; opacity: 0.25; }
+
+    /* ── Modals ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+      justify-content: center; align-items: center;
+      z-index: 1000; padding: 20px;
+    }
+    .modal-overlay.open { display: flex; }
+
+    .modal-box {
+      background: var(--surface); border: 1px solid var(--border-light);
+      border-radius: var(--radius-lg); padding: 28px;
+      width: 100%; max-width: 420px;
+      box-shadow: var(--shadow-lg); animation: modalIn 0.18s ease;
+    }
+
+    @keyframes modalIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .modal-box h2 { font-size: 15px; font-weight: 600; color: var(--text-1); margin-bottom: 6px; letter-spacing: -0.02em; }
+    .modal-box p  { font-size: 13px; color: var(--text-2); margin-bottom: 20px; line-height: 1.5; }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed; bottom: 24px; right: 24px;
+      background: var(--surface-3); border: 1px solid var(--border-light);
+      color: var(--text-1); padding: 12px 16px;
+      border-radius: var(--radius-md); font-size: 13px;
+      box-shadow: var(--shadow-md); z-index: 3000;
+      opacity: 0; transform: translateY(8px);
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none; max-width: 300px;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.success { border-color: rgba(34,197,94,0.3); color: #22c55e; }
+    .toast.error   { border-color: var(--danger-border); color: var(--danger); }
+
+    /* ── Active workspace banner ── */
+    .ws-active-banner {
+      display: none;
+      align-items: center; gap: 10px;
+      padding: 9px 14px;
+      background: rgba(99,102,241,0.08);
+      border: 1px solid rgba(99,102,241,0.2);
+      border-radius: var(--radius-md);
+      font-size: 12.5px; color: var(--text-2);
+      margin-bottom: 16px;
+    }
+    .ws-active-banner.show { display: flex; }
+    .ws-active-banner strong { color: var(--text-1); }
+    .ws-active-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: #6366f1; flex-shrink: 0;
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.2);
+    }
+    .btn-deactivate {
+      margin-left: auto; font-size: 11.5px;
+      color: var(--text-3); background: none; border: none;
+      cursor: pointer; padding: 2px 6px;
+      border-radius: 4px; transition: background 0.12s, color 0.12s;
+    }
+    .btn-deactivate:hover { background: var(--surface-2); color: var(--text-1); }
+
+    /* ── Activate button on workspace item ── */
+    .workspace-item-actions {
+      display: flex; align-items: center; gap: 6px; margin-left: auto; flex-shrink: 0;
+    }
+    .btn-activate {
+      font-size: 11px; font-weight: 600; padding: 3px 9px;
+      border-radius: 4px; cursor: pointer; white-space: nowrap;
+      transition: background 0.12s, color 0.12s;
+      background: rgba(99,102,241,0.1);
+      color: #818cf8;
+      border: 1px solid rgba(99,102,241,0.2);
+    }
+    .btn-activate:hover { background: rgba(99,102,241,0.18); }
+    .btn-activate.active-ws {
+      background: rgba(99,102,241,0.18); color: #a5b4fc;
+    }
+
+    @media (max-width: 768px) {
+      .workspaces-layout { grid-template-columns: 1fr; }
+      .workspace-list { position: static; }
+    }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <object data="/assets/logo.svg" type="image/svg+xml" style="width:24px;height:24px;pointer-events:none;flex-shrink:0;"></object>
+      <span class="sidebar-brand-text">Todoer</span>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a href="/home" class="nav-link">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/>
+        </svg>
+        Tasks
+      </a>
+      <a href="/feed" class="nav-link">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+        Feed
+      </a>
+      <a href="/files" class="nav-link">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/>
+        </svg>
+        Files
+      </a>
+      <a href="/workspaces" class="nav-link active">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        Workspaces
+      </a>
+      <a href="/profile" class="nav-link">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+        Profile
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="sidebar-user-avatar" id="sidebarAvatar">?</div>
+        <div class="sidebar-user-info">
+          <div class="sidebar-user-name" id="sidebarName">—</div>
+          <div class="sidebar-user-email" id="sidebarEmail">—</div>
+        </div>
+      </div>
+      <div class="sidebar-footer-actions">
+        <button class="sidebar-logout" id="logoutBtn">Sign out</button>
+        <button class="theme-toggle" id="themeToggle" title="Toggle theme">
+          <svg id="iconSun" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
+            <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </svg>
+          <svg id="iconMoon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main-content">
+    <main class="container">
+
+      <div class="page-header">
+        <h1>Workspaces</h1>
+        <button class="btn btn-primary" onclick="openCreateModal()">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          New workspace
+        </button>
+      </div>
+
+      <div class="ws-active-banner" id="wsActiveBanner">
+        <div class="ws-active-dot"></div>
+        <span>Active workspace: <strong id="wsActiveName">—</strong></span>
+        <span style="color:var(--text-3);font-size:11.5px">Tasks &amp; files will be scoped to this workspace</span>
+        <button class="btn-deactivate" onclick="deactivateWorkspace()">× Deactivate</button>
+      </div>
+
+      <div class="workspaces-layout">
+        <!-- List -->
+        <div class="workspace-list">
+          <div class="workspace-list-header">
+            <span>Your workspaces</span>
+          </div>
+          <div id="workspaceList">
+            <div class="skeleton-ws-item">
+              <div class="skeleton skeleton-ws-icon"></div>
+              <div class="skeleton-ws-text">
+                <div class="skeleton skeleton-ws-name"></div>
+                <div class="skeleton skeleton-ws-role"></div>
+              </div>
+            </div>
+            <div class="skeleton-ws-item">
+              <div class="skeleton skeleton-ws-icon"></div>
+              <div class="skeleton-ws-text">
+                <div class="skeleton skeleton-ws-name"></div>
+                <div class="skeleton skeleton-ws-role"></div>
+              </div>
+            </div>
+            <div class="skeleton-ws-item">
+              <div class="skeleton skeleton-ws-icon"></div>
+              <div class="skeleton-ws-text">
+                <div class="skeleton skeleton-ws-name"></div>
+                <div class="skeleton skeleton-ws-role"></div>
+              </div>
+            </div>
+          </div>
+        </div><!-- /workspace-list -->
+
+        <!-- Detail -->
+        <div id="detailPanel">
+          <div class="no-selection">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+            <p>Select a workspace to view details</p>
+          </div>
+        </div>
+      </div><!-- /workspaces-layout -->
+
+    </main>
+  </div>
+
+</div>
+
+<!-- Create modal -->
+<div class="modal-overlay" id="createModal">
+  <div class="modal-box">
+    <h2>New workspace</h2>
+    <p>Create a shared space and invite your team.</p>
+    <div class="form-group">
+      <label for="workspaceName">Workspace name</label>
+      <input type="text" id="workspaceName" placeholder="e.g. Design Team" maxlength="60"
+        onkeydown="if(event.key==='Enter')createWorkspace()">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="createWorkspace()">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm modal -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal-box">
+    <h2 id="confirmTitle"></h2>
+    <p id="confirmMessage"></p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="confirmCancel">Cancel</button>
+      <button class="btn" id="confirmOk">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast"></div>
+
+<script>
+  let currentUser       = null;
+  let workspaces        = [];
+  let activeWorkspaceId = null;
+  let toastTimer;
+
+  // ── Active workspace (persisted across pages) ──
+  const WS_KEY = 'activeWorkspace'; // { id, name }
+
+  function getActiveWorkspace() {
+    try { return JSON.parse(localStorage.getItem(WS_KEY)) || null; } catch { return null; }
+  }
+
+  function setActiveWorkspace(ws) {
+    if (ws) localStorage.setItem(WS_KEY, JSON.stringify(ws));
+    else localStorage.removeItem(WS_KEY);
+    renderActiveBanner();
+    renderWorkspaceList();
+  }
+
+  function activateWorkspace(id, name) {
+    setActiveWorkspace({ id, name });
+    showToast(`"${name}" is now your active workspace`, 'success');
+  }
+
+  function deactivateWorkspace() {
+    setActiveWorkspace(null);
+    showToast('Switched to personal context', '');
+  }
+
+  function renderActiveBanner() {
+    const active = getActiveWorkspace();
+    const banner = document.getElementById('wsActiveBanner');
+    if (active) {
+      document.getElementById('wsActiveName').textContent = active.name;
+      banner.classList.add('show');
+    } else {
+      banner.classList.remove('show');
+    }
+  }
+
+  // ── Avatar colors (same palette as home.html) ──
+  const AV_COLORS = [
+    '#6366f1','#8b5cf6','#ec4899','#ef4444',
+    '#f59e0b','#10b981','#06b6d4','#3b82f6'
+  ];
+  function avatarColor(str) {
+    let h = 0;
+    for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+    return AV_COLORS[h % AV_COLORS.length];
+  }
+
+  // ── Theme ──
+  const saved = localStorage.getItem('theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
+  updateThemeIcon(saved);
+
+  document.getElementById('themeToggle').addEventListener('click', () => {
+    const current = document.documentElement.getAttribute('data-theme');
+    const next = current === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+    updateThemeIcon(next);
+  });
+
+  function updateThemeIcon(theme) {
+    document.getElementById('iconSun').style.display  = theme === 'light' ? 'block' : 'none';
+    document.getElementById('iconMoon').style.display = theme === 'dark'  ? 'block' : 'none';
+  }
+
+  // ── Toast ──
+  function showToast(msg, type = '') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast' + (type ? ' ' + type : '');
+    requestAnimationFrame(() => t.classList.add('show'));
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+  }
+
+  // ── Confirm ──
+  function showConfirm({ title, message, confirmText = 'Confirm', danger = false }) {
+    return new Promise(resolve => {
+      document.getElementById('confirmTitle').textContent = title;
+      document.getElementById('confirmMessage').textContent = message;
+      const okBtn = document.getElementById('confirmOk');
+      okBtn.textContent = confirmText;
+      okBtn.className = 'btn ' + (danger ? 'btn-danger' : 'btn-primary');
+      document.getElementById('confirmModal').classList.add('open');
+      const cleanup = (result) => {
+        document.getElementById('confirmModal').classList.remove('open');
+        okBtn.removeEventListener('click', onOk);
+        document.getElementById('confirmCancel').removeEventListener('click', onCancel);
+        resolve(result);
+      };
+      const onOk     = () => cleanup(true);
+      const onCancel = () => cleanup(false);
+      okBtn.addEventListener('click', onOk);
+      document.getElementById('confirmCancel').addEventListener('click', onCancel);
+    });
+  }
+
+  // ── Auth ──
+  async function checkAuth() {
+    try {
+      const r = await fetch('/api/auth/me');
+      if (!r.ok) { window.location.href = '/'; return; }
+      const data = await r.json();
+      currentUser = data.user;
+      const key     = data.user.username || data.user.email || '?';
+      const initial = key[0].toUpperCase();
+      const color   = avatarColor(key);
+      const avatarEl = document.getElementById('sidebarAvatar');
+      avatarEl.textContent = initial;
+      avatarEl.style.background = color;
+      avatarEl.style.border = 'none';
+      document.getElementById('sidebarEmail').textContent = data.user.email || '';
+      // VULNERABLE: innerHTML — stored XSS if username is a payload
+      document.getElementById('sidebarName').innerHTML = data.user.username
+        ? '@' + data.user.username
+        : data.user.email;
+    } catch { window.location.href = '/'; }
+  }
+
+  // ── Skeleton ──
+  function showWorkspaceSkeleton() {
+    document.getElementById('workspaceList').innerHTML = [1,2,3].map(() => `
+      <div class="skeleton-ws-item">
+        <div class="skeleton skeleton-ws-icon"></div>
+        <div class="skeleton-ws-text">
+          <div class="skeleton skeleton-ws-name"></div>
+          <div class="skeleton skeleton-ws-role"></div>
+        </div>
+      </div>`).join('');
+  }
+
+  function showDetailSkeleton() {
+    document.getElementById('detailPanel').innerHTML = `
+      <div class="workspace-detail">
+        <div class="skeleton-detail-header">
+          <div class="skeleton skeleton-detail-title"></div>
+          <div class="skeleton skeleton-detail-meta"></div>
+        </div>
+        <div class="detail-card">
+          <div class="detail-card-header"><h3>Members</h3></div>
+          <div class="detail-card-list">
+            ${[1,2,3].map(() => `
+              <div class="skeleton-member-row">
+                <div class="skeleton skeleton-member-avatar"></div>
+                <div class="skeleton-member-text">
+                  <div class="skeleton skeleton-member-name"></div>
+                  <div class="skeleton skeleton-member-email"></div>
+                </div>
+              </div>`).join('')}
+          </div>
+        </div>
+      </div>`;
+  }
+
+  // ── Workspaces ──
+  async function loadWorkspaces() {
+    showWorkspaceSkeleton();
+    try {
+      const r = await fetch('/api/workspaces');
+      workspaces = await r.json();
+      renderWorkspaceList();
+    } catch { showToast('Failed to load workspaces', 'error'); }
+  }
+
+  function renderWorkspaceList() {
+    const list = document.getElementById('workspaceList');
+    const active = getActiveWorkspace();
+    if (!workspaces.length) {
+      list.innerHTML = `
+        <div class="workspace-list-empty">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+          <div>No workspaces yet.<br>Create one to get started.</div>
+        </div>`;
+      return;
+    }
+    list.innerHTML = workspaces.map(w => {
+      const color    = avatarColor(w.name);
+      const isActive = active && active.id === w.id;
+      return `
+        <div class="workspace-item ${activeWorkspaceId === w.id ? 'active' : ''}" onclick="selectWorkspace(${w.id})">
+          <div class="workspace-icon" style="background:${color};">${escapeHtml(w.name[0].toUpperCase())}</div>
+          <div class="workspace-item-info">
+            <div class="workspace-item-name">${escapeHtml(w.name)}</div>
+            <div class="workspace-item-role">${w.role}</div>
+          </div>
+          <div class="workspace-item-actions">
+            ${isActive
+              ? `<button class="btn-activate active-ws" onclick="event.stopPropagation();deactivateWorkspace()">Active ✓</button>`
+              : `<button class="btn-activate" onclick="event.stopPropagation();activateWorkspace(${w.id},'${escapeHtml(w.name).replace(/'/g,"\\'")}')">Activate</button>`
+            }
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  async function selectWorkspace(id) {
+    activeWorkspaceId = id;
+    renderWorkspaceList();
+    showDetailSkeleton();
+    try {
+      const r    = await fetch(`/api/workspaces/${id}`);
+      const data = await r.json();
+      renderDetail(data);
+    } catch { showToast('Failed to load workspace', 'error'); }
+  }
+
+  function renderDetail(data) {
+    const myRole   = data.myRole;
+    const isOwner  = myRole === 'owner';
+    const isAdmin  = myRole === 'admin';
+    const canManage = isOwner || isAdmin;
+
+    document.getElementById('detailPanel').innerHTML = `
+      <div class="workspace-detail">
+
+        <!-- Header -->
+        <div class="detail-card">
+          <div class="detail-card-header">
+            <div>
+              <h3 style="font-size:15px;">${escapeHtml(data.workspace.name)}</h3>
+              <div style="font-size:12px;color:var(--text-3);margin-top:3px;">
+                Created ${formatDate(data.workspace.created_at)} &middot; ${data.members.length} member${data.members.length !== 1 ? 's' : ''}
+              </div>
+            </div>
+            ${isOwner ? `
+              <button class="btn btn-secondary" style="font-size:12px;color:var(--danger);border-color:var(--danger-border);"
+                onclick="deleteWorkspace(${data.workspace.id})">Delete</button>` : ''}
+          </div>
+        </div>
+
+        <!-- Members -->
+        <div class="detail-card">
+          <div class="detail-card-header">
+            <h3>Members</h3>
+            <span style="font-size:12px;color:var(--text-3);">${data.members.length}</span>
+          </div>
+          <div class="detail-card-list">
+            ${data.members.map(m => {
+              const key   = m.username || m.email || '?';
+              const color = avatarColor(key);
+              const isSelf = m.id === currentUser.id;
+              const canChangeRole = isOwner && !isSelf && m.role !== 'owner';
+              const canRemove = !isSelf && m.role !== 'owner' &&
+                (isOwner || (isAdmin && !['owner','admin'].includes(m.role)));
+              return `
+                <div class="member-row">
+                  <div class="member-avatar" style="background:${color};">${key[0].toUpperCase()}</div>
+                  <div class="member-info">
+                    <div class="member-name">${escapeHtml(m.username ? '@' + m.username : m.email)}</div>
+                    <div class="member-email">${escapeHtml(m.email)}</div>
+                  </div>
+                  ${canChangeRole
+                    ? `<select class="role-select" onchange="changeRole(${data.workspace.id}, ${m.id}, this.value)">
+                        <option value="admin"  ${m.role === 'admin'  ? 'selected' : ''}>Admin</option>
+                        <option value="member" ${m.role === 'member' ? 'selected' : ''}>Member</option>
+                        <option value="viewer" ${m.role === 'viewer' ? 'selected' : ''}>Viewer</option>
+                      </select>`
+                    : `<span class="role-badge role-${m.role}">${m.role}</span>`}
+                  ${canRemove ? `
+                    <button class="btn btn-secondary" style="font-size:11px;padding:3px 10px;color:var(--danger);border-color:var(--danger-border);"
+                      onclick="removeMember(${data.workspace.id}, ${m.id})">Remove</button>` : ''}
+                </div>`;
+            }).join('')}
+          </div>
+        </div>
+
+        ${canManage ? `
+        <!-- Invite -->
+        <div class="detail-card">
+          <div class="detail-card-header">
+            <h3>Invite member</h3>
+          </div>
+          <div class="detail-card-body">
+            <div class="invite-row">
+              <input type="email" id="inviteEmailInput" placeholder="colleague@example.com"
+                onkeydown="if(event.key==='Enter')sendInvite(${data.workspace.id})">
+              <select class="role-select" id="inviteRoleSelect">
+                <option value="member">Member</option>
+                <option value="viewer">Viewer</option>
+                ${isOwner ? '<option value="admin">Admin</option>' : ''}
+              </select>
+              <button class="btn btn-primary" onclick="sendInvite(${data.workspace.id})">Send invite</button>
+            </div>
+            <div id="inviteMsg" style="font-size:13px;margin-top:10px;display:none;"></div>
+          </div>
+        </div>
+
+        <!-- Pending invitations -->
+        <div class="detail-card">
+          <div class="detail-card-header">
+            <h3>Pending invitations</h3>
+            ${data.pending_invitations.length ? `<span style="font-size:12px;color:var(--text-3);">${data.pending_invitations.length}</span>` : ''}
+          </div>
+          <div class="detail-card-list">
+            ${data.pending_invitations.length
+              ? data.pending_invitations.map(inv => `
+                  <div class="invite-item">
+                    <div>
+                      <div class="invite-email">${escapeHtml(inv.invited_email)}</div>
+                      <div class="invite-meta">Sent ${formatDate(inv.created_at)} &middot; as <span class="role-badge role-${inv.invited_role || 'member'}">${inv.invited_role || 'member'}</span></div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                      <span class="badge-pending">Pending</span>
+                      <button class="btn btn-secondary" style="font-size:11px;padding:3px 10px;color:var(--danger);border-color:var(--danger-border);"
+                        onclick="cancelInvite(${data.workspace.id}, ${inv.id})">Cancel</button>
+                    </div>
+                  </div>`).join('')
+              : `<div style="padding:14px 0;font-size:13px;color:var(--text-3);">No pending invitations.</div>`}
+          </div>
+        </div>` : ''}
+
+      </div>`;
+  }
+
+  // ── Create workspace ──
+  function openCreateModal() {
+    document.getElementById('workspaceName').value = '';
+    document.getElementById('createModal').classList.add('open');
+    setTimeout(() => document.getElementById('workspaceName').focus(), 100);
+  }
+
+  function closeCreateModal() {
+    document.getElementById('createModal').classList.remove('open');
+  }
+
+  async function createWorkspace() {
+    const name = document.getElementById('workspaceName').value.trim();
+    if (!name) { showToast('Workspace name is required', 'error'); return; }
+    try {
+      const r    = await fetch('/api/workspaces', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+        body: JSON.stringify({ name })
+      });
+      const data = await r.json();
+      if (!r.ok) { showToast(data.error || 'Failed to create workspace', 'error'); return; }
+      closeCreateModal();
+      showToast('Workspace created', 'success');
+      await loadWorkspaces();
+      selectWorkspace(data.id);
+    } catch { showToast('Something went wrong', 'error'); }
+  }
+
+  // ── Delete workspace ──
+  async function deleteWorkspace(id) {
+    const confirmed = await showConfirm({
+      title:       'Delete workspace',
+      message:     'This will remove all members and cannot be undone.',
+      confirmText: 'Delete',
+      danger:      true
+    });
+    if (!confirmed) return;
+    try {
+      const r = await fetch(`/api/workspaces/${id}`, { method: 'DELETE', headers: { 'X-CSRF-Token': getCsrfToken() } });
+      if (!r.ok) { showToast('Failed to delete workspace', 'error'); return; }
+      showToast('Workspace deleted', 'success');
+      activeWorkspaceId = null;
+      document.getElementById('detailPanel').innerHTML = `
+        <div class="no-selection">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+          <p>Select a workspace to view details</p>
+        </div>`;
+      await loadWorkspaces();
+    } catch { showToast('Something went wrong', 'error'); }
+  }
+
+  // ── Send invite ──
+  async function sendInvite(workspaceId) {
+    const email = document.getElementById('inviteEmailInput')?.value.trim();
+    const role  = document.getElementById('inviteRoleSelect')?.value || 'member';
+    const msg   = document.getElementById('inviteMsg');
+    if (!email) { showToast('Enter an email address', 'error'); return; }
+    if (msg) msg.style.display = 'none';
+    try {
+      const r    = await fetch(`/api/workspaces/${workspaceId}/invite`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+        body: JSON.stringify({ email, role })
+      });
+      const data = await r.json();
+      if (r.ok) {
+        showToast('Invitation sent', 'success');
+        if (document.getElementById('inviteEmailInput')) document.getElementById('inviteEmailInput').value = '';
+        selectWorkspace(workspaceId);
+      } else {
+        if (msg) { msg.textContent = data.error || 'Failed to send invitation'; msg.style.color = 'var(--danger)'; msg.style.display = 'block'; }
+      }
+    } catch { showToast('Something went wrong', 'error'); }
+  }
+
+  // ── Change member role ──
+  async function changeRole(workspaceId, userId, newRole) {
+    try {
+      const r = await fetch(`/api/workspaces/${workspaceId}/members/${userId}/role`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+        body: JSON.stringify({ role: newRole })
+      });
+      const data = await r.json();
+      if (r.ok) {
+        showToast('Role updated', 'success');
+      } else {
+        showToast(data.error || 'Failed to update role', 'error');
+        selectWorkspace(workspaceId); // re-render to reset dropdown
+      }
+    } catch { showToast('Something went wrong', 'error'); }
+  }
+
+  // ── Cancel invite ──
+  async function cancelInvite(workspaceId, inviteId) {
+    const confirmed = await showConfirm({
+      title:       'Cancel invitation',
+      message:     'This will revoke the invitation. The recipient will no longer be able to accept it.',
+      confirmText: 'Cancel invitation',
+      danger:      true
+    });
+    if (!confirmed) return;
+    try {
+      const r = await fetch(`/api/workspaces/${workspaceId}/invites/${inviteId}`, {
+        method: 'DELETE',
+        headers: { 'X-CSRF-Token': getCsrfToken() }
+      });
+      if (!r.ok) { showToast('Failed to cancel invitation', 'error'); return; }
+      showToast('Invitation cancelled', 'success');
+      selectWorkspace(workspaceId);
+    } catch { showToast('Something went wrong', 'error'); }
+  }
+
+  // ── Remove member ──
+  async function removeMember(workspaceId, userId) {
+    const confirmed = await showConfirm({
+      title:       'Remove member',
+      message:     'This will remove the member from the workspace. They will lose access immediately.',
+      confirmText: 'Remove',
+      danger:      true
+    });
+    if (!confirmed) return;
+    try {
+      const r = await fetch(`/api/workspaces/${workspaceId}/members/${userId}`, {
+        method: 'DELETE',
+        headers: { 'X-CSRF-Token': getCsrfToken() }
+      });
+      if (!r.ok) { showToast('Failed to remove member', 'error'); return; }
+      showToast('Member removed', 'success');
+      selectWorkspace(workspaceId);
+    } catch { showToast('Something went wrong', 'error'); }
+  }
+
+  // ── Helpers ──
+  function getCsrfToken() {
+    return document.cookie.split('; ').reduce((val, c) => {
+      const [k, v] = c.split('=');
+      return k === 'csrf_token' ? decodeURIComponent(v) : val;
+    }, '');
+  }
+  function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+  function formatDate(s) {
+    if (!s) return '—';
+    return new Date(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      closeCreateModal();
+      document.getElementById('confirmModal').classList.remove('open');
+    }
+  });
+
+  document.getElementById('logoutBtn').addEventListener('click', async () => {
+    wsActive = false;
+    if (ws) ws.close();
+    await fetch('/api/auth/logout', { method: 'POST', headers: { 'X-CSRF-Token': getCsrfToken() } });
+    window.location.href = '/';
+  });
+
+  // ── WebSocket ──
+  let ws = null;
+  let wsActive = false;
+
+  function connectWS() {
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    ws = new WebSocket(`${proto}://${location.host}`);
+    wsActive = true;
+    ws.onmessage = (e) => {
+      const data = JSON.parse(e.data);
+      const events = ['workspace:member_joined', 'workspace:member_removed', 'workspace:invite_cancelled', 'workspace:role_changed'];
+      if (events.includes(data.type) && activeWorkspaceId === data.workspaceId) {
+        selectWorkspace(activeWorkspaceId);
+      }
+    };
+    ws.onclose = () => { if (wsActive) setTimeout(connectWS, 3000); };
+    ws.onerror = () => ws.close();
+  }
+
+  // ── Init ──
+  renderActiveBanner();
+  checkAuth().then(() => { loadWorkspaces(); connectWS(); });
+</script>
+</body>
+</html>

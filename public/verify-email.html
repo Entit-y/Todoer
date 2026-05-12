@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verify Email — Todoer</title>
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    .code-inputs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      width: 100%;
+    }
+
+    .code-input {
+      flex: 1;
+      min-width: 0;
+      aspect-ratio: 1;
+      text-align: center;
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: 0;
+      padding: 0 !important;
+      border-radius: 8px !important;
+      border: 1px solid #d1d5db !important;
+      color: #0a0a0a !important;
+      background: #ffffff !important;
+      caret-color: #0a0a0a;
+      transition: border-color 0.15s;
+      width: 100% !important;
+    }
+
+    .code-input:focus {
+      border-color: #0a0a0a !important;
+      outline: none;
+    }
+
+    .code-input.filled {
+      border-color: #0a0a0a !important;
+    }
+
+    .resend-row {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 13px;
+      color: #6b6b6b;
+    }
+
+    .resend-row button {
+      background: none;
+      border: none;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      color: #0a0a0a;
+      cursor: pointer;
+      padding: 0;
+      text-decoration: underline;
+    }
+
+    .resend-row button:disabled {
+      color: #9ca3af;
+      cursor: not-allowed;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body class="auth">
+
+  <!-- Animated background canvas -->
+  <canvas id="bgCanvas"></canvas>
+
+  <div class="auth-container">
+    <div class="auth-card">
+      <span class="auth-logo">Todoer</span>
+      <h1>Check your email</h1>
+      <p class="subtitle" id="subtitle">We sent a 6-digit code to <strong id="emailDisplay"></strong></p>
+
+      <form id="verifyForm">
+        <div class="code-inputs">
+          <input class="code-input" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="one-time-code">
+          <input class="code-input" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
+          <input class="code-input" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
+          <input class="code-input" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
+          <input class="code-input" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
+          <input class="code-input" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
+        </div>
+
+        <div id="message" class="message" style="display:none;"></div>
+
+        <button type="submit" class="btn btn-primary btn-full" id="submitBtn">Verify email</button>
+      </form>
+
+      <div class="resend-row">
+        <span>Didn't get it? </span>
+        <button id="resendBtn">Resend code</button>
+      </div>
+
+      <div class="auth-footer" style="margin-top:16px;">
+        <p><a href="/register" id="differentEmailLink">Use a different email</a></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ── Particle / orb background ── */
+    (function () {
+      const canvas = document.getElementById('bgCanvas');
+      const ctx = canvas.getContext('2d');
+
+      function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+      resize();
+      window.addEventListener('resize', resize);
+
+      const orbs = Array.from({ length: 6 }, (_, i) => ({
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight,
+        r: 180 + Math.random() * 160,
+        dx: (Math.random() - 0.5) * 0.35,
+        dy: (Math.random() - 0.5) * 0.35,
+        hue: [220, 240, 260, 200, 250, 230][i],
+        alpha: 0.07 + Math.random() * 0.06,
+      }));
+
+      const particles = Array.from({ length: 55 }, () => ({
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight,
+        r: 0.8 + Math.random() * 1.4,
+        dx: (Math.random() - 0.5) * 0.18,
+        dy: -0.12 - Math.random() * 0.18,
+        alpha: 0.15 + Math.random() * 0.25,
+      }));
+
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        orbs.forEach(o => {
+          o.x += o.dx; o.y += o.dy;
+          if (o.x < -o.r) o.x = canvas.width + o.r;
+          if (o.x > canvas.width + o.r) o.x = -o.r;
+          if (o.y < -o.r) o.y = canvas.height + o.r;
+          if (o.y > canvas.height + o.r) o.y = -o.r;
+
+          const g = ctx.createRadialGradient(o.x, o.y, 0, o.x, o.y, o.r);
+          g.addColorStop(0, `hsla(${o.hue},70%,65%,${o.alpha})`);
+          g.addColorStop(1, `hsla(${o.hue},70%,65%,0)`);
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.arc(o.x, o.y, o.r, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        particles.forEach(p => {
+          p.x += p.dx; p.y += p.dy;
+          if (p.y < -4) { p.y = canvas.height + 4; p.x = Math.random() * canvas.width; }
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(255,255,255,${p.alpha})`;
+          ctx.fill();
+        });
+
+        requestAnimationFrame(draw);
+      }
+      draw();
+    })();
+
+    /* ── Params ── */
+    const params = new URLSearchParams(window.location.search);
+    const email      = params.get('email');
+    const redirectTo = params.get('redirect');
+
+    if (!email) {
+      window.location.href = '/register';
+    } else {
+      document.getElementById('emailDisplay').textContent = email;
+    }
+
+    if (redirectTo) {
+      const differentEmailLink = document.getElementById('differentEmailLink');
+      differentEmailLink.href = '/register?redirect=' + encodeURIComponent(redirectTo);
+    }
+
+    // Code input behaviour — auto-advance, backspace, paste
+    const inputs = Array.from(document.querySelectorAll('.code-input'));
+
+    inputs.forEach((input, i) => {
+      input.addEventListener('input', (e) => {
+        const val = e.target.value.replace(/\D/g, '');
+        e.target.value = val ? val[0] : '';
+        if (val && i < inputs.length - 1) inputs[i + 1].focus();
+        updateFilled();
+        if (getCode().length === 6) document.getElementById('verifyForm').requestSubmit();
+      });
+
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Backspace' && !input.value && i > 0) {
+          inputs[i - 1].focus();
+          inputs[i - 1].value = '';
+          updateFilled();
+        }
+      });
+
+      input.addEventListener('paste', (e) => {
+        e.preventDefault();
+        const pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 6);
+        pasted.split('').forEach((char, j) => {
+          if (inputs[j]) inputs[j].value = char;
+        });
+        updateFilled();
+        const nextEmpty = inputs.find(inp => !inp.value);
+        if (nextEmpty) nextEmpty.focus();
+        else inputs[inputs.length - 1].focus();
+        if (getCode().length === 6) document.getElementById('verifyForm').requestSubmit();
+      });
+    });
+
+    function getCode() { return inputs.map(i => i.value).join(''); }
+    function updateFilled() { inputs.forEach(i => i.classList.toggle('filled', !!i.value)); }
+    function clearCode() { inputs.forEach(i => { i.value = ''; i.classList.remove('filled'); }); inputs[0].focus(); }
+
+    document.getElementById('verifyForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const code = getCode();
+      if (code.length < 6) return;
+
+      const msg = document.getElementById('message');
+      const btn = document.getElementById('submitBtn');
+      msg.style.display = 'none';
+      btn.disabled = true;
+      btn.textContent = 'Verifying…';
+
+      try {
+        const r = await fetch('/api/auth/verify-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, code })
+        });
+        const data = await r.json();
+        if (r.ok) {
+          msg.textContent = 'Email verified. Redirecting…';
+          msg.className = 'message success';
+          msg.style.display = 'block';
+          setTimeout(() => window.location.href = redirectTo || '/home', 1200);
+        } else {
+          msg.textContent = data.error || 'Invalid code. Try again.';
+          msg.className = 'message error';
+          msg.style.display = 'block';
+          clearCode();
+          btn.disabled = false;
+          btn.textContent = 'Verify email';
+        }
+      } catch {
+        msg.textContent = 'An error occurred. Please try again.';
+        msg.className = 'message error';
+        msg.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Verify email';
+      }
+    });
+
+    // Resend
+    let resendCooldown = 0;
+    const resendBtn = document.getElementById('resendBtn');
+
+    function startCooldown(seconds) {
+      resendCooldown = seconds;
+      resendBtn.disabled = true;
+      const tick = setInterval(() => {
+        resendCooldown--;
+        resendBtn.textContent = `Resend in ${resendCooldown}s`;
+        if (resendCooldown <= 0) {
+          clearInterval(tick);
+          resendBtn.disabled = false;
+          resendBtn.textContent = 'Resend code';
+        }
+      }, 1000);
+    }
+
+    resendBtn.addEventListener('click', async () => {
+      const msg = document.getElementById('message');
+      msg.style.display = 'none';
+      try {
+        const r = await fetch('/api/auth/resend-verification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        const data = await r.json();
+        if (r.ok) {
+          msg.textContent = 'New code sent.';
+          msg.className = 'message success';
+          clearCode();
+        } else {
+          msg.textContent = data.error || 'Failed to resend code.';
+          msg.className = 'message error';
+        }
+        msg.style.display = 'block';
+        startCooldown(30);
+      } catch {
+        msg.textContent = 'An error occurred.';
+        msg.className = 'message error';
+        msg.style.display = 'block';
+      }
+    });
+
+    inputs[0].focus();
+  </script>
+</body>
+</html>
