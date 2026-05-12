@@ -1,0 +1,84 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: todoer-app
+    expose:
+      - "3000"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./data:/app/data
+      - ./todoer.db:/app/todoer.db
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - VIRTUAL_HOST=your-domain.com
+      - LETSENCRYPT_HOST=your-domain.com
+      - LETSENCRYPT_EMAIL=your-email@example.com
+      - BREVO_USER=${BREVO_USER}
+      - BREVO_KEY=${BREVO_KEY}
+      - BREVO_FROM=${BREVO_FROM}
+      - APP_URL=https://your-domain.com
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  admin:
+    build:
+      context: ./admin
+      dockerfile: Dockerfile
+    container_name: todoer-admin
+    expose:
+      - "3001"
+    volumes:
+      - ./todoer.db:/app/todoer.db
+      - ./uploads:/app/uploads
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - VIRTUAL_HOST=admin.your-domain.com
+      - LETSENCRYPT_HOST=admin.your-domain.com
+      - LETSENCRYPT_EMAIL=your-email@example.com
+      - ADMIN_USERNAME=${ADMIN_USERNAME}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  nginx-proxy:
+    image: nginxproxy/nginx-proxy
+    container_name: nginx-proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - ./certs:/etc/nginx/certs
+      - ./vhost.d:/etc/nginx/vhost.d
+      - ./html:/usr/share/nginx/html
+    restart: unless-stopped
+
+  letsencrypt-companion:
+    image: nginxproxy/acme-companion
+    container_name: nginx-proxy-acme
+    volumes_from:
+      - nginx-proxy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./certs:/etc/nginx/certs:rw
+      - ./acme:/etc/acme.sh
+    environment:
+      - DEFAULT_EMAIL=your-email@example.com
+    restart: unless-stopped
