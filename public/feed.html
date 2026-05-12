@@ -567,7 +567,7 @@
             </svg>
           </button>` : ''}
         </div>
-        <div class="message-content">${escapeHtml(message.content)}</div>`;
+        <div class="message-content">${linkify(message.content)}</div>`;
       return el;
     }
 
@@ -621,6 +621,13 @@
     }
 
     function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+
+    function linkify(text) {
+      return escapeHtml(text).replace(
+        /(https?:\/\/[^\s<>"']+)/g,
+        '<a href="$1" target="_blank" rel="noopener noreferrer" style="color:var(--accent);text-decoration:underline;text-underline-offset:2px;word-break:break-all;">$1</a>'
+      );
+    }
 
     function timeAgo(s) {
       const diff = (Date.now() - new Date(s).getTime()) / 1000;
