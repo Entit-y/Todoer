@@ -1759,6 +1759,7 @@ app.get('/reset-password', (req, res) => res.sendFile(path.join(__dirname, 'publ
 app.get('/workspaces', (req, res) => res.sendFile(path.join(__dirname, 'public', 'workspaces.html')));
 app.get('/feed', (req, res) => res.sendFile(path.join(__dirname, 'public', 'feed.html')));
 app.get('/invite', (req, res) => res.sendFile(path.join(__dirname, 'public', 'invite.html')));
+app.get('/vdp', (req, res) => res.sendFile(path.join(__dirname, 'public', 'vdp.html')));
 app.get('/', (req, res) => {
   const token = req.cookies.token;
   if (token) res.redirect('/home');
