@@ -1,83 +1,94 @@
-# Todoer
+<!--
+  If you have a logo, replace the placeholder below with:
+  <img src="./logo.svg" alt="Todoer" width="120" />
+  or an <img> tag pointing to your hosted image.
+-->
 
-An intentionally vulnerable full-stack task management app.
+<div align="center">
 
-Todoer is a practice target for ethical hackers and bug bounty hunters who are past the beginner stuff. It's not a CTF. There are no flags, obvious unrealistic hints or labelled vulnerability boxes. It looks and behaves like a real app because it basically is one — it just also happens to have real bugs buried in it.
+<img src="./public/assets/logo.svg" alt="Todoer" width="140" />
 
-Most practice labs feel like... well... practice labs. Todoer doesn't and that's the point.
+**An intentionally vulnerable full-stack task manager.**  
+Built for ethical hackers who are done with toy labs.
 
-> **Difficulty: Intermediate → Expert.** Beginners will find some footholds, but most of what's here rewards people who think creatively.
+[![Node.js](https://img.shields.io/badge/Node.js-Express-339933?logo=node.js&logoColor=white)](#)
+[![SQLite](https://img.shields.io/badge/Database-SQLite-003B57?logo=sqlite&logoColor=white)](#)
+[![Docker](https://img.shields.io/badge/Runs%20on-Docker-2496ED?logo=docker&logoColor=white)](#)
+[![Difficulty](https://img.shields.io/badge/Difficulty-Intermediate%20→%20Expert-red)](#)
 
----
-
-## What's in the app
-
-A fully functional task manager with workspaces, file uploads, a public feed, real-time collaboration via WebSockets, Google OAuth, email verification, password reset, and even a separate admin panel. Enough surface area to keep you busy.
-
-The security side has real defences too — CSRF protection, rate limiting, output sanitization, JWT auth. Some of them work correctly. Some of them interact with the bugs in interesting ways.
-
----
-
-## The stack
-
-| Backend       | Node.js + Express                                      |
-| ------------- | ------------------------------------------------------ |
-| Database      | SQLite                                                 |
-| Auth          | JWT + cookies, Google OAuth                            |
-| Real-time     | WebSocket                                              |
-| Frontend      | Vanilla HTML/CSS/JS + a client-side templating library |
-| File handling | `unzipper`, `tar-stream`, `multer`                     |
-| Admin         | Separate Express service                               |
-| Container     | Docker + Docker Compose                                |
+</div>
 
 ---
 
-## Vulnerability categories
+## What is this?
 
-No specifics here, go find them yourself. But in broad strokes:
+Most practice labs feel like practice labs — labelled boxes, obvious hints, unrealistic setups. Todoer doesn't.
 
-- XSS (more than one kind, more than one location)
-- File upload bugs
-- Auth and OAuth issues
-- IDOR and information disclosure
-- Client-side attack chains that require chaining multiple bugs together to land
-- Some weaknesses here and there (missing security controls and the like)
+It's a real task management app: workspaces, file uploads, public feed, real-time collaboration over WebSockets, Google OAuth, email verification, password reset, and a separate admin panel. Enough attack surface to keep you busy. It also has real defences — CSRF protection, rate limiting, output sanitisation, JWT auth. Some of them work correctly. Some interact with the bugs in very interesting ways.
 
-Some of the most interesting stuff doesn't work in isolation. The app has at least one multi-stage chain where every step feeds the next, using only information available from within the app itself.
+> There are no flags. No hints. No labels. Approach it like a real target.
+
+---
+
+## The Stack
+
+| Layer | Tech |
+|---|---|
+| Backend | Node.js + Express |
+| Database | SQLite |
+| Auth | JWT + cookies, Google OAuth |
+| Real-time | WebSocket |
+| Frontend | Vanilla HTML/CSS/JS + client-side templating |
+| File handling | `unzipper`, `tar-stream`, `multer` |
+| Admin | Separate Express service |
+| Infrastructure | Docker + Docker Compose + nginx-proxy + Let's Encrypt |
+
+---
+
+## Vulnerability Categories
+
+No specifics — go find them yourself. But in broad strokes:
+
+- **XSS** — more than one kind, more than one location
+- **File upload bugs**
+- **Auth & OAuth issues**
+- **IDOR and information disclosure**
+- **Client-side attack chains** — require chaining multiple bugs together to land
+- **Missing security controls** — gaps hiding in plain sight
+
+> Some of the most interesting stuff doesn't work in isolation. The app has at least one multi-stage chain where every step feeds the next, using only information available from within the app itself.
 
 ---
 
 ## Nimbus Vault
 
-Todoer is the official practice environment for **[Nimbus Vault](https://nimbusvault.app/)** — a security research tool built for bug bounty hunters. If you're learning how to use Nimbus Vault or want to test your playbooks before going live, this is where you do it. Safe, legal, realistic.
+<a href="https://nimbusvault.app/">
+  <img src="./public/assets/nimbus-logo.svg" alt="Built for Nimbus Vault" height="40" />
+</a>
 
----
+Todoer is the official practice environment for **[Nimbus Vault](https://nimbusvault.app/)** — a security research tool built for bug bounty hunters. Use it to learn the platform, test your playbooks, and sharpen your approach before going live. Safe, legal, and realistic.
 
-## VDP
-
-There's a VDP page at `/vdp.html` to add to the realism — the format and expectations mirror what you'd see on an actual program.
+There's also a VDP page at `/vdp.html` that mirrors the format and expectations of a real bug bounty program.
 
 ---
 
 ## Installation
 
-Todoer is built to run on a VPS with a real domain. It uses [nginx-proxy](https://github.com/nginx-proxy/nginx-proxy) and [acme-companion](https://github.com/nginx-proxy/acme-companion) to handle reverse proxying and automatic HTTPS — so both the app and the admin panel get TLS certificates provisioned automatically via Let's Encrypt, no manual cert work needed.
+Todoer is built to run on a VPS with a real domain. It uses [nginx-proxy](https://github.com/nginx-proxy/nginx-proxy) and [acme-companion](https://github.com/nginx-proxy/acme-companion) to handle reverse proxying and automatic HTTPS — both the app and admin panel get TLS certs via Let's Encrypt, no manual cert work needed.
 
 ### Prerequisites
 
 - Linux (Ubuntu 22.04+ recommended)
-- Docker and Docker Compose installed — [get Docker](https://docs.docker.com/engine/install/ubuntu/)
-- A domain with two DNS A records pointing to your VPS IP:
-    - `yourdomain.com` → your VPS IP
-    - `admin.yourdomain.com` → same VPS IP
-
-Here's the updated Installation section for your README, adding the guided setup option while keeping the manual instructions as a fallback:
+- Docker + Docker Compose — [install guide](https://docs.docker.com/engine/install/ubuntu/)
+- A domain with two DNS A records pointing to your VPS:
+  - `yourdomain.com` → VPS IP
+  - `admin.yourdomain.com` → same VPS IP
 
 ---
 
-### Option 1: Guided setup (recommended)
+### Option 1: Guided Setup *(recommended)*
 
-A setup script that walks you through the entire process interactively.
+A setup script that walks you through everything interactively.
 
 ```bash
 git clone https://github.com/Entit-y/Todoer
@@ -86,246 +97,168 @@ chmod +x nimbus-setup
 ./nimbus-setup
 ```
 
-The script will prompt you for your domain, email credentials, Google OAuth keys, and admin login. It generates `.env` and `docker-compose.override.yml` automatically, then launches the containers.
+The script handles: checking prerequisites, collecting config values, generating `.env` and `docker-compose.override.yml`, launching containers, and waiting for TLS certificates to provision.
 
-**What the script does:**
-- Checks prerequisites (Docker, Docker Compose, Git)
-- Clones the repository (if you haven’t already)
-- Collects all required configuration values
-- Creates `.env` and `docker-compose.override.yml` with your real domain and email
-- Runs `docker compose up -d --build`
-- Waits for Let’s Encrypt certificates and confirms the site is live
-
-> ⚠️ You still need to:  
-> - Point your domain’s DNS A records to your VPS IP **before** running the script  
-> - Authenticate your sending domain in Brevo (Part A of the email section)  
+> **You still need to do these manually before running:**
+> - Point your DNS A records to your VPS IP
+> - Authenticate your sending domain in Brevo (Part A below)
 > - Create a Google OAuth client and consent screen (the script will remind you)
 
 ---
 
-### Option 2: Manual setup
+### Option 2: Manual Setup
 
-If you prefer to configure everything by hand, follow the steps below.
-
-### 1. Clone the repo
+#### 1. Clone the repo
 
 ```bash
 git clone https://github.com/Entit-y/Todoer
 cd todoer
 ```
 
-### 2. Create required directories
-
-The nginx-proxy containers expect these to exist before first run:
+#### 2. Create required directories
 
 ```bash
 mkdir -p certs vhost.d html acme data uploads
 ```
 
-### 3. Set up your environment variables
+#### 3. Configure environment variables
 
 ```bash
 cp .env.example .env
 nano .env
 ```
 
-There are three things you need to configure: email (Brevo), Google OAuth, and the admin credentials. Details for each are below.
+Three things to configure: **email (Brevo)**, **Google OAuth**, and **admin credentials**.
 
 ---
 
-#### Email — Brevo SMTP
+#### 📧 Email — Brevo SMTP
 
-Todoer sends transactional emails for invite links, email verification, and password reset. It uses **[Brevo](https://brevo.com/)** as the SMTP provider — their free tier gives you 300 emails/day, which is plenty for a practice lab.
+Todoer sends transactional emails for invite links, email verification, and password resets. It uses [Brevo](https://brevo.com/) (free tier: 300 emails/day).
 
-This covers two things, **in this order**:
+**Do this in order — skipping Part A breaks delivery.**
 
-- **Part A** — Authenticate your sending domain so emails reach inboxes  
-- **Part B** — Get your SMTP credentials (the keys that go into `.env`)
+**Part A: Authenticate Your Sending Domain**
 
-> ⚠️ **Do not skip Part A.** Without a verified domain, Brevo cannot reliably deliver your emails. They will bounce or land in spam.
+Brevo can add DNS records automatically for most major providers (GoDaddy, Namecheap, Cloudflare, IONOS, OVHcloud, Hostinger, Squarespace, Wix, Gandi, Dynadot, and others).
 
----
+1. Sign up at [brevo.com](https://app.brevo.com/account/register) — no credit card needed
+2. Click your account name (top-right) → **Senders, Domains & IPs** → **Domains** tab
+3. Click **Add a domain**, enter your domain, then choose **Authenticate automatically**
+4. Log in to your domain provider when prompted — Brevo adds and verifies the DNS records for you
 
-##### Part A: Authenticate Your Sending Domain
+Once your domain shows **Authenticated**, move to Part B.
 
-Before you can send mail from `noreply@yourdomain.com`, Brevo needs proof that you own the domain.
+If your provider isn't supported, choose **Authenticate manually**. Brevo gives you three TXT records (Brevo Code, DKIM, and DMARC) to add yourself. Use [MXToolbox](https://mxtoolbox.com/) to check propagation while waiting.
 
-You have two options. **Try the automatic method first** — it takes under a minute.
+**Part B: Get SMTP Credentials**
 
----
-
-###### Option 1: Automatic authentication (recommended)
-
-Brevo can add the DNS records for you on many popular domain providers:
-
-- GoDaddy
-- Namecheap
-- Cloudflare
-- IONOS (1&1)
-- OVHcloud
-- Hostinger
-- Squarespace
-- Wix
-- Gandi
-- Dynadot
-
-...and others. If your provider is supported, this is the easiest path.
-
-1. Sign up at [brevo.com](https://app.brevo.com/account/register) — no credit card needed.
-2. Once logged in, click your **account name** (top‑right) → **Senders, Domains & IPs**.
-3. Select the **Domains** tab and click **Add a domain**.
-4. Enter your domain (e.g. `todoer.com`), then choose **Authenticate the domain automatically**.
-5. Brevo will prompt you to log in to your domain provider. Enter your credentials, confirm, and Brevo will add and verify the necessary DNS records for you.
-
-When it's done, your domain status switches to **Authenticated**, and you can skip to Part B.
-
-> 💡 If you already have a DMARC record on your domain, Brevo will ask whether it should replace it. If you'd rather keep your existing DMARC policy, use the manual method instead.
-
----
-
-###### Option 2: Manual authentication
-
-If your domain provider isn't supported (or you prefer manual control), you'll add the DNS records yourself.
-
-1. In Brevo, after adding your domain, choose **Authenticate the domain manually**. Brevo will display three TXT records:
-   - **Brevo Code** — proves ownership of the domain
-   - **DKIM Record** — cryptographically signs outgoing mail
-   - **DMARC Record (recommended)** — tells inbox providers how to handle authentication failures
-
-2. Open your domain registrar's **DNS management** page in a separate tab.
-
-3. Add each TXT record exactly as Brevo shows it:
-   - **Name / Host:** Paste the hostname value Brevo provides (e.g. `mail._domainkey`). If your registrar appends your domain automatically, you may need to strip the domain suffix.
-   - **Value / Content:** Paste the long string from Brevo's "Value" column.
-   - **TTL:** Leave on the default (usually Auto or 1 hour).
-
-4. Back in Brevo, click **Verify DNS Settings** (or **Authenticate this email domain**). Propagation can take a few minutes to a few hours. You can use [MXToolbox](https://mxtoolbox.com/) to check if your TXT records are live while waiting.
-
-Once verified, Brevo sends a confirmation email and your domain status changes to **Authenticated**.
-
----
-
-##### Part B: Get Your SMTP Credentials
-
-Now that your domain is ready, grab the keys that let Todoer send through it.
-
-1. In Brevo, on the top right corner, click the gear icon to open the settings sidebar.
-2. Navigate to SMTP & API. Select the **SMTP** tab, then click **Generate a new SMTP key**.
-3. Give it a name (e.g. `todoer`) and hit **Generate**.
-4. **Copy the key immediately** — Brevo only shows it once in full.
-5. Your **SMTP login** (username) is the email address displayed at the top of that same page under Your SMTP Settings".
-
-Now fill in the `.env` file with what you just obtained:
+1. In Brevo, click the gear icon → **SMTP & API** → **SMTP** tab
+2. Click **Generate a new SMTP key**, name it (e.g. `todoer`), hit Generate
+3. **Copy the key immediately** — Brevo only shows it once
 
 ```env
-BREVO_USER={randomString}@smtp-brevo.com   # the login shown on the SMTP & API page
-BREVO_KEY=xsmtpsib-...                         # the SMTP key you just generated
-BREVO_FROM=noreply@todoer.com              # must use the domain you verified in Part A
+BREVO_USER={random}@smtp-brevo.com   # shown under "Your SMTP Settings"
+BREVO_KEY=xsmtpsib-...               # key you just generated
+BREVO_FROM=noreply@yourdomain.com    # must match your verified domain
 ```
-
-With both parts complete, your emails will land reliably in inboxes.
 
 ---
 
-#### Google OAuth
+#### 🔑 Google OAuth
 
-This powers the "Sign in with Google" button.
+Powers the "Sign in with Google" button.
 
-##### **Part 1: Configure the OAuth consent screen**
+**Part 1: OAuth Consent Screen**
 
-1.  Go to the [Google Cloud Console](https://console.cloud.google.com/).
-2.  Click the project dropdown at the top → **New Project** → give it a name (e.g., "Todoer") → **Create**. Make sure this new project is selected.
-3.  In the left sidebar, navigate to **APIs & Services** → **OAuth consent screen**.
-4.  If you see a "Google Auth Platform not set up" message, click **Get Started**.
-5.  Choose **External** as the User Type and click **Create**. 
-6.  Fill in the required fields: **App name** (e.g., "Todoer"), **User support email** (your email), and **Developer contact information** (your email). Click **Save and Continue** for each step until you reach the summary page and click **Back to Dashboard**.
-7.  You must now define who can sign in:
-    *   **Option A (Recommended for testing):** Keep the "Publishing status" as **"Testing"**. You then need to add your own Google email address as an authorized **"Test user"**. This lets you safely test without Google's verification process.
-    *   **Option B (For production):** To let any Google user sign in, you must **"Publish App"** by pushing the app to **"In production"** status on the [Google Auth Platform Audience page](https://console.developers.google.com/auth/audience). This may require Google's app verification if you use sensitive scopes, which for Todoer, you won't need.
+1. Go to [Google Cloud Console](https://console.cloud.google.com/) → create a new project
+2. Navigate to **APIs & Services** → **OAuth consent screen**
+3. Choose **External**, fill in app name + contact email, save through each step
+4. For test use: keep status as **Testing** and add your Google email as a test user. For production: publish the app via the [Audience page](https://console.developers.google.com/auth/audience)
 
-##### **Part 2: Create OAuth client ID & secret**
-1.  Go to **APIs & Services** → **Credentials**.
-2.  Click **Create Credentials** at the top and select **OAuth client ID**.
-3.  Choose **Web application** as the Application type and give it a name (e.g., "Todoer Web App").
-4.  In the **Authorized redirect URIs** section, add your exact callback URL: `https://yourdomain.com/auth/oauth/callback`. (If testing locally, you also need to add `http://localhost:3000/auth/oauth/callback`).
-5.  Click **Create**. A pop-up will display your **Client ID** and **Client Secret**. Copy them immediately and store them securely—you will only be shown the secret once. These go into your `.env` file.
+**Part 2: Client ID & Secret**
+
+1. **APIs & Services** → **Credentials** → **Create Credentials** → **OAuth client ID**
+2. Choose **Web application**, add your redirect URI: `https://yourdomain.com/auth/oauth/callback`
+3. Copy the Client ID and Secret immediately
 
 ```env
 GOOGLE_CLIENT_ID=...apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=GOCSPX-...
 GOOGLE_REDIRECT_URI=https://yourdomain.com/auth/oauth/callback
 ```
+
 ---
 
-#### Admin panel credentials
-
-Just pick a username and strong password — these are what you'll use to log into `admin.yourdomain.com`.
+#### 🔒 Admin Credentials
 
 ```env
 ADMIN_USERNAME=youradminusername
 ADMIN_PASSWORD=somethingstronghere
 ```
 
-After you're done with all this, your `.env` should look something like this:
-```
-BREVO_USER={random-string}@smtp-brevo.com
-BREVO_KEY=redacted-99d8f8cd5redacted0d3d1redacted6d9-BggU0redactedX2K
+Your completed `.env` should look like:
+
+```env
+BREVO_USER={random}@smtp-brevo.com
+BREVO_KEY=xsmtpsib-...
 BREVO_FROM=noreply@yourdomain.com
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=Password
-GOOGLE_CLIENT_ID=redacted-r6redactedrjl51udeo.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=GSPvX-P32redactedMm
-GOOGLE_REDIRECT_URI=https://yourdomain.site/auth/oauth/callback
+GOOGLE_CLIENT_ID=....apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GOCSPX-...
+GOOGLE_REDIRECT_URI=https://yourdomain.com/auth/oauth/callback
 ```
 
 ---
 
-### 4. Update the domain in docker-compose.yml
+#### 4. Update docker-compose.yml
 
-Open `docker-compose.yml` and replace every occurrence of `your-domain.com` with your own domain:
+Replace every occurrence of `your-domain.com` with your actual domain:
 
 ```yaml
-# In the app service:
+# app service
 - VIRTUAL_HOST=yourdomain.com
 - LETSENCRYPT_HOST=yourdomain.com
 - APP_URL=https://yourdomain.com
 
-# In the admin service:
+# admin service
 - VIRTUAL_HOST=admin.yourdomain.com
 - LETSENCRYPT_HOST=admin.yourdomain.com
 ```
 
-Also update `LETSENCRYPT_EMAIL` in both services and the `letsencrypt-companion` environment section to your actual email — that's what Let's Encrypt uses to notify you about cert expiry.
+Also update `LETSENCRYPT_EMAIL` in both services and the `letsencrypt-companion` section.
 
-### 5. Start everything
+#### 5. Launch
 
 ```bash
 docker compose up -d --build
 ```
 
-This spins up four containers:
-
-|Container|What it does|
+| Container | Role |
 |---|---|
-|`todoer-app`|Main application, port 3000 (internal)|
-|`todoer-admin`|Admin panel, port 3001 (internal)|
-|`nginx-proxy`|Reverse proxy, handles routing and TLS termination on ports 80/443|
-|`nginx-proxy-acme`|Automatically provisions and renews Let's Encrypt certs|
+| `todoer-app` | Main app (port 3000, internal) |
+| `todoer-admin` | Admin panel (port 3001, internal) |
+| `nginx-proxy` | Reverse proxy, TLS termination (ports 80/443) |
+| `nginx-proxy-acme` | Auto-provisions + renews Let's Encrypt certs |
 
-On first boot, give acme-companion a minute or two to issue certificates. Once it's done, the app will be live at `https://yourdomain.com` and the admin panel at `https://admin.yourdomain.com`.
+Give acme-companion a minute or two on first boot to issue certificates. Then:
 
-### 6. Verify everything is running
+- App → `https://yourdomain.com`
+- Admin → `https://admin.yourdomain.com`
+
+#### 6. Verify
 
 ```bash
-docker compose ps          # all four containers should show "Up"
-docker compose logs app    # check for startup errors
-docker compose logs nginx-proxy-acme  # check cert provisioning
+docker compose ps                         # all four containers should show "Up"
+docker compose logs app                   # check for startup errors
+docker compose logs nginx-proxy-acme      # check cert provisioning
 ```
 
-### Stopping and resetting
+#### Stopping & Resetting
 
 ```bash
-# Stop all containers
+# Stop containers
 docker compose down
 
 # Full reset — wipes DB and uploads
@@ -336,7 +269,7 @@ rm -rf uploads/*
 
 ---
 
-## Project structure
+## Project Structure
 
 ```
 .
@@ -345,9 +278,9 @@ rm -rf uploads/*
 ├── todoer.db                 ← SQLite database (auto-created on first run)
 ├── uploads/                  ← user-uploaded files (persisted via volume)
 ├── data/                     ← persistent data volume
-├── certs/                    ← TLS certs (managed by acme-companion, don't touch)
+├── certs/                    ← TLS certs (managed by acme-companion)
 ├── vhost.d/                  ← nginx vhost overrides (optional)
-├── acme/                     ← acme.sh state (don't touch)
+├── acme/                     ← acme.sh state
 ├── public/                   ← frontend
 │   ├── vendor/               ← self-hosted JS libraries
 │   ├── fonts/                ← self-hosted fonts
@@ -366,4 +299,9 @@ rm -rf uploads/*
 
 ---
 
-Approach it like a real target. Enumerate, map the surface, look for what doesn't fit, and think about what happens when you combine what you find.
+<div align="center">
+
+Enumerate. Map the surface. Look for what doesn't fit.  
+Think about what happens when you combine what you find.
+
+</div>
