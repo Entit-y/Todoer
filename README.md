@@ -68,7 +68,7 @@ No specifics — go find them yourself. But in broad strokes:
 
 Todoer is the official practice environment for **[Nimbus Vault](https://nimbusvault.app/)** — a security research tool built for bug bounty hunters. Use it to learn the platform, test your playbooks, and sharpen your approach before going live. Safe, legal, and realistic.
 
-There's also a VDP page at `/vdp.html` that mirrors the format and expectations of a real bug bounty program.
+There's also a VDP page at `/vdp` that mirrors the format and expectations of a real bug bounty program.
 
 ---
 
