@@ -71,6 +71,42 @@ Todoer is built to run on a VPS with a real domain. It uses [nginx-proxy](https:
     - `yourdomain.com` → your VPS IP
     - `admin.yourdomain.com` → same VPS IP
 
+Here's the updated Installation section for your README, adding the guided setup option while keeping the manual instructions as a fallback:
+
+---
+
+### Option 1: Guided setup (recommended)
+
+A setup script that walks you through the entire process interactively.
+
+```bash
+git clone https://github.com/Entit-y/Todoer
+cd todoer
+chmod +x nimbus-setup
+./nimbus-setup
+```
+
+The script will prompt you for your domain, email credentials, Google OAuth keys, and admin login. It generates `.env` and `docker-compose.override.yml` automatically, then launches the containers.
+
+**What the script does:**
+- Checks prerequisites (Docker, Docker Compose, Git)
+- Clones the repository (if you haven’t already)
+- Collects all required configuration values
+- Creates `.env` and `docker-compose.override.yml` with your real domain and email
+- Runs `docker compose up -d --build`
+- Waits for Let’s Encrypt certificates and confirms the site is live
+
+> ⚠️ You still need to:  
+> - Point your domain’s DNS A records to your VPS IP **before** running the script  
+> - Authenticate your sending domain in Brevo (Part A of the email section)  
+> - Create a Google OAuth client and consent screen (the script will remind you)
+
+---
+
+### Option 2: Manual setup
+
+If you prefer to configure everything by hand, follow the steps below.
+
 ### 1. Clone the repo
 
 ```bash
@@ -231,8 +267,7 @@ ADMIN_PASSWORD=somethingstronghere
 ```
 
 After you're done with all this, your `.env` should look something like this:
-
-```env
+```
 BREVO_USER={random-string}@smtp-brevo.com
 BREVO_KEY=redacted-99d8f8cd5redacted0d3d1redacted6d9-BggU0redactedX2K
 BREVO_FROM=noreply@yourdomain.com
