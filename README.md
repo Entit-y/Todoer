@@ -231,7 +231,8 @@ ADMIN_PASSWORD=somethingstronghere
 ```
 
 After you're done with all this, your `.env` should look something like this:
-```
+
+```env
 BREVO_USER={random-string}@smtp-brevo.com
 BREVO_KEY=redacted-99d8f8cd5redacted0d3d1redacted6d9-BggU0redactedX2K
 BREVO_FROM=noreply@yourdomain.com
