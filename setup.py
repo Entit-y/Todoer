@@ -17,10 +17,10 @@ from pathlib import Path
 
 # ── Shoutouts ─────────────────────────────────────────────────
 SHOUTOUT = """
-   ╔══════════════════════════════════════════╗
+   ╔═════════════════════════════════════════════╗
    ║  Todoer – practice target for Nimbus Vault  ║
-   ║  nimbusvault.app      @entit_yy on X    ║
-   ╚══════════════════════════════════════════╝
+   ║  nimbusvault.app      @entit_yy on X        ║
+   ╚═════════════════════════════════════════════╝
 """
 
 
