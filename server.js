@@ -1160,14 +1160,14 @@ const oauthStates = new Map();
 // Initiate Google OAuth
 app.get('/auth/oauth/google', (req, res) => {
   const state = Math.random().toString(36).substring(2, 15);
-  // On initiation
-  oauthStates.set(state, Date.now());
+  // Store timestamp and whether this is a connect-from-profile flow
+  oauthStates.set(state, { ts: Date.now(), connect: req.query.connect === '1' });
 
   // Cleanup — run every 10 minutes, remove states older than 15 minutes
   setInterval(() => {
     const cutoff = Date.now() - 15 * 60 * 1000;
-    for (const [key, ts] of oauthStates) {
-      if (ts < cutoff) oauthStates.delete(key);
+    for (const [key, val] of oauthStates) {
+      if (val.ts < cutoff) oauthStates.delete(key);
     }
   }, 10 * 60 * 1000);
  
@@ -1205,6 +1205,8 @@ app.get('/auth/oauth/callback', async (req, res) => {
       `/oauth-error?error=invalid_state&state=${encodeURIComponent(state || '')}&code=${encodeURIComponent(code)}`
     );
   }
+  const stateData = oauthStates.get(state);
+  const isConnect = stateData.connect === true;
   oauthStates.delete(state);
 
   try {
@@ -1251,18 +1253,23 @@ app.get('/auth/oauth/callback', async (req, res) => {
           'INSERT OR IGNORE INTO oauth_accounts (user_id, provider, provider_id, provider_email) VALUES (?, ?, ?, ?)',
           [existingUser.id, 'google', googleUser.sub, googleUser.email],
           () => {
-            const token = jwt.sign({ id: existingUser.id, email: existingUser.email }, JWT_SECRET);
-            res.cookie('token', token, { httpOnly: true });
+            const token = jwt.sign(
+              { id: existingUser.id, email: existingUser.email, username: existingUser.username || null },
+              JWT_SECRET,
+              { expiresIn: '7d' }
+            );
+            res.cookie('token', token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 });
             setCsrfCookie(res, generateCsrfToken());
-            res.redirect('/home');
+            res.redirect(isConnect ? '/profile?connected=1' : '/home');
           }
         );
       } else {
         // No account — create one, auto-verified, placeholder password
         const placeholderPassword = await bcrypt.hash(Math.random().toString(36), 10);
+        const newUsername = googleUser.name || googleUser.email.split('@')[0];
         db.run(
           'INSERT INTO users (email, username, password, verified) VALUES (?, ?, ?, 1)',
-          [googleUser.email.toLowerCase(), googleUser.name || googleUser.email.split('@')[0], placeholderPassword],
+          [googleUser.email.toLowerCase(), newUsername, placeholderPassword],
           function(err) {
             if (err) return res.redirect('/oauth-error?error=account_creation_failed');
             const userId = this.lastID;
@@ -1270,10 +1277,14 @@ app.get('/auth/oauth/callback', async (req, res) => {
               'INSERT INTO oauth_accounts (user_id, provider, provider_id, provider_email) VALUES (?, ?, ?, ?)',
               [userId, 'google', googleUser.sub, googleUser.email],
               () => {
-                const token = jwt.sign({ id: userId, email: googleUser.email.toLowerCase() }, JWT_SECRET);
-                res.cookie('token', token, { httpOnly: true });
+                const token = jwt.sign(
+                  { id: userId, email: googleUser.email.toLowerCase(), username: newUsername },
+                  JWT_SECRET,
+                  { expiresIn: '7d' }
+                );
+                res.cookie('token', token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 });
                 setCsrfCookie(res, generateCsrfToken());
-                res.redirect('/home');
+                res.redirect(isConnect ? '/profile?connected=1' : '/home');
               }
             );
           }

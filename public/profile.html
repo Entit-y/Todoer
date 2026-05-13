@@ -186,7 +186,7 @@
         </form>
       </section>
 
-      <section class="profile-section">
+      <section class="profile-section" id="passwordSection">
         <h2>Password</h2>
         <form id="passwordForm" class="profile-form">
           <div class="form-group">
@@ -217,9 +217,9 @@
         <h2>Danger zone</h2>
         <p>Deleting your account is permanent and cannot be undone.</p>
         <form id="deleteForm" class="profile-form">
-          <div class="form-group">
+          <div class="form-group" id="deletePasswordGroup">
             <label for="deletePassword">Confirm with password</label>
-            <input type="password" id="deletePassword" required placeholder="Your current password">
+            <input type="password" id="deletePassword" placeholder="Your current password">
           </div>
           <div id="deleteMessage" class="message" style="display:none;"></div>
           <button type="submit" class="btn btn-danger">Delete my account</button>
@@ -346,8 +346,11 @@
         document.getElementById('profileDate').textContent = `Member since ${formatDate(data.created_at)}`;
 
         const list = document.getElementById('connectedAccountsList');
-        const googleAccount = (data.oauth_accounts || []).find(a => a.provider === 'google');
+        const oauthAccounts = data.oauth_accounts || [];
+        const googleAccount = oauthAccounts.find(a => a.provider === 'google');
+        const hasOAuth = oauthAccounts.length > 0;
 
+        // ── Connected accounts UI ──
         list.innerHTML = `
           <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);">
             <div style="display:flex;align-items:center;gap:12px;">
@@ -366,8 +369,72 @@
             </div>
             ${googleAccount
               ? `<span style="font-size:11.5px;font-weight:600;padding:3px 10px;border-radius:20px;background:rgba(34,197,94,0.08);color:#22c55e;border:1px solid rgba(34,197,94,0.2);">Connected</span>`
-              : `<a href="/auth/oauth/google" class="btn btn-secondary" style="font-size:12px;padding:5px 12px;">Connect</a>`}
+              : `<a href="/auth/oauth/google?connect=1" class="btn btn-secondary" style="font-size:12px;padding:5px 12px;">Connect</a>`}
           </div>`;
+
+        // ── Password section — swap for OAuth-only users ──
+        if (hasOAuth) {
+          document.getElementById('passwordSection').innerHTML = `
+            <h2>Password</h2>
+            <p style="font-size:13px;color:var(--text-3);margin-bottom:16px;">Set a password to also be able to sign in with email and password.</p>
+            <form id="setPasswordForm" class="profile-form">
+              <div class="form-group">
+                <label for="setNewPassword">New password</label>
+                <input type="password" id="setNewPassword" required minlength="6" placeholder="At least 6 characters">
+              </div>
+              <div class="form-group">
+                <label for="setConfirmPassword">Confirm password</label>
+                <input type="password" id="setConfirmPassword" required placeholder="Repeat new password">
+              </div>
+              <div id="setPasswordMessage" class="message" style="display:none;"></div>
+              <button type="submit" class="btn btn-primary">Set password</button>
+            </form>`;
+
+          document.getElementById('setPasswordForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const msg = document.getElementById('setPasswordMessage');
+            msg.style.display = 'none'; msg.className = 'message';
+            const np = document.getElementById('setNewPassword').value;
+            const cp = document.getElementById('setConfirmPassword').value;
+            if (np !== cp) {
+              msg.textContent = 'Passwords do not match';
+              msg.className = 'message error';
+              msg.style.display = 'block';
+              return;
+            }
+            try {
+              const r = await fetch('/api/profile/set-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+                body: JSON.stringify({ newPassword: np })
+              });
+              const d = await r.json();
+              if (r.ok) {
+                msg.textContent = 'Password set successfully.';
+                msg.className = 'message success';
+                document.getElementById('setPasswordForm').reset();
+              } else {
+                msg.textContent = d.error || 'Failed to set password';
+                msg.className = 'message error';
+              }
+              msg.style.display = 'block';
+            } catch {
+              msg.textContent = 'An error occurred.';
+              msg.className = 'message error';
+              msg.style.display = 'block';
+            }
+          });
+
+          // Hide delete password field — server skips it for OAuth users
+          document.getElementById('deletePasswordGroup').style.display = 'none';
+        }
+
+        // ── Toast if returning from Google connect ──
+        if (new URLSearchParams(window.location.search).get('connected') === '1') {
+          history.replaceState(null, '', '/profile');
+          if (googleAccount) showToast('Google account connected.', 'success');
+        }
+
       } catch (e) { console.error(e); }
     }
 
