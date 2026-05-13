@@ -74,7 +74,7 @@ Todoer is built to run on a VPS with a real domain. It uses [nginx-proxy](https:
 ### 1. Clone the repo
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/Entit-y/Todoer
 cd todoer
 ```
 
