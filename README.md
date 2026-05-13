@@ -99,53 +99,126 @@ There are three things you need to configure: email (Brevo), Google OAuth, and t
 
 #### Email — Brevo SMTP
 
-Todoer sends transactional emails for invite links, email verification, and password reset. It uses [Brevo](https://brevo.com/) (formerly Sendinblue) as the SMTP provider. The free plan gives you 300 emails/day which is more than enough.
+Todoer sends transactional emails for invite links, email verification, and password reset. It uses **[Brevo](https://brevo.com/)** as the SMTP provider — their free tier gives you 300 emails/day, which is plenty for a practice lab.
 
-**Getting your Brevo credentials:**
+This covers two things, **in this order**:
 
-1. Sign up at [brevo.com](https://app.brevo.com/account/register) — no credit card required
-2. Once logged in, click your account name (top right) → **SMTP & API**
-3. Under the **SMTP** tab, click **Generate a new SMTP key**, give it a name (e.g. `todoer`), and hit Generate
-4. Copy the key immediately — Brevo only shows it once in full
-5. Your SMTP login (username) is the email address shown at the top of that same page
+- **Part A** — Authenticate your sending domain so emails reach inboxes  
+- **Part B** — Get your SMTP credentials (the keys that go into `.env`)
 
-Before emails will actually deliver, you need to authenticate your sender domain. Go to **Senders & Domains** in your Brevo account, add your domain, and follow the DKIM/SPF DNS instructions. Without this, emails will either bounce or come from `@brevosend.com`.
+> ⚠️ **Do not skip Part A.** Without a verified domain, Brevo cannot reliably deliver your emails. They will bounce or land in spam.
+
+---
+
+##### Part A: Authenticate Your Sending Domain
+
+Before you can send mail from `noreply@yourdomain.com`, Brevo needs proof that you own the domain.
+
+You have two options. **Try the automatic method first** — it takes under a minute.
+
+---
+
+###### Option 1: Automatic authentication (recommended)
+
+Brevo can add the DNS records for you on many popular domain providers:
+
+- GoDaddy
+- Namecheap
+- Cloudflare
+- IONOS (1&1)
+- OVHcloud
+- Hostinger
+- Squarespace
+- Wix
+- Gandi
+- Dynadot
+
+...and others. If your provider is supported, this is the easiest path.
+
+1. Sign up at [brevo.com](https://app.brevo.com/account/register) — no credit card needed.
+2. Once logged in, click your **account name** (top‑right) → **Senders, Domains & IPs**.
+3. Select the **Domains** tab and click **Add a domain**.
+4. Enter your domain (e.g. `todoer.com`), then choose **Authenticate the domain automatically**.
+5. Brevo will prompt you to log in to your domain provider. Enter your credentials, confirm, and Brevo will add and verify the necessary DNS records for you.
+
+When it's done, your domain status switches to **Authenticated**, and you can skip to Part B.
+
+> 💡 If you already have a DMARC record on your domain, Brevo will ask whether it should replace it. If you'd rather keep your existing DMARC policy, use the manual method instead.
+
+---
+
+###### Option 2: Manual authentication
+
+If your domain provider isn't supported (or you prefer manual control), you'll add the DNS records yourself.
+
+1. In Brevo, after adding your domain, choose **Authenticate the domain manually**. Brevo will display three TXT records:
+   - **Brevo Code** — proves ownership of the domain
+   - **DKIM Record** — cryptographically signs outgoing mail
+   - **DMARC Record (recommended)** — tells inbox providers how to handle authentication failures
+
+2. Open your domain registrar's **DNS management** page in a separate tab.
+
+3. Add each TXT record exactly as Brevo shows it:
+   - **Name / Host:** Paste the hostname value Brevo provides (e.g. `mail._domainkey`). If your registrar appends your domain automatically, you may need to strip the domain suffix.
+   - **Value / Content:** Paste the long string from Brevo's "Value" column.
+   - **TTL:** Leave on the default (usually Auto or 1 hour).
+
+4. Back in Brevo, click **Verify DNS Settings** (or **Authenticate this email domain**). Propagation can take a few minutes to a few hours. You can use [MXToolbox](https://mxtoolbox.com/) to check if your TXT records are live while waiting.
+
+Once verified, Brevo sends a confirmation email and your domain status changes to **Authenticated**.
+
+---
+
+##### Part B: Get Your SMTP Credentials
+
+Now that your domain is ready, grab the keys that let Todoer send through it.
+
+1. In Brevo, on the top right corner, click the gear icon to open the settings sidebar.
+2. Navigate to SMTP & API. Select the **SMTP** tab, then click **Generate a new SMTP key**.
+3. Give it a name (e.g. `todoer`) and hit **Generate**.
+4. **Copy the key immediately** — Brevo only shows it once in full.
+5. Your **SMTP login** (username) is the email address displayed at the top of that same page under Your SMTP Settings".
+
+Now fill in the `.env` file with what you just obtained:
 
 ```env
-BREVO_USER=your-brevo-smtp-login@example.com   # the login shown on the SMTP & API page
+BREVO_USER={randomString}@smtp-brevo.com   # the login shown on the SMTP & API page
 BREVO_KEY=xsmtpsib-...                         # the SMTP key you just generated
-BREVO_FROM=noreply@yourdomain.com              # must be from your authenticated domain
+BREVO_FROM=noreply@todoer.com              # must use the domain you verified in Part A
 ```
 
-> **Note:** `BREVO_KEY` is your SMTP key, not your API key. They're different credentials and the wrong one won't work.
+With both parts complete, your emails will land reliably in inboxes.
 
 ---
 
 #### Google OAuth
 
-This powers the "Sign in with Google" button. Optional — the app works fine without it, that button just won't do anything.
+This powers the "Sign in with Google" button.
 
-**Getting your Google OAuth credentials:**
+##### **Part 1: Configure the OAuth consent screen**
 
-1. Go to [console.cloud.google.com](https://console.cloud.google.com/) and log in
-2. Click the project dropdown at the top → **New Project** → give it a name → **Create**
-3. In the left sidebar: **APIs & Services** → **OAuth consent screen**
-    - User type: **External** → **Create**
-    - Fill in App name, support email, and developer email → **Save and Continue** through the rest (scopes and test users can be left as default for now)
-4. Go to **APIs & Services** → **Credentials** → **Create Credentials** → **OAuth client ID**
-    - Application type: **Web application**
-    - Under **Authorized redirect URIs**, add: `https://yourdomain.com/auth/oauth/callback`
-    - Click **Create**
-5. Copy the **Client ID** and **Client Secret** from the popup
+1.  Go to the [Google Cloud Console](https://console.cloud.google.com/).
+2.  Click the project dropdown at the top → **New Project** → give it a name (e.g., "Todoer") → **Create**. Make sure this new project is selected.
+3.  In the left sidebar, navigate to **APIs & Services** → **OAuth consent screen**.
+4.  If you see a "Google Auth Platform not set up" message, click **Get Started**.
+5.  Choose **External** as the User Type and click **Create**. 
+6.  Fill in the required fields: **App name** (e.g., "Todoer"), **User support email** (your email), and **Developer contact information** (your email). Click **Save and Continue** for each step until you reach the summary page and click **Back to Dashboard**.
+7.  You must now define who can sign in:
+    *   **Option A (Recommended for testing):** Keep the "Publishing status" as **"Testing"**. You then need to add your own Google email address as an authorized **"Test user"**. This lets you safely test without Google's verification process.
+    *   **Option B (For production):** To let any Google user sign in, you must **"Publish App"** by pushing the app to **"In production"** status on the [Google Auth Platform Audience page](https://console.developers.google.com/auth/audience). This may require Google's app verification if you use sensitive scopes, which for Todoer, you won't need.
+
+##### **Part 2: Create OAuth client ID & secret**
+1.  Go to **APIs & Services** → **Credentials**.
+2.  Click **Create Credentials** at the top and select **OAuth client ID**.
+3.  Choose **Web application** as the Application type and give it a name (e.g., "Todoer Web App").
+4.  In the **Authorized redirect URIs** section, add your exact callback URL: `https://yourdomain.com/auth/oauth/callback`. (If testing locally, you also need to add `http://localhost:3000/auth/oauth/callback`).
+5.  Click **Create**. A pop-up will display your **Client ID** and **Client Secret**. Copy them immediately and store them securely—you will only be shown the secret once. These go into your `.env` file.
 
 ```env
 GOOGLE_CLIENT_ID=...apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=GOCSPX-...
 GOOGLE_REDIRECT_URI=https://yourdomain.com/auth/oauth/callback
 ```
-
-> If your app is in "Testing" status on Google's consent screen, only accounts you've added as test users can sign in via OAuth. To open it up, publish the app (APIs & Services → OAuth consent screen → Publish App). For a practice lab this probably doesn't matter much.
-
 ---
 
 #### Admin panel credentials
@@ -157,11 +230,23 @@ ADMIN_USERNAME=youradminusername
 ADMIN_PASSWORD=somethingstronghere
 ```
 
+After you're done with all this, your `.env` should look something like this:
+```
+BREVO_USER={random-string}@smtp-brevo.com
+BREVO_KEY=redacted-99d8f8cd5redacted0d3d1redacted6d9-BggU0redactedX2K
+BREVO_FROM=noreply@yourdomain.com
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=Password
+GOOGLE_CLIENT_ID=redacted-r6redactedrjl51udeo.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GSPvX-P32redactedMm
+GOOGLE_REDIRECT_URI=https://yourdomain.site/auth/oauth/callback
+```
+
 ---
 
 ### 4. Update the domain in docker-compose.yml
 
-Open `docker-compose.yml` and replace every occurrence of `entityy.site` with your own domain:
+Open `docker-compose.yml` and replace every occurrence of `your-domain.com` with your own domain:
 
 ```yaml
 # In the app service:
