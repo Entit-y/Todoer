@@ -28,6 +28,10 @@ It's a real task management app: workspaces, file uploads, public feed, real-tim
 
 > There are no flags. No hints. No labels. Approach it like a real target.
 
+<div align="center">
+  <img src="./public/assets/todoer.png" alt="Todoer app screenshot" width="900" />
+</div>
+
 ---
 
 ## The Stack
