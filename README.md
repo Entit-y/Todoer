@@ -80,8 +80,7 @@ A setup script that walks you through everything interactively.
 ```bash
 git clone https://github.com/Entit-y/Todoer
 cd todoer
-chmod +x nimbus-setup
-./nimbus-setup
+python3 setup.py
 ```
 
 The script handles: checking prerequisites, collecting config values, generating `.env` and `docker-compose.override.yml`, launching containers, and waiting for TLS certificates to provision.
