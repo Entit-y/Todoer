@@ -58,19 +58,6 @@ No specifics — go find them yourself. But in broad strokes:
 
 > Some of the most interesting stuff doesn't work in isolation. The app has at least one multi-stage chain where every step feeds the next, using only information available from within the app itself.
 
----
-
-## Nimbus Vault
-
-<a href="https://nimbusvault.app/">
-  <img src="./public/assets/nimbus-logo.svg" alt="Built for Nimbus Vault" height="40" />
-</a>
-
-Todoer is the official practice environment for **[Nimbus Vault](https://nimbusvault.app/)** — a security research tool built for bug bounty hunters. Use it to learn the platform, test your playbooks, and sharpen your approach before going live. Safe, legal, and realistic.
-
-There's also a VDP page at `/vdp` that mirrors the format and expectations of a real bug bounty program.
-
----
 
 ## Installation
 
@@ -296,6 +283,16 @@ rm -rf uploads/*
     ├── server.js
     └── public/
 ```
+
+---
+
+## Nimbus Vault
+
+<a href="https://nimbusvault.app/">
+  <img src="./public/assets/nimbus-logo.svg" alt="Built for Nimbus Vault" height="40" />
+</a>
+
+Todoer is the official practice environment for **[Nimbus Vault](https://nimbusvault.app/)** — a security research tool built for bug bounty hunters. Use it to learn the platform, test your playbooks, and sharpen your approach before going live. Safe, legal, and realistic.
 
 ---
 
