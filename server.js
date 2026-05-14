@@ -1233,7 +1233,7 @@ app.get('/auth/oauth/callback', async (req, res) => {
       headers: { Authorization: `Bearer ${tokens.access_token}` }
     });
     const googleUser = await userInfoRes.json();
-
+    console.log('[OAuth debug]', JSON.stringify({ sub: googleUser.sub, email: googleUser.email, name: googleUser.name }));
     if (!googleUser.email) {
       return res.redirect('/oauth-error?error=no_email');
     }
