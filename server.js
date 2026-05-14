@@ -514,6 +514,19 @@ app.get('/api/auth/check-email', (req, res) => {
   });
 });
 
+// VULNERABLE: Query string parser differential — open redirect
+// Express uses qs for req.query; the client uses URLSearchParams.
+// These two parsers disagree on which value to return for duplicate keys.
+// qs takes the LAST value; URLSearchParams.get() returns the FIRST.
+
+app.get('/api/auth/validate-redirect', (req, res) => {
+  const next = req.query.next;
+  if (!next || typeof next !== 'string') return res.json({ valid: false });
+  // Blocks absolute URLs and protocol-relative URLs
+  const isValid = next.startsWith('/') && !next.startsWith('//');
+  res.json({ valid: isValid });
+});
+
 // ============ PROFILE ROUTES ============
 
 // Updated /api/profile — now includes OAuth connection info
