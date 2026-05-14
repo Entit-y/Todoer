@@ -182,6 +182,12 @@ db.serialize(() => {
     // Ignore error — column already exists on fresh installs
   });
 
+  // Migration: add has_password flag — set to 1 when user explicitly sets a password
+  // Distinct from having a placeholder password (OAuth-created accounts)
+  db.run(`ALTER TABLE users ADD COLUMN has_password INTEGER DEFAULT 0`, (err) => {
+    // Ignore error — column already exists on fresh installs
+  });
+
   db.run(`CREATE TABLE IF NOT EXISTS tasks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
@@ -512,7 +518,7 @@ app.get('/api/auth/check-email', (req, res) => {
 
 // Updated /api/profile — now includes OAuth connection info
 app.get('/api/profile', authenticateToken, (req, res) => {
-  db.get('SELECT id, email, username, created_at FROM users WHERE id = ?', [req.user.id], (err, user) => {
+  db.get('SELECT id, email, username, created_at, has_password FROM users WHERE id = ?', [req.user.id], (err, user) => {
     if (err || !user) return res.status(404).json({ error: 'User not found' });
     db.all('SELECT provider, provider_email FROM oauth_accounts WHERE user_id = ?', [req.user.id], (err, oauthAccounts) => {
       res.json({ ...user, oauth_accounts: oauthAccounts || [] });
@@ -576,7 +582,7 @@ app.post('/api/profile/set-password', authenticateToken, validateCsrf, async (re
   const { newPassword } = req.body;
   if (!newPassword || newPassword.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
   const hashed = await bcrypt.hash(newPassword, 10);
-  db.run('UPDATE users SET password = ? WHERE id = ?', [hashed, req.user.id], function(err) {
+  db.run('UPDATE users SET password = ?, has_password = 1 WHERE id = ?', [hashed, req.user.id], function(err) {
     if (err) return res.status(500).json({ error: 'Failed to set password' });
     res.json({ message: 'Password set successfully' });
   });
@@ -584,13 +590,13 @@ app.post('/api/profile/set-password', authenticateToken, validateCsrf, async (re
 
 app.delete('/api/profile/account', authenticateToken, validateCsrf, (req, res) => {
   const { password } = req.body;
-  db.get('SELECT password FROM users WHERE id = ?', [req.user.id], async (err, user) => {
+  db.get('SELECT password, has_password FROM users WHERE id = ?', [req.user.id], async (err, user) => {
     if (err || !user) return res.status(404).json({ error: 'User not found' });
 
-    // Check if account has OAuth — if so, skip password check
     db.get('SELECT id FROM oauth_accounts WHERE user_id = ?', [req.user.id], async (err, oauthAccount) => {
-      if (!oauthAccount) {
-        // Regular account — password required
+      const needsPassword = !oauthAccount || user.has_password === 1;
+
+      if (needsPassword) {
         if (!password) return res.status(400).json({ error: 'Password is required to delete account' });
         const validPassword = await bcrypt.compare(password, user.password);
         if (!validPassword) return res.status(401).json({ error: 'Incorrect password' });

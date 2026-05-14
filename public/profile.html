@@ -349,6 +349,7 @@
         const oauthAccounts = data.oauth_accounts || [];
         const googleAccount = oauthAccounts.find(a => a.provider === 'google');
         const hasOAuth = oauthAccounts.length > 0;
+        const hasPassword = data.has_password === 1;
 
         // ── Connected accounts UI ──
         list.innerHTML = `
@@ -425,8 +426,10 @@
             }
           });
 
-          // Hide delete password field — server skips it for OAuth users
-          document.getElementById('deletePasswordGroup').style.display = 'none';
+          // Hide delete password field only if OAuth user hasn't explicitly set a password
+          if (!hasPassword) {
+            document.getElementById('deletePasswordGroup').style.display = 'none';
+          }
         }
 
         // ── Toast if returning from Google connect ──
