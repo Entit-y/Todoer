@@ -222,7 +222,7 @@
             <input type="password" id="deletePassword" placeholder="Your current password">
           </div>
           <div id="deleteMessage" class="message" style="display:none;"></div>
-          <button type="submit" class="btn btn-danger">Delete my account</button>
+          <button type="submit" id="deleteBtn" class="btn btn-danger">Delete my account</button>
         </form>
       </section>
     </div>
@@ -411,14 +411,41 @@
               });
               const d = await r.json();
               if (r.ok) {
-                msg.textContent = 'Password set successfully.';
-                msg.className = 'message success';
-                document.getElementById('setPasswordForm').reset();
+                // Swap to change-password form now that a password exists
+                document.getElementById('passwordSection').innerHTML = `
+                  <h2>Password</h2>
+                  <form id="passwordForm" class="profile-form">
+                    <div class="form-group">
+                      <label for="currentPassword">Current password</label>
+                      <input type="password" id="currentPassword" required placeholder="Enter current password">
+                    </div>
+                    <div class="form-group">
+                      <label for="newPassword">New password</label>
+                      <input type="password" id="newPassword" required minlength="6" placeholder="At least 6 characters">
+                    </div>
+                    <div class="form-group">
+                      <label for="confirmNewPassword">Confirm new password</label>
+                      <input type="password" id="confirmNewPassword" required placeholder="Repeat new password">
+                    </div>
+                    <div id="passwordMessage" class="message" style="display:none;"></div>
+                    <button type="submit" class="btn btn-primary">Change password</button>
+                  </form>`;
+                attachChangePasswordHandler();
+
+                // Show delete password field and wire up disabled state
+                const group = document.getElementById('deletePasswordGroup');
+                const input = document.getElementById('deletePassword');
+                const btn = document.getElementById('deleteBtn');
+                group.style.display = '';
+                btn.disabled = true;
+                input.addEventListener('input', () => { btn.disabled = input.value.trim() === ''; });
+
+                showToast('Password set successfully.', 'success');
               } else {
                 msg.textContent = d.error || 'Failed to set password';
                 msg.className = 'message error';
+                msg.style.display = 'block';
               }
-              msg.style.display = 'block';
             } catch {
               msg.textContent = 'An error occurred.';
               msg.className = 'message error';
@@ -426,10 +453,20 @@
             }
           });
 
-          // Hide delete password field only if OAuth user hasn't explicitly set a password
+          // Hide delete password field — no password set yet
           if (!hasPassword) {
+            const btn = document.getElementById('deleteBtn');
             document.getElementById('deletePasswordGroup').style.display = 'none';
+            btn.disabled = false; // no password needed, button stays enabled
           }
+        }
+
+        // Wire up delete button disabled state for users who already have a password
+        if (hasPassword) {
+          const input = document.getElementById('deletePassword');
+          const btn = document.getElementById('deleteBtn');
+          btn.disabled = true;
+          input.addEventListener('input', () => { btn.disabled = input.value.trim() === ''; });
         }
 
         // ── Toast if returning from Google connect ──
@@ -489,21 +526,26 @@
       } catch { msg.textContent = 'An error occurred.'; msg.className = 'message error'; msg.style.display = 'block'; }
     });
 
-    document.getElementById('passwordForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const msg = document.getElementById('passwordMessage');
-      msg.style.display = 'none'; msg.className = 'message';
-      const np = document.getElementById('newPassword').value;
-      const cp = document.getElementById('confirmNewPassword').value;
-      if (np !== cp) { msg.textContent = 'Passwords do not match'; msg.className = 'message error'; msg.style.display = 'block'; return; }
-      try {
-        const r = await fetch('/api/profile/password', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() }, body: JSON.stringify({ currentPassword: document.getElementById('currentPassword').value, newPassword: np }) });
-        const data = await r.json();
-        if (r.ok) { msg.textContent = 'Password changed.'; msg.className = 'message success'; document.getElementById('passwordForm').reset(); }
-        else { msg.textContent = data.error || 'Failed to change password'; msg.className = 'message error'; }
-        msg.style.display = 'block';
-      } catch { msg.textContent = 'An error occurred.'; msg.className = 'message error'; msg.style.display = 'block'; }
-    });
+    function attachChangePasswordHandler() {
+      const form = document.getElementById('passwordForm');
+      if (!form) return;
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const msg = document.getElementById('passwordMessage');
+        msg.style.display = 'none'; msg.className = 'message';
+        const np = document.getElementById('newPassword').value;
+        const cp = document.getElementById('confirmNewPassword').value;
+        if (np !== cp) { msg.textContent = 'Passwords do not match'; msg.className = 'message error'; msg.style.display = 'block'; return; }
+        try {
+          const r = await fetch('/api/profile/password', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() }, body: JSON.stringify({ currentPassword: document.getElementById('currentPassword').value, newPassword: np }) });
+          const data = await r.json();
+          if (r.ok) { msg.textContent = 'Password changed.'; msg.className = 'message success'; form.reset(); }
+          else { msg.textContent = data.error || 'Failed to change password'; msg.className = 'message error'; }
+          msg.style.display = 'block';
+        } catch { msg.textContent = 'An error occurred.'; msg.className = 'message error'; msg.style.display = 'block'; }
+      });
+    }
+    attachChangePasswordHandler();
 
     document.getElementById('deleteForm').addEventListener('submit', async (e) => {
       e.preventDefault();
