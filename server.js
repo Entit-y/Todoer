@@ -1252,7 +1252,9 @@ app.get('/auth/oauth/callback', async (req, res) => {
         db.run(
           'INSERT OR IGNORE INTO oauth_accounts (user_id, provider, provider_id, provider_email) VALUES (?, ?, ?, ?)',
           [existingUser.id, 'google', googleUser.sub, googleUser.email],
-          () => {
+          function(err) {
+            if (err) console.error('[OAuth debug] oauth_accounts INSERT error:', err.message);
+            else console.log('[OAuth debug] oauth_accounts INSERT — changes:', this.changes, 'for user_id:', existingUser.id);
             const token = jwt.sign(
               { id: existingUser.id, email: existingUser.email, username: existingUser.username || null },
               JWT_SECRET,
@@ -1276,7 +1278,9 @@ app.get('/auth/oauth/callback', async (req, res) => {
             db.run(
               'INSERT INTO oauth_accounts (user_id, provider, provider_id, provider_email) VALUES (?, ?, ?, ?)',
               [userId, 'google', googleUser.sub, googleUser.email],
-              () => {
+              function(err) {
+                if (err) console.error('[OAuth debug] oauth_accounts INSERT error (new user):', err.message);
+                else console.log('[OAuth debug] oauth_accounts INSERT (new user) — changes:', this.changes, 'for user_id:', userId);
                 const token = jwt.sign(
                   { id: userId, email: googleUser.email.toLowerCase(), username: newUsername },
                   JWT_SECRET,
