@@ -143,7 +143,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Database setup
 const db = new sqlite3.Database('./todoer.db', (err) => {
   if (err) console.error('Database connection error:', err);
-  else console.log('Connected to SQLite database');
+  else {
+    console.log('Connected to SQLite database');
+    db.run('PRAGMA foreign_keys = ON');
+  }
 });
 
 // VULNERABLE: register accent-insensitive collation that maps unicode lookalikes
