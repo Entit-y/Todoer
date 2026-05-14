@@ -135,8 +135,15 @@
     // ?redirect= is for invite flow — pass through without validation
     const redirectTo = params.get('redirect');
 
+    // VULNERABLE: ?next= is for post-auth redirect after accessing a protected page.
+    // Read with URLSearchParams — gets the FIRST value for duplicate keys.
+    // The validate-redirect endpoint reads with qs — gets the LAST value.
+    // Payload: /login?next=//evil.com&next=/home
+    //   URLSearchParams.get('next') → '//evil.com'  (what client navigates to)
+    //   qs req.query.next           → '/home'        (what server validates — passes)
     const nextParam = params.get('next');
 
+    // Adjust UI for invite flow
     if (redirectTo) {
       document.getElementById('subtitle').textContent = 'Sign in to accept your invitation';
       document.getElementById('registerLink').href = '/register?redirect=' + encodeURIComponent(redirectTo);
@@ -153,10 +160,19 @@
       oauthBtn.href = '/auth/oauth/google?next=' + encodeURIComponent(nextParam);
     }
 
+    /* ── Post-login redirect ── */
+    // VULNERABLE: validates using qs (server) but navigates using URLSearchParams (client).
+    // For duplicate ?next= params, these two parsers return different values.
     async function resolveRedirect() {
+      // invite flow — no validation needed, just follow it
       if (redirectTo) return redirectTo;
+
+      // no next param — go home
       if (!nextParam) return '/home';
 
+      // VULNERABLE: send the raw query string to the validate endpoint.
+      // Server validates with qs (last value of duplicate keys).
+      // Client navigates using nextParam (first value via URLSearchParams).
       try {
         const qs = location.search.slice(1); // raw query string, preserves duplicates
         const res = await fetch('/api/auth/validate-redirect?' + qs);

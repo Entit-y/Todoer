@@ -314,7 +314,7 @@
     async function checkAuth() {
       try {
         const r = await fetch('/api/auth/me');
-        if (!r.ok) { window.location.href = '/'; return; }
+        if (!r.ok) { window.location.href = '/?next=' + encodeURIComponent(location.pathname); return; }
         const data = await r.json();
         document.getElementById('profileEmail').textContent = data.user.email;
         document.getElementById('newEmail').value = data.user.email;
@@ -336,7 +336,7 @@
           navEl.textContent = data.user.email;
         }
         loadProfile();
-      } catch { window.location.href = '/'; }
+      } catch { window.location.href = '/?next=' + encodeURIComponent(location.pathname); }
     }
 
     async function loadProfile() {

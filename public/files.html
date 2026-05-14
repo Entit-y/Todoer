@@ -517,7 +517,7 @@
     async function checkAuth() {
       try {
         const r = await fetch('/api/auth/me');
-        if (!r.ok) { window.location.href = '/'; return; }
+        if (!r.ok) { window.location.href = '/?next=' + encodeURIComponent(location.pathname); return; }
         const data = await r.json();
         currentUser = data.user;
         const key = data.user.username || data.user.email || '?';
@@ -527,13 +527,12 @@
         sidebarAv.style.background = avatarColor(key);
         sidebarAv.style.border = 'none';
         document.getElementById('sidebarEmail').textContent = data.user.email || '';
-        // VULNERABLE: innerHTML — XSS vector
         if (data.user.username) {
           document.getElementById('sidebarName').innerHTML = '@' + data.user.username;
         } else {
           document.getElementById('sidebarName').textContent = data.user.email;
         }
-      } catch { window.location.href = '/'; }
+      } catch { window.location.href = '/?next=' + encodeURIComponent(location.pathname); }
     }
 
     // ── Skeleton ──

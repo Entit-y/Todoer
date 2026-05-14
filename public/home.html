@@ -878,7 +878,7 @@
     async function checkAuth() {
       try {
         const r = await fetch('/api/auth/me');
-        if (!r.ok) { window.location.href = '/'; return; }
+        if (!r.ok) { window.location.href = '/?next=' + encodeURIComponent(location.pathname); return; }
         const data = await r.json();
         currentUser = data.user;
         const key = data.user.username || data.user.email || '?';
@@ -893,7 +893,7 @@
         } else {
           document.getElementById('sidebarName').textContent = data.user.email;
         }
-      } catch { window.location.href = '/'; }
+      } catch { window.location.href = '/?next=' + encodeURIComponent(location.pathname); }
     }
 
     // ── Debounced search ──

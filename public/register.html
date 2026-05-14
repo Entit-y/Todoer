@@ -16,7 +16,7 @@
     <div class="auth-card">
       <span class="auth-logo">Todoer</span>
       <h1>Create account</h1>
-      <p class="subtitle">Start managing your tasks today</p>
+      <p class="subtitle" id="subtitle">Start managing your tasks today</p>
 
       <form id="registerForm">
         <div class="form-group">
@@ -45,7 +45,7 @@
       </form>
 
       <div class="auth-footer">
-        <p>Already have an account? <a href="/">Sign in</a></p>
+        <p>Already have an account? <a href="/" id="signinLink">Sign in</a></p>
       </div>
     </div>
   </div>
@@ -115,12 +115,17 @@
       draw();
     })();
 
-    /* ── Redirect param ── */
-    const redirectTo = new URLSearchParams(location.search).get('redirect');
+    /* ── Params ── */
+    const params = new URLSearchParams(location.search);
+    const redirectTo = params.get('redirect');
+    const nextParam  = params.get('next');
+
+    // Adjust UI and pass params through to sign in link
     if (redirectTo) {
-      document.querySelector('.subtitle').textContent = 'Create an account to accept your invitation';
-      const signinLink = document.querySelector('.auth-footer a');
-      signinLink.href = '/?redirect=' + encodeURIComponent(redirectTo);
+      document.getElementById('subtitle').textContent = 'Create an account to accept your invitation';
+      document.getElementById('signinLink').href = '/?redirect=' + encodeURIComponent(redirectTo);
+    } else if (nextParam) {
+      document.getElementById('signinLink').href = '/?next=' + encodeURIComponent(nextParam);
     }
 
     /* ── Form submit ── */
@@ -154,8 +159,10 @@
           btn.textContent = 'Create account';
           return;
         }
-        const verifyUrl = '/verify-email?email=' + encodeURIComponent(data.email)
-          + (redirectTo ? '&redirect=' + encodeURIComponent(redirectTo) : '');
+        // Pass both redirect and next through verify-email so the full flow is preserved
+        let verifyUrl = '/verify-email?email=' + encodeURIComponent(data.email);
+        if (redirectTo) verifyUrl += '&redirect=' + encodeURIComponent(redirectTo);
+        if (nextParam)  verifyUrl += '&next=' + encodeURIComponent(nextParam);
         window.location.href = verifyUrl;
       } catch {
         errorMessage.textContent = 'An error occurred. Please try again.';
