@@ -519,6 +519,7 @@
         const r = await fetch('/api/profile/account', { method: 'DELETE', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() }, body: JSON.stringify({ password: document.getElementById('deletePassword').value }) });
         const data = await r.json();
         if (r.ok) {
+          localStorage.removeItem('activeWorkspace');
           showToast('Account deleted. Redirecting…');
           setTimeout(() => window.location.href = '/', 1500);
         } else {
@@ -531,6 +532,7 @@
 
     document.getElementById('logoutBtn').addEventListener('click', async () => {
       await fetch('/api/auth/logout', { method: 'POST', headers: { 'X-CSRF-Token': getCsrfToken() } });
+      localStorage.removeItem('activeWorkspace');
       window.location.href = '/';
     });
 

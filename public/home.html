@@ -1348,6 +1348,7 @@
       wsActive = false;  // stop WS reconnect
       if (ws) ws.close();
       await fetch('/api/auth/logout', { method: 'POST', headers: { 'X-CSRF-Token': getCsrfToken() } });
+      localStorage.removeItem('activeWorkspace');
       window.location.href = '/';
     });
 

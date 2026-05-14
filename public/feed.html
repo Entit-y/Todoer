@@ -638,7 +638,8 @@
     }
 
     document.getElementById('logoutBtn').addEventListener('click', async () => {
-      await fetch('/api/auth/logout', { method: 'POST' });
+      await fetch('/api/auth/logout', { method: 'POST', headers: { 'X-CSRF-Token': getCsrfToken() } });
+      localStorage.removeItem('activeWorkspace');
       window.location.href = '/';
     });
 
