@@ -120,7 +120,6 @@
     const redirectTo = params.get('redirect');
     const nextParam  = params.get('next');
 
-    // Adjust UI and pass params through to sign in link
     if (redirectTo) {
       document.getElementById('subtitle').textContent = 'Create an account to accept your invitation';
       document.getElementById('signinLink').href = '/?redirect=' + encodeURIComponent(redirectTo);
@@ -159,7 +158,6 @@
           btn.textContent = 'Create account';
           return;
         }
-        // Pass both redirect and next through verify-email so the full flow is preserved
         let verifyUrl = '/verify-email?email=' + encodeURIComponent(data.email);
         if (redirectTo) verifyUrl += '&redirect=' + encodeURIComponent(redirectTo);
         if (nextParam)  verifyUrl += '&next=' + encodeURIComponent(nextParam);
