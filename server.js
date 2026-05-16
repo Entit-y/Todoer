@@ -309,6 +309,25 @@ db.serialize(() => {
   db.run(`ALTER TABLE files ADD COLUMN workspace_id INTEGER REFERENCES workspaces(id) ON DELETE CASCADE`, () => {});
   // Migration: add invited_role to workspace_invitations so accepted role is stored
   db.run(`ALTER TABLE workspace_invitations ADD COLUMN invited_role TEXT DEFAULT 'member'`, () => {});
+
+  db.run(`CREATE TABLE IF NOT EXISTS oauth_codes (
+    id           INTEGER  PRIMARY KEY AUTOINCREMENT,
+    code         TEXT     NOT NULL UNIQUE,
+    user_id      INTEGER  NOT NULL,
+    client_id    TEXT     NOT NULL,
+    redirect_uri TEXT     NOT NULL,
+    created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS oauth_tokens (
+    id         INTEGER  PRIMARY KEY AUTOINCREMENT,
+    token      TEXT     NOT NULL UNIQUE,
+    user_id    INTEGER  NOT NULL,
+    client_id  TEXT     NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  )`);
 });
 
 // File upload configuration
@@ -1178,6 +1197,17 @@ app.post('/api/auth/reset-password', passwordResetLimiter, async (req, res) => {
 // In-memory state store
 // VULNERABLE: states never expire and are never cleaned up
 const oauthStates = new Map();
+
+// Registered first-party OAuth clients
+const OAUTH_CLIENTS = {
+  support: {
+    name:              'Todoer Support',
+    redirect_uri_base: 'https://support.entityy.site'
+  }
+};
+
+// In-memory store for pending authorization requests
+const oauthRequests = new Map();
  
 // Initiate Google OAuth
 app.get('/auth/oauth/google', (req, res) => {
@@ -1777,6 +1807,153 @@ app.post('/api/invites/:code/accept', authenticateToken, validateCsrf, (req, res
           res.json({ message: `Joined workspace "${invite.workspace_name}"` });
         });
       });
+  });
+});
+
+// ============ OAUTH ROUTES ============
+
+app.get('/oauth/authorize', (req, res) => {
+  const { client_id, redirect_uri, response_type, state, scope } = req.query;
+
+  const client = OAUTH_CLIENTS[client_id];
+  if (!client) return res.status(400).json({ error: 'Unknown client_id' });
+
+  if (response_type !== 'code') {
+    return res.status(400).json({ error: 'Unsupported response_type' });
+  }
+
+  if (!redirect_uri || !redirect_uri.startsWith('https://support.entityy.site')) {
+    return res.status(400).json({ error: 'Invalid redirect_uri' });
+  }
+
+  const token = req.cookies.token;
+  if (!token) {
+    const returnTo = `/oauth/authorize?${new URLSearchParams(req.query).toString()}`;
+    return res.redirect(`/?next=${encodeURIComponent(returnTo)}`);
+  }
+
+  try {
+    jwt.verify(token, JWT_SECRET);
+  } catch {
+    const returnTo = `/oauth/authorize?${new URLSearchParams(req.query).toString()}`;
+    return res.redirect(`/?next=${encodeURIComponent(returnTo)}`);
+  }
+
+  const requestId = crypto.randomBytes(10).toString('hex');
+  oauthRequests.set(requestId, {
+    client_id,
+    redirect_uri,
+    state:  state  || '',
+    scope:  scope  || 'openid',
+    ts:     Date.now()
+  });
+
+  for (const [id, r] of oauthRequests) {
+    if (Date.now() - r.ts > 30 * 60 * 1000) oauthRequests.delete(id);
+  }
+
+  const params = new URLSearchParams({
+    client_id,
+    redirectUri: redirect_uri,
+    state:       state  || '',
+    scope:       scope  || 'openid',
+    request_id:  requestId
+  });
+
+  res.redirect(`/oauth/confirm_access?${params}`);
+});
+
+app.get('/oauth/confirm_access', (req, res) => {
+  const token = req.cookies.token;
+  if (!token) {
+    const returnTo = `/oauth/confirm_access?${new URLSearchParams(req.query).toString()}`;
+    return res.redirect(`/?next=${encodeURIComponent(returnTo)}`);
+  }
+
+  try {
+    jwt.verify(token, JWT_SECRET);
+  } catch {
+    const returnTo = `/oauth/confirm_access?${new URLSearchParams(req.query).toString()}`;
+    return res.redirect(`/?next=${encodeURIComponent(returnTo)}`);
+  }
+
+  res.sendFile(path.join(__dirname, 'public', 'oauth-confirm.html'));
+});
+
+app.post('/oauth/confirm_access', authenticateToken, (req, res) => {
+  const { redirectUri, state, client_id } = req.body;
+
+  if (!redirectUri) return res.status(400).json({ error: 'Missing redirect_uri' });
+
+  const code = crypto.randomBytes(20).toString('hex');
+
+  db.run(
+    `INSERT INTO oauth_codes (code, user_id, client_id, redirect_uri)
+     VALUES (?, ?, ?, ?)`,
+    [code, req.user.id, client_id || 'support', redirectUri],
+    (err) => {
+      if (err) return res.status(500).json({ error: 'Failed to issue authorization code' });
+
+      try {
+        const dest = new URL(redirectUri);
+        dest.searchParams.set('code', code);
+        if (state) dest.searchParams.set('state', state);
+        res.redirect(dest.toString());
+      } catch {
+        res.status(400).json({ error: 'Invalid redirect_uri' });
+      }
+    }
+  );
+});
+
+app.post('/oauth/token', (req, res) => {
+  const { code, client_id, redirect_uri, grant_type } = req.body;
+
+  if (grant_type !== 'authorization_code') {
+    return res.status(400).json({ error: 'Unsupported grant_type' });
+  }
+
+  if (!code) return res.status(400).json({ error: 'Missing code' });
+
+  db.get(
+    `SELECT * FROM oauth_codes WHERE code = ? AND client_id = ?`,
+    [code, client_id || 'support'],
+    (err, row) => {
+      if (err || !row) return res.status(400).json({ error: 'Invalid authorization code' });
+
+      const accessToken = crypto.randomBytes(32).toString('hex');
+
+      db.run(
+        `INSERT INTO oauth_tokens (token, user_id, client_id) VALUES (?, ?, ?)`,
+        [accessToken, row.user_id, client_id || 'support'],
+        (err) => {
+          if (err) return res.status(500).json({ error: 'Failed to issue access token' });
+          res.json({ access_token: accessToken, token_type: 'Bearer', scope: 'openid' });
+        }
+      );
+    }
+  );
+});
+
+app.get('/oauth/userinfo', (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Missing or invalid Authorization header' });
+  }
+
+  const token = authHeader.slice(7);
+
+  db.get(`SELECT * FROM oauth_tokens WHERE token = ?`, [token], (err, tokenRow) => {
+    if (err || !tokenRow) return res.status(401).json({ error: 'Invalid token' });
+
+    db.get(
+      `SELECT id, email, username FROM users WHERE id = ?`,
+      [tokenRow.user_id],
+      (err, user) => {
+        if (err || !user) return res.status(404).json({ error: 'User not found' });
+        res.json({ id: user.id, email: user.email, username: user.username });
+      }
+    );
   });
 });
 

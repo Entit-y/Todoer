@@ -57,6 +57,32 @@ services:
       retries: 3
       start_period: 10s
 
+  support:
+    build:
+      context: ./support
+      dockerfile: Dockerfile
+    container_name: todoer-support
+    expose:
+      - "3002"
+    volumes:
+      - ./support/support.db:/app/support.db
+    environment:
+      - NODE_ENV=production
+      - PORT=3002
+      - VIRTUAL_HOST=support.entityy.site
+      - LETSENCRYPT_HOST=support.entityy.site
+      - LETSENCRYPT_EMAIL=your-email@example.com
+      - TODOER_APP_URL=https://entityy.site
+      - SUPPORT_URL=https://support.entityy.site
+      - SESSION_SECRET=${SUPPORT_SESSION_SECRET}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3002/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
   nginx-proxy:
     image: nginxproxy/nginx-proxy
     container_name: nginx-proxy
