@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Help Articles — Todoer</title>
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    .support-layout {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* ── Top bar ── */
+    .topbar {
+      height: 52px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 28px;
+      gap: 16px;
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .topbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      text-decoration: none;
+    }
+
+    .topbar-brand img { width: 22px; height: 22px; }
+
+    .topbar-brand-text {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-1);
+      letter-spacing: -0.02em;
+    }
+
+    .topbar-divider {
+      width: 1px;
+      height: 14px;
+      background: var(--border-light);
+    }
+
+    .topbar-sub { font-size: 13px; color: var(--text-2); }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .topbar-right a {
+      font-size: 12.5px;
+      color: var(--text-2);
+      padding: 5px 10px;
+      border-radius: var(--radius-sm);
+      text-decoration: none;
+      transition: color 0.15s, background 0.15s;
+    }
+
+    .topbar-right a:hover { color: var(--text-1); background: var(--surface-2); }
+
+    /* ── Page hero ── */
+    .articles-hero {
+      padding: 48px 28px 0;
+      max-width: 860px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12.5px;
+      color: var(--text-3);
+      margin-bottom: 20px;
+    }
+
+    .breadcrumb a {
+      color: var(--text-3);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .breadcrumb a:hover { color: var(--text-2); }
+
+    .breadcrumb-sep {
+      color: var(--border-light);
+    }
+
+    .articles-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text-1);
+      letter-spacing: -0.03em;
+      margin-bottom: 6px;
+    }
+
+    .articles-sub {
+      font-size: 13.5px;
+      color: var(--text-2);
+      margin-bottom: 28px;
+    }
+
+    /* ── Search + filter bar ── */
+    .search-filter-bar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 12px;
+      align-items: center;
+    }
+
+    .search-wrap {
+      flex: 1;
+      position: relative;
+    }
+
+    .search-wrap svg {
+      position: absolute;
+      left: 13px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-3);
+      pointer-events: none;
+    }
+
+    .search-wrap input {
+      padding-left: 38px !important;
+    }
+
+    .filter-chips {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 28px;
+    }
+
+    .chip {
+      font-size: 12px;
+      font-weight: 500;
+      padding: 5px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-2);
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+      font-family: var(--font);
+    }
+
+    .chip:hover { border-color: var(--border-light); color: var(--text-1); }
+
+    .chip.active {
+      background: var(--accent-dim);
+      border-color: var(--accent-border);
+      color: var(--accent);
+    }
+
+    /* ── Articles body ── */
+    .articles-body {
+      max-width: 860px;
+      margin: 0 auto;
+      width: 100%;
+      padding: 0 28px 72px;
+      flex: 1;
+    }
+
+    .results-meta {
+      font-size: 12px;
+      color: var(--text-3);
+      margin-bottom: 16px;
+      height: 18px;
+    }
+
+    /* ── Article list ── */
+    .article-list {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .article-item {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 14px 16px;
+      border-radius: var(--radius-md);
+      text-decoration: none;
+      transition: background 0.15s;
+      cursor: pointer;
+    }
+
+    .article-item:hover { background: var(--surface-2); }
+
+    .article-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius-sm);
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      color: var(--text-3);
+      transition: border-color 0.15s;
+    }
+
+    .article-item:hover .article-icon {
+      border-color: var(--border-light);
+    }
+
+    .article-body { flex: 1; min-width: 0; }
+
+    .article-title {
+      font-size: 13.5px;
+      font-weight: 500;
+      color: var(--text-1);
+      margin-bottom: 3px;
+      letter-spacing: -0.01em;
+    }
+
+    .article-excerpt {
+      font-size: 12px;
+      color: var(--text-3);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.4;
+    }
+
+    .article-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .article-cat {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-3);
+      white-space: nowrap;
+    }
+
+    .article-arrow {
+      color: var(--text-3);
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+
+    .article-item:hover .article-arrow { opacity: 1; }
+
+    /* ── Section header (grouping) ── */
+    .section-group-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      padding: 20px 16px 8px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 4px;
+    }
+
+    .section-group-label:first-child { padding-top: 0; }
+
+    /* ── Empty ── */
+    .articles-empty {
+      text-align: center;
+      padding: 64px 20px;
+      color: var(--text-3);
+    }
+
+    .articles-empty-icon {
+      width: 48px;
+      height: 48px;
+      margin: 0 auto 16px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .articles-empty p { font-size: 14px; color: var(--text-2); font-weight: 500; margin-bottom: 5px; }
+    .articles-empty span { font-size: 12.5px; }
+
+    /* ── Footer ── */
+    .support-footer {
+      border-top: 1px solid var(--border);
+    }
+
+    .footer-inner {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 24px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .footer-brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12.5px;
+      color: var(--text-3);
+    }
+
+    .footer-brand img { width: 16px; height: 16px; opacity: 0.5; }
+
+    .footer-links {
+      display: flex;
+      gap: 16px;
+    }
+
+    .footer-links a {
+      font-size: 12px;
+      color: var(--text-3);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .footer-links a:hover { color: var(--text-2); }
+
+    @media (max-width: 600px) {
+      .topbar { padding: 0 16px; }
+      .articles-hero,
+      .articles-body { padding-left: 16px; padding-right: 16px; }
+      .search-filter-bar { flex-direction: column; align-items: stretch; }
+      .article-excerpt { display: none; }
+      .article-cat { display: none; }
+    }
+  </style>
+</head>
+<body>
+<div class="support-layout">
+
+  <!-- Top bar -->
+  <header class="topbar">
+    <a href="/" class="topbar-brand">
+      <img src="/assets/logo.svg" alt="Todoer">
+      <span class="topbar-brand-text">Todoer</span>
+      <span class="topbar-divider"></span>
+      <span class="topbar-sub">Support</span>
+    </a>
+    <div class="topbar-right">
+      <a href="/chat">Chat with us</a>
+      <a href="/status">Status</a>
+      <a href="https://entityy.site" target="_blank" rel="noopener">Back to app</a>
+    </div>
+  </header>
+
+  <!-- Hero + search -->
+  <div class="articles-hero">
+    <div class="breadcrumb">
+      <a href="/">Help Center</a>
+      <span class="breadcrumb-sep">/</span>
+      <span id="breadcrumbCurrent">All articles</span>
+    </div>
+
+    <h1 class="articles-title" id="pageTitle">Help Articles</h1>
+    <p class="articles-sub" id="pageSubtitle">Everything you need to get the most out of Todoer.</p>
+
+    <div class="search-filter-bar">
+      <div class="search-wrap">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/>
+        </svg>
+        <input
+          type="text"
+          id="searchInput"
+          class="search-input"
+          placeholder="Search articles…"
+          autocomplete="off"
+          spellcheck="false"
+        >
+      </div>
+    </div>
+
+    <div class="filter-chips" id="filterChips">
+      <button class="chip active" data-cat="all" onclick="setCategory('all')">All</button>
+      <button class="chip" data-cat="getting-started" onclick="setCategory('getting-started')">Getting Started</button>
+      <button class="chip" data-cat="workspaces" onclick="setCategory('workspaces')">Workspaces</button>
+      <button class="chip" data-cat="files" onclick="setCategory('files')">Files &amp; Uploads</button>
+      <button class="chip" data-cat="account" onclick="setCategory('account')">Account &amp; Security</button>
+    </div>
+  </div>
+
+  <!-- Article list -->
+  <main class="articles-body">
+    <div class="results-meta" id="resultsMeta"></div>
+    <div class="article-list" id="articleList"></div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="support-footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <img src="/assets/logo.svg" alt="">
+        <span>© 2025 Todoer Support</span>
+      </div>
+      <nav class="footer-links">
+        <a href="/chat">Get help</a>
+        <a href="/status">Status</a>
+        <a href="https://entityy.site" target="_blank" rel="noopener">Back to app</a>
+      </nav>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+  // ── Article data ──
+  const ARTICLES = [
+    {
+      slug:     'getting-started',
+      title:    'Getting started with Todoer',
+      excerpt:  'Create your first task, set priorities, and organize your work from day one.',
+      cat:      'getting-started',
+      catLabel: 'Getting Started',
+      icon:     'book',
+    },
+    {
+      slug:     'task-priorities',
+      title:    'Task priorities and due dates',
+      excerpt:  'Learn how to use high, medium, and low priority levels and set due dates.',
+      cat:      'getting-started',
+      catLabel: 'Getting Started',
+      icon:     'flag',
+    },
+    {
+      slug:     'public-feed',
+      title:    'Using the public feed',
+      excerpt:  'Share updates with all platform users using the real-time public feed.',
+      cat:      'getting-started',
+      catLabel: 'Getting Started',
+      icon:     'activity',
+    },
+    {
+      slug:     'workspaces',
+      title:    'Creating and managing workspaces',
+      excerpt:  'Set up shared workspaces to collaborate with your team on tasks and files.',
+      cat:      'workspaces',
+      catLabel: 'Workspaces',
+      icon:     'users',
+    },
+    {
+      slug:     'inviting-collaborators',
+      title:    'Inviting collaborators to a workspace',
+      excerpt:  'Send email invitations and manage roles — owner, admin, member, and viewer.',
+      cat:      'workspaces',
+      catLabel: 'Workspaces',
+      icon:     'userPlus',
+    },
+    {
+      slug:     'file-uploads',
+      title:    'How file uploads work',
+      excerpt:  'Upload files to your personal space or a workspace, and manage archives.',
+      cat:      'files',
+      catLabel: 'Files & Uploads',
+      icon:     'upload',
+    },
+    {
+      slug:     'password-reset',
+      title:    'Resetting your password',
+      excerpt:  'Request a password reset link and set a new password for your account.',
+      cat:      'account',
+      catLabel: 'Account & Security',
+      icon:     'key',
+    },
+    {
+      slug:     'connect-google',
+      title:    'Connecting your Google account',
+      excerpt:  'Link Google to your Todoer account for faster sign-in and account recovery.',
+      cat:      'account',
+      catLabel: 'Account & Security',
+      icon:     'link',
+    },
+    {
+      slug:     'delete-account',
+      title:    'Deleting your account',
+      excerpt:  'Permanently delete your account, data, and all uploaded files.',
+      cat:      'account',
+      catLabel: 'Account & Security',
+      icon:     'trash',
+    },
+  ];
+
+  // ── SVG icons ──
+  const ICONS = {
+    book: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>`,
+    flag: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>`,
+    activity: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`,
+    users: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+    userPlus: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>`,
+    upload: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>`,
+    key: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>`,
+    link: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`,
+    trash: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`,
+    arrow: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>`,
+  };
+
+  // ── State ──
+  let activeCategory = 'all';
+  let searchQuery    = '';
+
+  // ── Init from URL params ──
+  const params = new URLSearchParams(location.search);
+  if (params.get('category')) activeCategory = params.get('category');
+  if (params.get('q'))        searchQuery    = params.get('q');
+
+  // ── Category filter ──
+  function setCategory(cat) {
+    activeCategory = cat;
+    document.querySelectorAll('.chip').forEach(c => {
+      c.classList.toggle('active', c.dataset.cat === cat);
+    });
+    updateTitle();
+    render();
+    const url = new URL(location.href);
+    cat === 'all' ? url.searchParams.delete('category') : url.searchParams.set('category', cat);
+    history.replaceState(null, '', url);
+  }
+
+  function updateTitle() {
+    const labels = {
+      'all':             ['Help Articles',       'Everything you need to get the most out of Todoer.'],
+      'getting-started': ['Getting Started',     'Your first steps with Todoer.'],
+      'workspaces':      ['Workspaces',          'Collaborate with your team.'],
+      'files':           ['Files & Uploads',     'Managing attachments and archives.'],
+      'account':         ['Account & Security',  'Passwords, OAuth, and account management.'],
+    };
+    const [title, sub] = labels[activeCategory] || labels['all'];
+    document.getElementById('pageTitle').textContent    = title;
+    document.getElementById('pageSubtitle').textContent = sub;
+    document.getElementById('breadcrumbCurrent').textContent = activeCategory === 'all' ? 'All articles' : title;
+  }
+
+  // ── Render ──
+  function render() {
+    const q       = searchQuery.toLowerCase().trim();
+    const list    = document.getElementById('articleList');
+    const meta    = document.getElementById('resultsMeta');
+
+    let results = ARTICLES.filter(a => {
+      const catMatch = activeCategory === 'all' || a.cat === activeCategory;
+      const qMatch   = !q || a.title.toLowerCase().includes(q) || a.excerpt.toLowerCase().includes(q) || a.catLabel.toLowerCase().includes(q);
+      return catMatch && qMatch;
+    });
+
+    if (!results.length) {
+      meta.textContent = '';
+      list.innerHTML = `
+        <div class="articles-empty">
+          <div class="articles-empty-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-3)">
+              <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+            </svg>
+          </div>
+          <p>No articles found</p>
+          <span>Try a different search term or browse all categories.</span>
+        </div>`;
+      return;
+    }
+
+    meta.textContent = q
+      ? `${results.length} result${results.length !== 1 ? 's' : ''} for "${searchQuery}"`
+      : '';
+
+    // Group by category when showing "all" and no search
+    if (activeCategory === 'all' && !q) {
+      const groups = {};
+      results.forEach(a => {
+        if (!groups[a.catLabel]) groups[a.catLabel] = [];
+        groups[a.catLabel].push(a);
+      });
+      list.innerHTML = Object.entries(groups).map(([label, arts]) => `
+        <div class="section-group-label">${esc(label)}</div>
+        ${arts.map(renderItem).join('')}
+      `).join('');
+    } else {
+      list.innerHTML = results.map(renderItem).join('');
+    }
+  }
+
+  function renderItem(a) {
+    return `
+      <a class="article-item" href="/articles/${esc(a.slug)}">
+        <div class="article-icon">${ICONS[a.icon] || ICONS.book}</div>
+        <div class="article-body">
+          <div class="article-title">${esc(a.title)}</div>
+          <div class="article-excerpt">${esc(a.excerpt)}</div>
+        </div>
+        <div class="article-meta">
+          <span class="article-cat">${esc(a.catLabel)}</span>
+          <span class="article-arrow">${ICONS.arrow}</span>
+        </div>
+      </a>`;
+  }
+
+  function esc(s) {
+    const d = document.createElement('div');
+    d.textContent = String(s || '');
+    return d.innerHTML;
+  }
+
+  // ── Search ──
+  const searchInput = document.getElementById('searchInput');
+  if (searchQuery) searchInput.value = searchQuery;
+
+  let searchTimer;
+  searchInput.addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      searchQuery = searchInput.value;
+      const url = new URL(location.href);
+      searchQuery ? url.searchParams.set('q', searchQuery) : url.searchParams.delete('q');
+      history.replaceState(null, '', url);
+      render();
+    }, 220);
+  });
+
+  searchInput.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { searchInput.value = ''; searchQuery = ''; render(); }
+  });
+
+  // ── Init ──
+  if (activeCategory !== 'all') {
+    document.querySelectorAll('.chip').forEach(c => {
+      c.classList.toggle('active', c.dataset.cat === activeCategory);
+    });
+  }
+
+  updateTitle();
+  render();
+</script>
+</body>
+</html>
