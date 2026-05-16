@@ -4,807 +4,306 @@
   <meta charset="UTF-8">
   <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Help Center — Todoer</title>
+  <title>Todoer Support</title>
   <link rel="stylesheet" href="/styles.css">
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --bg:          #0d0d10;
-      --surface:     #16161a;
-      --surface-2:   #1e1e24;
-      --surface-3:   #26262e;
-      --border:      rgba(255,255,255,0.07);
-      --border-2:    rgba(255,255,255,0.11);
-      --text-1:      #f0f0f3;
-      --text-2:      #9d9dae;
-      --text-3:      #5e5e72;
-      --accent:      #6366f1;
-      --accent-dim:  rgba(99,102,241,0.12);
-      --accent-glow: rgba(99,102,241,0.25);
-      --radius:      12px;
-      --radius-sm:   8px;
-    }
-
-    html, body {
-      min-height: 100vh;
-      background: var(--bg);
-      color: var(--text-1);
-      font-family: 'Sora', system-ui, sans-serif;
-      font-size: 15px;
-      line-height: 1.6;
-      -webkit-font-smoothing: antialiased;
-    }
-
-    a { color: inherit; text-decoration: none; }
-
-    @font-face { font-family:'Sora'; src:url('/fonts/sora-300.woff2') format('woff2'); font-weight:300; font-display:swap; }
-    @font-face { font-family:'Sora'; src:url('/fonts/sora-400.woff2') format('woff2'); font-weight:400; font-display:swap; }
-    @font-face { font-family:'Sora'; src:url('/fonts/sora-500.woff2') format('woff2'); font-weight:500; font-display:swap; }
-    @font-face { font-family:'Sora'; src:url('/fonts/sora-600.ttf')   format('truetype'); font-weight:600; font-display:swap; }
-    @font-face { font-family:'Sora'; src:url('/fonts/sora-700.ttf')   format('truetype'); font-weight:700; font-display:swap; }
-
-    /* ── Header ── */
-    .site-header {
-      position: sticky; top: 0; z-index: 50;
-      background: rgba(13,13,16,0.88);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      border-bottom: 1px solid var(--border);
-    }
-
-    .header-inner {
-      max-width: 1100px; margin: 0 auto;
-      padding: 0 28px; height: 58px;
-      display: flex; align-items: center;
-      justify-content: space-between; gap: 20px;
-    }
-
-    .header-logo {
-      display: flex; align-items: center; gap: 10px;
-      font-size: 15px; font-weight: 600;
-      color: var(--text-1); flex-shrink: 0;
-    }
-
-    .header-logo img { width: 24px; height: 24px; }
-
-    .header-logo-divider {
-      width: 1px; height: 16px;
-      background: var(--border-2); margin: 0 2px;
-    }
-
-    .header-logo-sub {
-      font-size: 13.5px; font-weight: 400; color: var(--text-2);
-    }
-
-    .header-nav { display: flex; align-items: center; gap: 4px; }
-
-    .header-nav a {
-      font-size: 13px; color: var(--text-2);
-      padding: 6px 12px; border-radius: var(--radius-sm);
-      transition: color 0.15s, background 0.15s;
-    }
-
-    .header-nav a:hover { color: var(--text-1); background: var(--surface-2); }
-
-    .header-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-
-    .btn-signin {
-      font-size: 13px; font-weight: 500;
-      padding: 7px 16px; border-radius: var(--radius-sm);
-      background: var(--surface-2); border: 1px solid var(--border-2);
-      color: var(--text-1); cursor: pointer;
-      transition: background 0.15s, border-color 0.15s; font-family: inherit;
-    }
-
-    .btn-signin:hover { background: var(--surface-3); }
-
-    .btn-chat {
-      font-size: 13px; font-weight: 500;
-      padding: 7px 16px; border-radius: var(--radius-sm);
-      background: var(--accent); color: #fff;
-      cursor: pointer; transition: opacity 0.15s;
-      font-family: inherit; border: none;
-    }
-
-    .btn-chat:hover { opacity: 0.88; }
-
-    .user-chip {
-      display: flex; align-items: center; gap: 8px;
-      font-size: 13px; color: var(--text-2);
-      padding: 5px 12px 5px 6px; border-radius: var(--radius-sm);
-      background: var(--surface-2); border: 1px solid var(--border);
-    }
-
-    .user-chip-avatar {
-      width: 24px; height: 24px; border-radius: 50%;
-      background: var(--accent); color: #fff;
-      font-size: 11px; font-weight: 600;
-      display: flex; align-items: center; justify-content: center;
-    }
-
-    /* ── Hero ── */
-    .hero {
-      padding: 80px 28px 72px;
-      text-align: center;
-      position: relative; overflow: hidden;
-    }
-
-    .hero::before {
-      content: '';
-      position: absolute; inset: 0;
-      background:
-        radial-gradient(ellipse 80% 60% at 50% -10%, rgba(99,102,241,0.14) 0%, transparent 70%),
-        radial-gradient(ellipse 50% 40% at 20% 100%, rgba(139,92,246,0.08) 0%, transparent 60%);
-      pointer-events: none;
-    }
-
-    .hero-label {
-      display: inline-block;
-      font-size: 11px; font-weight: 600;
-      letter-spacing: 0.1em; text-transform: uppercase;
-      color: var(--text-3);
-      margin-bottom: 20px;
-    }
-
-    .hero h1 {
-      font-size: clamp(26px, 5vw, 40px);
-      font-weight: 700; color: var(--text-1);
-      letter-spacing: -0.02em; line-height: 1.15;
-      margin-bottom: 12px;
-    }
-
-    .hero p {
-      font-size: 15px; color: var(--text-2);
-      max-width: 440px; margin: 0 auto 36px;
-      font-weight: 400; line-height: 1.65;
-    }
-
-    /* ── Search ── */
-    .search-wrap {
-      max-width: 560px; margin: 0 auto; position: relative;
-    }
-
-    .search-icon {
-      position: absolute; left: 18px; top: 50%;
-      transform: translateY(-50%); color: var(--text-3); pointer-events: none;
-    }
-
-    .search-input {
-      width: 100%; height: 52px; padding: 0 52px 0 50px;
-      background: var(--surface); border: 1px solid var(--border-2);
-      border-radius: var(--radius); color: var(--text-1);
-      font-family: inherit; font-size: 14px; outline: none;
-      transition: border-color 0.2s, box-shadow 0.2s;
-    }
-
-    .search-input::placeholder { color: var(--text-3); }
-
-    .search-input:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px var(--accent-dim);
-    }
-
-    .search-kbd {
-      position: absolute; right: 16px; top: 50%;
-      transform: translateY(-50%);
-      display: flex; align-items: center; gap: 3px; pointer-events: none;
-    }
-
-    .search-kbd kbd {
-      display: inline-flex; align-items: center; justify-content: center;
-      font-size: 10px; font-family: inherit; color: var(--text-3);
-      background: var(--surface-2); border: 1px solid var(--border-2);
-      border-radius: 4px; padding: 2px 5px; min-width: 20px; height: 18px;
-    }
-
-    /* ── Main content ── */
-    .content {
-      max-width: 1100px; margin: 0 auto; padding: 0 28px 80px;
-    }
-
-    .section-label {
-      font-size: 11px; font-weight: 600;
-      letter-spacing: 0.1em; text-transform: uppercase;
-      color: var(--text-3); margin-bottom: 20px;
-    }
-
-    /* ── Categories ── */
-    .categories {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-      gap: 14px; margin-bottom: 64px;
-    }
-
-    .category-card {
-      display: flex; flex-direction: column; gap: 14px;
-      padding: 24px;
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--radius); cursor: pointer; text-decoration: none;
-      transition: border-color 0.2s, background 0.2s, transform 0.15s;
-      position: relative; overflow: hidden;
-    }
-
-    .category-card::after {
-      content: '';
-      position: absolute; inset: 0; border-radius: inherit;
-      background: linear-gradient(135deg, var(--card-accent, var(--accent)) 0%, transparent 60%);
-      opacity: 0; transition: opacity 0.25s;
-    }
-
-    .category-card:hover {
-      border-color: var(--border-2);
-      background: var(--surface-2);
-      transform: translateY(-2px);
-    }
-
-    .category-card:hover::after { opacity: 0.04; }
-
-    /* Icon box — accent color comes from --card-accent on the parent card */
-    .category-icon {
-      width: 44px; height: 44px; border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
-      background: var(--icon-bg, var(--accent-dim));
-      border: 1px solid var(--icon-border, var(--accent-glow));
-      color: var(--card-accent, var(--accent));
-      flex-shrink: 0;
-    }
-
-    .category-icon svg { display: block; }
-
-    .category-body { flex: 1; }
-
-    .category-title {
-      font-size: 14px; font-weight: 600; color: var(--text-1); margin-bottom: 5px;
-    }
-
-    .category-desc {
-      font-size: 12.5px; color: var(--text-3); line-height: 1.5; margin-bottom: 14px;
-    }
-
-    .category-count {
-      display: inline-flex; align-items: center; gap: 5px;
-      font-size: 11.5px; color: var(--text-3);
-    }
-
-    .category-count-dot {
-      width: 5px; height: 5px; border-radius: 50%;
-      background: var(--text-3); flex-shrink: 0;
-    }
-
-    /* ── Article rows ── */
-    .articles-grid {
-      display: flex; flex-direction: column; gap: 2px; margin-bottom: 64px;
-    }
-
-    .article-row {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 13px 16px; border-radius: var(--radius-sm);
-      text-decoration: none; transition: background 0.15s; gap: 16px;
-    }
-
-    .article-row:hover { background: var(--surface-2); }
-
-    .article-row-left {
-      display: flex; align-items: center; gap: 14px; min-width: 0;
-    }
-
-    .article-row-icon {
-      width: 32px; height: 32px; border-radius: var(--radius-sm);
-      background: var(--surface-2); border: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0; color: var(--text-3);
-    }
-
-    .article-row-icon svg { display: block; }
-
-    .article-row-title {
-      font-size: 13.5px; color: var(--text-1);
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-
-    .article-row-category {
-      font-size: 11.5px; color: var(--text-3); flex-shrink: 0; white-space: nowrap;
-    }
-
-    /* ── CTA banner ── */
-    .cta-banner {
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 24px; padding: 32px 36px;
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--radius); position: relative; overflow: hidden;
-    }
-
-    .cta-banner::before {
-      content: '';
-      position: absolute; inset: 0;
-      background: radial-gradient(ellipse 60% 100% at 100% 50%, rgba(99,102,241,0.08) 0%, transparent 70%);
-      pointer-events: none;
-    }
-
-    .cta-text h3 {
-      font-size: 16px; font-weight: 600; color: var(--text-1); margin-bottom: 5px;
-    }
-
-    .cta-text p { font-size: 13px; color: var(--text-2); line-height: 1.5; }
-
-    .cta-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-
-    .btn-primary-sm {
-      display: inline-flex; align-items: center; gap: 7px;
-      font-size: 13px; font-weight: 500; padding: 9px 18px;
-      border-radius: var(--radius-sm); background: var(--accent);
-      color: #fff; text-decoration: none; transition: opacity 0.15s;
-    }
-
-    .btn-primary-sm:hover { opacity: 0.88; }
-
-    .btn-secondary-sm {
-      display: inline-flex; align-items: center; gap: 7px;
-      font-size: 13px; font-weight: 500; padding: 9px 18px;
-      border-radius: var(--radius-sm); background: transparent;
-      border: 1px solid var(--border-2); color: var(--text-2);
-      text-decoration: none; transition: background 0.15s, color 0.15s;
-    }
-
-    .btn-secondary-sm:hover { background: var(--surface-2); color: var(--text-1); }
-
-    /* ── Footer ── */
-    .site-footer { border-top: 1px solid var(--border); }
-
-    .footer-inner {
-      max-width: 1100px; margin: 0 auto; padding: 28px 28px;
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 20px; flex-wrap: wrap;
-    }
-
-    .footer-logo {
-      display: flex; align-items: center; gap: 8px;
-      font-size: 13px; color: var(--text-3);
-    }
-
-    .footer-logo img { width: 18px; height: 18px; opacity: 0.6; }
-
-    .footer-links { display: flex; align-items: center; gap: 20px; }
-
-    .footer-links a {
-      font-size: 12.5px; color: var(--text-3); transition: color 0.15s;
-    }
-
-    .footer-links a:hover { color: var(--text-2); }
-
-    /* ── Search dropdown ── */
-    .search-results {
-      position: absolute; top: calc(100% + 6px); left: 0; right: 0;
-      background: var(--surface); border: 1px solid var(--border-2);
-      border-radius: var(--radius); overflow: hidden;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-      display: none; z-index: 100;
-    }
-
-    .search-results.visible { display: block; }
-
-    .search-result-item {
-      display: flex; align-items: center; gap: 12px;
-      padding: 11px 16px; text-decoration: none;
-      transition: background 0.1s; cursor: pointer;
-    }
-
-    .search-result-item:hover { background: var(--surface-2); }
-
-    .search-result-item + .search-result-item {
-      border-top: 1px solid var(--border);
-    }
-
-    .search-result-icon {
-      width: 30px; height: 30px; border-radius: 6px;
-      background: var(--surface-2); border: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0; color: var(--text-3);
-    }
-
-    .search-result-icon svg { display: block; }
-
-    .search-result-title { font-size: 13px; color: var(--text-1); }
-
-    .search-result-cat { font-size: 11px; color: var(--text-3); margin-top: 1px; }
-
-    .search-no-results {
-      padding: 20px 16px; text-align: center;
-      font-size: 13px; color: var(--text-3);
-    }
-
-    /* ── Responsive ── */
-    @media (max-width: 680px) {
-      .header-nav { display: none; }
-      .categories { grid-template-columns: 1fr 1fr; }
-      .cta-banner { flex-direction: column; align-items: flex-start; }
-      .cta-actions { flex-direction: column; width: 100%; }
-      .cta-actions a { justify-content: center; }
-      .footer-inner { flex-direction: column; gap: 12px; }
-    }
-
-    @media (max-width: 420px) {
-      .categories { grid-template-columns: 1fr; }
-      .hero { padding: 52px 20px 48px; }
-      .content { padding: 0 20px 60px; }
-    }
-  </style>
 </head>
 <body>
 
-  <!-- Header -->
-  <header class="site-header">
+  <header class="header">
     <div class="header-inner">
-      <a href="/" class="header-logo">
+      <a href="/" class="header-brand">
         <img src="/assets/logo.svg" alt="Todoer">
-        <span class="header-logo-divider"></span>
-        <span class="header-logo-sub">Support</span>
+        <span class="header-brand-name">Todoer</span>
+        <span class="header-brand-sep"></span>
+        <span class="header-brand-label">Support</span>
       </a>
-
       <nav class="header-nav">
         <a href="/articles">Articles</a>
         <a href="/status">Status</a>
-        <a href="https://entityy.site" target="_blank" rel="noopener">Back to app</a>
+        <a href="https://entityy.site" target="_blank" rel="noopener noreferrer">App</a>
       </nav>
-
-      <div class="header-actions" id="headerActions">
-        <!-- Populated by JS -->
+      <div class="header-right" id="headerRight">
+        <div class="skeleton" style="width:64px;height:28px;border-radius:6px;"></div>
+        <div class="skeleton" style="width:80px;height:28px;border-radius:6px;"></div>
       </div>
     </div>
   </header>
 
-  <!-- Hero -->
   <section class="hero">
-    <p class="hero-label">Help Center</p>
-    <h1>How can we help you?</h1>
-    <p>Search our knowledge base or start a conversation with our support team.</p>
-
+    <h1>How can we help?</h1>
+    <p>Search our knowledge base or browse by topic below.</p>
     <div class="search-wrap">
-      <svg class="search-icon" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-        <circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/>
-      </svg>
-      <input
-        class="search-input"
-        type="text"
-        id="searchInput"
-        placeholder="Search for articles, topics, or questions..."
-        autocomplete="off"
-        spellcheck="false"
-      >
-      <div class="search-kbd"><kbd>/</kbd></div>
-      <div class="search-results" id="searchResults"></div>
+      <div class="search-field">
+        <span class="search-icon">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+        </span>
+        <input class="search-input" id="searchInput" type="text" placeholder="Search articles…" autocomplete="off" spellcheck="false" aria-label="Search articles">
+        <span class="search-shortcut"><kbd>/</kbd></span>
+      </div>
+      <div class="search-dropdown" id="searchDropdown" role="listbox"></div>
     </div>
   </section>
 
-  <!-- Main content -->
   <main class="content">
 
-    <p class="section-label">Browse by topic</p>
+    <div class="section-head">
+      <span class="section-head-label">Browse by topic</span>
+      <span class="section-head-line"></span>
+    </div>
 
     <div class="categories">
 
-      <!-- Getting Started -->
-      <a class="category-card" href="/articles?category=getting-started"
-         style="--card-accent:#6366f1;--icon-bg:rgba(99,102,241,0.12);--icon-border:rgba(99,102,241,0.25);">
-        <div class="category-icon">
-          <!-- book-open -->
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
-            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
-          </svg>
+      <a class="category-card" href="/articles?category=getting-started">
+        <div class="category-icon-wrap">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 00-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 012-3.95A12.88 12.88 0 0122 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 01-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
         </div>
-        <div class="category-body">
-          <div class="category-title">Getting Started</div>
-          <div class="category-desc">Everything you need to get up and running with Todoer.</div>
-          <span class="category-count">
-            <span class="category-count-dot"></span>
-            3 articles
-          </span>
+        <div class="category-name">Getting Started</div>
+        <div class="category-desc">Everything you need to get up and running with Todoer.</div>
+        <div class="category-meta">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          3 articles
         </div>
       </a>
 
-      <!-- Workspaces -->
-      <a class="category-card" href="/articles?category=workspaces"
-         style="--card-accent:#8b5cf6;--icon-bg:rgba(139,92,246,0.12);--icon-border:rgba(139,92,246,0.25);">
-        <div class="category-icon">
-          <!-- users -->
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-            <circle cx="9" cy="7" r="4"/>
-            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-          </svg>
+      <a class="category-card" href="/articles?category=workspaces">
+        <div class="category-icon-wrap">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
         </div>
-        <div class="category-body">
-          <div class="category-title">Workspaces</div>
-          <div class="category-desc">Collaborate with your team in shared workspaces.</div>
-          <span class="category-count">
-            <span class="category-count-dot"></span>
-            2 articles
-          </span>
+        <div class="category-name">Workspaces</div>
+        <div class="category-desc">Collaborate with your team in shared workspaces.</div>
+        <div class="category-meta">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          2 articles
         </div>
       </a>
 
-      <!-- Files & Uploads -->
-      <a class="category-card" href="/articles?category=files"
-         style="--card-accent:#06b6d4;--icon-bg:rgba(6,182,212,0.12);--icon-border:rgba(6,182,212,0.25);">
-        <div class="category-icon">
-          <!-- folder -->
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-          </svg>
+      <a class="category-card" href="/articles?category=files">
+        <div class="category-icon-wrap">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
         </div>
-        <div class="category-body">
-          <div class="category-title">Files &amp; Uploads</div>
-          <div class="category-desc">Managing file attachments, uploads, and archives.</div>
-          <span class="category-count">
-            <span class="category-count-dot"></span>
-            1 article
-          </span>
+        <div class="category-name">Files &amp; Uploads</div>
+        <div class="category-desc">Managing file attachments, uploads, and archives.</div>
+        <div class="category-meta">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          1 article
         </div>
       </a>
 
-      <!-- Account & Security -->
-      <a class="category-card" href="/articles?category=account"
-         style="--card-accent:#f59e0b;--icon-bg:rgba(245,158,11,0.12);--icon-border:rgba(245,158,11,0.25);">
-        <div class="category-icon">
-          <!-- shield -->
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-          </svg>
+      <a class="category-card" href="/articles?category=account">
+        <div class="category-icon-wrap">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
         </div>
-        <div class="category-body">
-          <div class="category-title">Account &amp; Security</div>
-          <div class="category-desc">Passwords, connected accounts, and account management.</div>
-          <span class="category-count">
-            <span class="category-count-dot"></span>
-            3 articles
-          </span>
+        <div class="category-name">Account &amp; Security</div>
+        <div class="category-desc">Passwords, connected accounts, and account management.</div>
+        <div class="category-meta">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          3 articles
         </div>
       </a>
 
     </div>
 
-    <p class="section-label">Popular articles</p>
+    <div class="section-head">
+      <span class="section-head-label">Popular articles</span>
+      <span class="section-head-line"></span>
+    </div>
 
-    <div class="articles-grid">
+    <div class="article-list">
 
-      <a class="article-row" href="/articles/getting-started">
-        <div class="article-row-left">
-          <div class="article-row-icon">
-            <!-- book -->
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
-              <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
-            </svg>
-          </div>
-          <span class="article-row-title">Getting started with Todoer</span>
+      <a class="article-item" href="/articles/getting-started">
+        <div class="article-item-left">
+          <div class="article-doc-icon"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+          <span class="article-title">Getting started with Todoer</span>
         </div>
-        <span class="article-row-category">Getting Started</span>
+        <div class="article-right">
+          <span class="article-cat">Getting Started</span>
+          <span class="article-arrow"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
+        </div>
       </a>
 
-      <a class="article-row" href="/articles/workspaces">
-        <div class="article-row-left">
-          <div class="article-row-icon">
-            <!-- users -->
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-              <circle cx="9" cy="7" r="4"/>
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-            </svg>
-          </div>
-          <span class="article-row-title">Creating and managing workspaces</span>
+      <a class="article-item" href="/articles/workspaces">
+        <div class="article-item-left">
+          <div class="article-doc-icon"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+          <span class="article-title">Creating and managing workspaces</span>
         </div>
-        <span class="article-row-category">Workspaces</span>
+        <div class="article-right">
+          <span class="article-cat">Workspaces</span>
+          <span class="article-arrow"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
+        </div>
       </a>
 
-      <a class="article-row" href="/articles/inviting-collaborators">
-        <div class="article-row-left">
-          <div class="article-row-icon">
-            <!-- user-plus -->
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-              <circle cx="8.5" cy="7" r="4"/>
-              <line x1="20" y1="8" x2="20" y2="14"/>
-              <line x1="23" y1="11" x2="17" y2="11"/>
-            </svg>
-          </div>
-          <span class="article-row-title">Inviting collaborators to a workspace</span>
+      <a class="article-item" href="/articles/inviting-collaborators">
+        <div class="article-item-left">
+          <div class="article-doc-icon"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+          <span class="article-title">Inviting collaborators to a workspace</span>
         </div>
-        <span class="article-row-category">Workspaces</span>
+        <div class="article-right">
+          <span class="article-cat">Workspaces</span>
+          <span class="article-arrow"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
+        </div>
       </a>
 
-      <a class="article-row" href="/articles/password-reset">
-        <div class="article-row-left">
-          <div class="article-row-icon">
-            <!-- key -->
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
-            </svg>
-          </div>
-          <span class="article-row-title">Resetting your password</span>
+      <a class="article-item" href="/articles/password-reset">
+        <div class="article-item-left">
+          <div class="article-doc-icon"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+          <span class="article-title">Resetting your password</span>
         </div>
-        <span class="article-row-category">Account &amp; Security</span>
+        <div class="article-right">
+          <span class="article-cat">Account &amp; Security</span>
+          <span class="article-arrow"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
+        </div>
       </a>
 
-      <a class="article-row" href="/articles/connect-google">
-        <div class="article-row-left">
-          <div class="article-row-icon">
-            <!-- link-2 -->
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-            </svg>
-          </div>
-          <span class="article-row-title">Connecting your Google account</span>
+      <a class="article-item" href="/articles/connect-google">
+        <div class="article-item-left">
+          <div class="article-doc-icon"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+          <span class="article-title">Connecting your Google account</span>
         </div>
-        <span class="article-row-category">Account &amp; Security</span>
+        <div class="article-right">
+          <span class="article-cat">Account &amp; Security</span>
+          <span class="article-arrow"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
+        </div>
       </a>
 
-      <a class="article-row" href="/articles/file-uploads">
-        <div class="article-row-left">
-          <div class="article-row-icon">
-            <!-- upload-cloud -->
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="16 16 12 12 8 16"/>
-              <line x1="12" y1="12" x2="12" y2="21"/>
-              <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
-            </svg>
-          </div>
-          <span class="article-row-title">How file uploads work</span>
+      <a class="article-item" href="/articles/file-uploads">
+        <div class="article-item-left">
+          <div class="article-doc-icon"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+          <span class="article-title">How file uploads work</span>
         </div>
-        <span class="article-row-category">Files &amp; Uploads</span>
+        <div class="article-right">
+          <span class="article-cat">Files &amp; Uploads</span>
+          <span class="article-arrow"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
+        </div>
       </a>
 
     </div>
 
-    <!-- CTA -->
-    <div class="cta-banner">
-      <div class="cta-text">
-        <h3>Still need help?</h3>
-        <p>Our support team is here. Start a conversation and we'll get back to you as soon as possible.</p>
-      </div>
-      <div class="cta-actions">
-        <a href="/chat" class="btn-primary-sm">
-          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-          </svg>
-          Start a conversation
-        </a>
-        <a href="/articles" class="btn-secondary-sm">Browse all articles</a>
-      </div>
+    <div class="cta">
+
+      <a class="cta-card primary" href="/chat">
+        <div class="cta-icon">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        </div>
+        <div class="cta-title">Chat with us</div>
+        <div class="cta-desc">Start a conversation and a support agent will get back to you shortly.</div>
+        <span class="cta-link">Open chat <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
+      </a>
+
+      <a class="cta-card" href="/articles">
+        <div class="cta-icon">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
+        </div>
+        <div class="cta-title">Browse all articles</div>
+        <div class="cta-desc">Search our full knowledge base across all topics and categories.</div>
+        <span class="cta-link">View articles <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
+      </a>
+
     </div>
 
   </main>
 
-  <!-- Footer -->
-  <footer class="site-footer">
+  <footer class="footer">
     <div class="footer-inner">
-      <div class="footer-logo">
+      <div class="footer-brand">
         <img src="/assets/logo.svg" alt="">
-        <span>© 2025 Todoer Support</span>
+        <span>Todoer Support</span>
       </div>
       <nav class="footer-links">
-        <a href="https://entityy.site" target="_blank" rel="noopener">Back to app</a>
-        <a href="https://entityy.site/vdp" target="_blank" rel="noopener">Security</a>
+        <a href="https://entityy.site" target="_blank" rel="noopener noreferrer">Back to app</a>
+        <a href="https://entityy.site/vdp.html" target="_blank" rel="noopener noreferrer">Security</a>
         <a href="/status">Status</a>
       </nav>
     </div>
   </footer>
 
   <script>
-    // ── SVG icon strings used in search results ──
-    // Each maps to the same icon used in the corresponding category card or article row.
-    const ICONS = {
-      book: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>`,
-      users: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
-      userPlus: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>`,
-      folder: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`,
-      shield: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`,
-      key: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>`,
-      link: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`,
-      upload: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>`,
-      flag: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>`,
-      activity: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`,
-      trash: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`,
-    };
-
-    // ── Header auth state ──
-    const headerActions = document.getElementById('headerActions');
-
-    (async () => {
-      try {
-        const r = await fetch('/api/me');
-        if (r.ok) {
-          const user = await r.json();
-          const initial = (user.display_name || user.email || '?')[0].toUpperCase();
-          headerActions.innerHTML = `
-            <div class="user-chip">
-              <div class="user-chip-avatar">${initial}</div>
-              <span>${escapeHtml(user.display_name || user.email)}</span>
-            </div>
-            <a href="/chat" class="btn-chat">Open chat</a>`;
-        } else {
-          headerActions.innerHTML = `
-            <a href="/auth/login" class="btn-signin">Sign in</a>
-            <a href="/chat" class="btn-chat">Get help</a>`;
-        }
-      } catch {
-        headerActions.innerHTML = `
-          <a href="/auth/login" class="btn-signin">Sign in</a>
-          <a href="/chat" class="btn-chat">Get help</a>`;
-      }
-    })();
-
-    // ── Search ──
-    const articles = [
-      { title: 'Getting started with Todoer',      slug: 'getting-started',        cat: 'Getting Started',    icon: 'book'     },
-      { title: 'Creating and managing workspaces',  slug: 'workspaces',             cat: 'Workspaces',         icon: 'users'    },
-      { title: 'Inviting collaborators',            slug: 'inviting-collaborators', cat: 'Workspaces',         icon: 'userPlus' },
-      { title: 'How file uploads work',             slug: 'file-uploads',           cat: 'Files & Uploads',    icon: 'upload'   },
-      { title: 'Task priorities and due dates',     slug: 'task-priorities',        cat: 'Getting Started',    icon: 'flag'     },
-      { title: 'Using the public feed',             slug: 'public-feed',            cat: 'Getting Started',    icon: 'activity' },
-      { title: 'Resetting your password',           slug: 'password-reset',         cat: 'Account & Security', icon: 'key'      },
-      { title: 'Connecting your Google account',   slug: 'connect-google',         cat: 'Account & Security', icon: 'link'     },
-      { title: 'Deleting your account',             slug: 'delete-account',         cat: 'Account & Security', icon: 'trash'    },
-    ];
-
-    const searchInput   = document.getElementById('searchInput');
-    const searchResults = document.getElementById('searchResults');
-
     function escapeHtml(s) {
       const d = document.createElement('div');
       d.textContent = s;
       return d.innerHTML;
     }
 
-    function renderResults(query) {
-      const q = query.trim().toLowerCase();
-      if (!q) { searchResults.classList.remove('visible'); return; }
+    const headerRight = document.getElementById('headerRight');
 
-      const matches = articles.filter(a =>
-        a.title.toLowerCase().includes(q) || a.cat.toLowerCase().includes(q)
-      );
-
-      if (!matches.length) {
-        searchResults.innerHTML = `<div class="search-no-results">No results for "<strong>${escapeHtml(query)}</strong>"</div>`;
-      } else {
-        searchResults.innerHTML = matches.slice(0, 6).map(a => `
-          <a class="search-result-item" href="/articles/${a.slug}">
-            <div class="search-result-icon">${ICONS[a.icon] || ICONS.book}</div>
-            <div>
-              <div class="search-result-title">${escapeHtml(a.title)}</div>
-              <div class="search-result-cat">${escapeHtml(a.cat)}</div>
+    (async () => {
+      try {
+        const r = await fetch('/api/me');
+        if (r.ok) {
+          const u = await r.json();
+          const initial = (u.display_name || u.email || '?')[0].toUpperCase();
+          headerRight.innerHTML = `
+            <div class="user-chip">
+              <div class="user-avatar">${escapeHtml(initial)}</div>
+              <span>${escapeHtml(u.display_name || u.email)}</span>
             </div>
-          </a>`).join('');
+            <a href="/chat" class="btn-sm btn-accent">Open chat</a>`;
+        } else {
+          headerRight.innerHTML = `
+            <a href="/auth/login" class="btn-sm btn-ghost">Sign in</a>
+            <a href="/chat" class="btn-sm btn-accent">Get help</a>`;
+        }
+      } catch {
+        headerRight.innerHTML = `
+          <a href="/auth/login" class="btn-sm btn-ghost">Sign in</a>
+          <a href="/chat" class="btn-sm btn-accent">Get help</a>`;
       }
+    })();
 
-      searchResults.classList.add('visible');
+    const ARTICLES = [
+      { title: 'Getting started with Todoer',        slug: 'getting-started',        cat: 'Getting Started'    },
+      { title: 'Creating and managing workspaces',   slug: 'workspaces',             cat: 'Workspaces'         },
+      { title: 'Inviting collaborators',             slug: 'inviting-collaborators', cat: 'Workspaces'         },
+      { title: 'How file uploads work',              slug: 'file-uploads',           cat: 'Files & Uploads'    },
+      { title: 'Task priorities and due dates',      slug: 'task-priorities',        cat: 'Getting Started'    },
+      { title: 'Using the public feed',              slug: 'public-feed',            cat: 'Getting Started'    },
+      { title: 'Resetting your password',            slug: 'password-reset',         cat: 'Account & Security' },
+      { title: 'Connecting your Google account',     slug: 'connect-google',         cat: 'Account & Security' },
+      { title: 'Deleting your account',              slug: 'delete-account',         cat: 'Account & Security' },
+    ];
+
+    const docIcon = `<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`;
+
+    const searchInput    = document.getElementById('searchInput');
+    const searchDropdown = document.getElementById('searchDropdown');
+
+    function renderSearch(q) {
+      const query = q.trim().toLowerCase();
+      if (!query) { searchDropdown.classList.remove('open'); return; }
+
+      const hits = ARTICLES.filter(a =>
+        a.title.toLowerCase().includes(query) || a.cat.toLowerCase().includes(query)
+      ).slice(0, 6);
+
+      searchDropdown.innerHTML = hits.length
+        ? hits.map(a => `
+            <a class="search-result" href="/articles/${a.slug}" role="option">
+              <div class="search-result-icon">${docIcon}</div>
+              <div class="search-result-body">
+                <div class="search-result-title">${escapeHtml(a.title)}</div>
+                <div class="search-result-cat">${escapeHtml(a.cat)}</div>
+              </div>
+            </a>`).join('')
+        : `<div class="search-empty">No results for "<strong>${escapeHtml(q)}</strong>"</div>`;
+
+      searchDropdown.classList.add('open');
     }
 
-    searchInput.addEventListener('input', () => renderResults(searchInput.value));
-
-    searchInput.addEventListener('keydown', (e) => {
+    searchInput.addEventListener('input',   e => renderSearch(e.target.value));
+    searchInput.addEventListener('keydown', e => {
       if (e.key === 'Enter') {
         const q = searchInput.value.trim();
         if (q) window.location.href = `/articles?q=${encodeURIComponent(q)}`;
       }
-      if (e.key === 'Escape') {
-        searchResults.classList.remove('visible');
-        searchInput.blur();
-      }
+      if (e.key === 'Escape') { searchDropdown.classList.remove('open'); searchInput.blur(); }
     });
 
-    document.addEventListener('click', (e) => {
-      if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
-        searchResults.classList.remove('visible');
-      }
+    document.addEventListener('click', e => {
+      if (!searchInput.contains(e.target) && !searchDropdown.contains(e.target))
+        searchDropdown.classList.remove('open');
     });
 
-    document.addEventListener('keydown', (e) => {
-      if (e.key === '/' && document.activeElement !== searchInput) {
+    document.addEventListener('keydown', e => {
+      if (e.key === '/' && document.activeElement.tagName !== 'INPUT') {
         e.preventDefault();
         searchInput.focus();
       }
