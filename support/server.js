@@ -14,7 +14,7 @@ const SESSION_SECRET = process.env.SESSION_SECRET  || crypto.randomBytes(32).toS
 
 // ============ DATABASE ============
 
-const db = new sqlite3.Database('./support.db', (err) => {
+const db = new sqlite3.Database('./data/support.db', (err) => {
   if (err) console.error('Database connection error:', err);
   else {
     console.log('Connected to support database');

@@ -65,15 +65,15 @@ services:
     expose:
       - "3002"
     volumes:
-      - ./support/support.db:/app/support.db
+      - support_db:/app/data
     environment:
       - NODE_ENV=production
       - PORT=3002
-      - VIRTUAL_HOST=support.entityy.site
-      - LETSENCRYPT_HOST=support.entityy.site
+      - VIRTUAL_HOST=support.your-domain.com
+      - LETSENCRYPT_HOST=support.your-domain.com
       - LETSENCRYPT_EMAIL=your-email@example.com
-      - TODOER_APP_URL=https://entityy.site
-      - SUPPORT_URL=https://support.entityy.site
+      - TODOER_APP_URL=https://your-domain.com
+      - SUPPORT_URL=https://support.your-domain.com
       - SESSION_SECRET=${SUPPORT_SESSION_SECRET}
     restart: unless-stopped
     healthcheck:
@@ -108,3 +108,6 @@ services:
     environment:
       - DEFAULT_EMAIL=your-email@example.com
     restart: unless-stopped
+
+volumes:
+  support_db:
