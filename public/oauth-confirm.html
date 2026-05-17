@@ -271,19 +271,6 @@
       </li>
     </ul>
 
-    <!--
-      VULNERABLE (Vuln 3b — session poisoning):
-      redirect_uri is embedded as a hidden field and posted back to
-      /oauth/confirm_access, which reads it from req.body rather than from
-      the stored oauthRequests record that was validated in /oauth/authorize.
-
-      An attacker who tricks a user into submitting this form — or who intercepts
-      and modifies the field — can redirect the authorization code to any URI.
-
-      Both forms share the same request_id and state. The Allow form includes
-      redirect_uri; the Deny form does not need it (server falls back to the
-      stored value on denial).
-    -->
     <div class="btn-row">
       <form method="POST" action="/oauth/confirm_access" style="flex:1;" id="allowForm">
         <input type="hidden" name="request_id"  id="fieldRequestId">
@@ -332,10 +319,6 @@
     document.getElementById('fieldRequestIdDeny').value = requestId;
     document.getElementById('fieldStateDeny').value     = state;
 
-    // ── Client name display ──
-    // VULNERABLE (Vuln 3d): innerHTML assignment without sanitization.
-    // Trusted only because OAUTH_CLIENTS is currently a hardcoded server-side
-    // map — client_id values that don't match return 400 before reaching here.
     const CLIENT_NAMES = { support: 'Todoer Support' };
     const CLIENT_DOMAINS = { support: 'support.entityy.site' };
 
