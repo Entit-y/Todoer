@@ -578,27 +578,17 @@
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
 
-  // ── VULNERABLE: Post-sanitization mention linkifier ──
-  // Regex uses [\w\-.<>"] to allow dots and hyphens in usernames (john.doe, jane-smith).
-  // The accidental inclusion of < > " means HTML-bearing tokens that survive
-  // DOMPurify's sanitization are injected verbatim as raw HTML in the replacement.
   function linkifyMentions(html) {
     return html.replace(/@([\w\-.<>"]+)/g, (match, name) => {
       return `<a class="mention" href="/users/${name}">@${name}</a>`;
     });
   }
 
-  // Content pipeline: sanitize with DOMPurify, then run the mention linkifier.
-  // DOMPurify gives false confidence here — the linkifier introduces a new
-  // injection surface after sanitization has already run.
   function renderContent(raw) {
     const sanitized = DOMPurify.sanitize(raw);
     return linkifyMentions(sanitized);
   }
 
-  // ── Message rendering ──
-  // Each call may append to an existing group (same sender, close in time)
-  // or create a new group.
   let lastGroupSender = null;
   let lastGroupEl     = null;
 
@@ -621,12 +611,6 @@
       const senderEl = document.createElement('div');
       senderEl.className = 'message-sender';
 
-      // VULNERABLE: display_name written as innerHTML without sanitization.
-      // For support messages this is the safe literal "Support Team".
-      // For user messages, currentUser.display_name is sourced from the OAuth
-      // userinfo response → stored in support.db → rendered here. If a user
-      // sets their Todoer username to an XSS payload, it propagates through
-      // this assignment.
       if (isUser) {
         senderEl.innerHTML = currentUser ? (currentUser.display_name || 'You') : 'You';
       } else {

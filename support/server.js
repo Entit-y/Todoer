@@ -115,22 +115,6 @@ app.get('/auth/login', (req, res) => {
   res.redirect(`${TODOER_APP_URL}/oauth/authorize?${params}`);
 });
 
-// Returns a pre-built OAuth URL with state tied to this session
-app.get('/auth/init', (req, res) => {
-  const state = crypto.randomBytes(16).toString('hex');
-  req.session.oauthState    = state;
-  req.session.oauthRedirect = req.query.redirect || '/chat';
-
-  const params = new URLSearchParams({
-    client_id:     'support',
-    redirect_uri:  `${SUPPORT_URL}/auth/callback`,
-    response_type: 'code',
-    scope:         'openid',
-    state
-  });
-
-  res.json({ url: `${TODOER_APP_URL}/oauth/authorize?${params}` });
-});
 
 // OAuth callback — exchanges code for token, resolves user identity
 app.get('/auth/callback', async (req, res) => {
