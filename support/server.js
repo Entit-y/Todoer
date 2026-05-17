@@ -104,15 +104,19 @@ app.get('/auth/login', (req, res) => {
   req.session.oauthState    = state;
   req.session.oauthRedirect = req.query.redirect || '/chat';
 
-  const params = new URLSearchParams({
-    client_id:     'support',
-    redirect_uri:  `${SUPPORT_URL}/auth/callback`,
-    response_type: 'code',
-    scope:         'openid',
-    state
-  });
+  req.session.save((err) => {
+    if (err) return res.status(500).send('Session error');
 
-  res.redirect(`${TODOER_APP_URL}/oauth/authorize?${params}`);
+    const params = new URLSearchParams({
+      client_id:     'support',
+      redirect_uri:  `${SUPPORT_URL}/auth/callback`,
+      response_type: 'code',
+      scope:         'openid',
+      state
+    });
+
+    res.redirect(`${TODOER_APP_URL}/oauth/authorize?${params}`);
+  });
 });
 
 
