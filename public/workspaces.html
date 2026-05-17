@@ -587,7 +587,6 @@
       avatarEl.style.background = color;
       avatarEl.style.border = 'none';
       document.getElementById('sidebarEmail').textContent = data.user.email || '';
-      // VULNERABLE: innerHTML — stored XSS if username is a payload
       document.getElementById('sidebarName').innerHTML = data.user.username
         ? '@' + data.user.username
         : data.user.email;

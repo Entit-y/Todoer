@@ -229,13 +229,6 @@
         </svg>
       </div>
       <div>
-        <!--
-          VULNERABLE (Vuln 3d): client_id from the URL is written to innerHTML
-          without sanitization. The server-side OAUTH_CLIENTS lookup currently
-          prevents an unknown client_id from reaching this page. If the client
-          registry were ever moved to a DB (a natural future change), a crafted
-          client_name stored there would execute here.
-        -->
         <div class="app-strip-name" id="appName">Loading…</div>
         <div class="app-strip-domain" id="appDomain"></div>
       </div>

@@ -680,8 +680,6 @@
   }
 
   // ── postMessage: emit to parent frame ──
-  // Used by the Todoer app's embed widget to show notification badges and
-  // message previews. The parent receives these and renders them via innerHTML.
   function notifyParent(type, payload) {
     try {
       window.parent.postMessage({ type: 'support:' + type, ...payload }, '*');
@@ -689,8 +687,6 @@
   }
 
   // ── postMessage: receive from parent frame ──
-  // VULNERABLE: no origin check. Any page that embeds this chat in an iframe
-  // can send these commands — not just the legitimate Todoer parent frame.
   window.addEventListener('message', (e) => {
     if (!e.data || typeof e.data !== 'object') return;
     switch (e.data.type) {
