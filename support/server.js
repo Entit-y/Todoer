@@ -1,9 +1,10 @@
-const express    = require('express');
-const sqlite3    = require('sqlite3').verbose();
-const session    = require('express-session');
-const crypto     = require('crypto');
-const path       = require('path');
-const fs         = require('fs');
+const express       = require('express');
+const sqlite3       = require('sqlite3').verbose();
+const session       = require('express-session');
+const SQLiteStore   = require('connect-sqlite3')(session);
+const crypto        = require('crypto');
+const path          = require('path');
+const fs            = require('fs');
 
 const app  = express();
 const PORT = process.env.PORT || 3002;
@@ -67,6 +68,10 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use(session({
+  store: new SQLiteStore({
+    db:  'support.db',
+    dir: './data'
+  }),
   secret:            SESSION_SECRET,
   resave:            false,
   saveUninitialized: false,
