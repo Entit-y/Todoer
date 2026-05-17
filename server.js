@@ -310,6 +310,9 @@ db.serialize(() => {
   // Migration: add invited_role to workspace_invitations so accepted role is stored
   db.run(`ALTER TABLE workspace_invitations ADD COLUMN invited_role TEXT DEFAULT 'member'`, () => {});
 
+  // VULNERABLE (Vuln 3c): oauth_codes has no `used` column and the token exchange
+  // never marks codes consumed — the same code can be exchanged repeatedly for fresh
+  // access tokens, making every intercepted code a permanent credential.
   db.run(`CREATE TABLE IF NOT EXISTS oauth_codes (
     id           INTEGER  PRIMARY KEY AUTOINCREMENT,
     code         TEXT     NOT NULL UNIQUE,
@@ -698,8 +701,6 @@ const resolveWorkspaceContext = (req, res, next) => {
     }
   );
 };
-
-// ============ TASKS ROUTES ============
 
 // ============ TASKS ROUTES ============
 
@@ -1192,13 +1193,14 @@ app.post('/api/auth/reset-password', passwordResetLimiter, async (req, res) => {
   });
 });
 
-// ============ OAUTH ROUTES ============
+// ============ GOOGLE OAUTH ROUTES ============
  
 // In-memory state store
 // VULNERABLE: states never expire and are never cleaned up
 const oauthStates = new Map();
 
-// Registered first-party OAuth clients
+// Registered first-party OAuth clients for the Todoer OAuth server.
+// redirect_uri_base is used for prefix validation (Vuln 3a — see /oauth/authorize).
 const OAUTH_CLIENTS = {
   support: {
     name:              'Todoer Support',
@@ -1206,7 +1208,9 @@ const OAUTH_CLIENTS = {
   }
 };
 
-// In-memory store for pending authorization requests
+// In-memory store for pending authorization requests, keyed by request_id.
+// Each entry holds the validated client_id, redirect_uri, scope, and state
+// so that /oauth/confirm_access can look them up without trusting form fields.
 const oauthRequests = new Map();
  
 // Initiate Google OAuth
@@ -1235,7 +1239,7 @@ app.get('/auth/oauth/google', (req, res) => {
   res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
 });
  
-// OAuth callback
+// Google OAuth callback
 // VULNERABLE: state parameter is never validated against stored states.
 // Any state value is accepted — enables CSRF on the OAuth flow (dirty dancing).
 app.get('/auth/oauth/callback', async (req, res) => {
@@ -1349,7 +1353,7 @@ app.get('/auth/oauth/callback', async (req, res) => {
   }
 });
  
-// OAuth error page
+// Google OAuth error page
 // VULNERABLE: postMessage listener accepts messages from any origin — no origin check.
 // The authorization code and state appear in the URL on this page.
 // This is the dirty dancing gadget: attacker opens this page in an iframe or popup,
@@ -1393,6 +1397,251 @@ app.get('/oauth-error', (req, res) => {
   </script>
 </body>
 </html>`);
+});
+
+// ============ TODOER OAUTH SERVER ROUTES ============
+// These routes make Todoer itself an OAuth 2.0 authorization server,
+// allowing first-party apps (e.g. support.entityy.site) to authenticate
+// users via their existing Todoer account.
+
+// GET /oauth/authorize
+// Entry point for the OAuth flow. Validates client_id and redirect_uri,
+// stores the pending request, then redirects to the consent screen.
+//
+// VULNERABLE (Vuln 3a — redirect_uri prefix bypass):
+// Validation uses startsWith(client.redirect_uri_base) rather than an exact
+// match. An attacker can register support.entityy.site.attacker.com or supply
+// support.entityy.site/callback%2F..%2Fattacker to pass the check while
+// receiving the authorization code on a domain they control.
+app.get('/oauth/authorize', (req, res) => {
+  const { client_id, redirect_uri, response_type, state, scope } = req.query;
+
+  const client = OAUTH_CLIENTS[client_id];
+  if (!client) return res.status(400).json({ error: 'Unknown client_id' });
+
+  if (response_type !== 'code') {
+    return res.status(400).json({ error: 'Unsupported response_type' });
+  }
+
+  // VULNERABLE (Vuln 3a): prefix check, not exact match.
+  if (!redirect_uri || !redirect_uri.startsWith(client.redirect_uri_base)) {
+    return res.status(400).json({ error: 'Invalid redirect_uri' });
+  }
+
+  // Require the user to be logged in to Todoer before showing the consent screen.
+  const token = req.cookies.token;
+  if (!token) {
+    const returnTo = `/oauth/authorize?${new URLSearchParams(req.query).toString()}`;
+    return res.redirect(`/?next=${encodeURIComponent(returnTo)}`);
+  }
+
+  let decoded;
+  try {
+    decoded = jwt.verify(token, JWT_SECRET);
+  } catch {
+    const returnTo = `/oauth/authorize?${new URLSearchParams(req.query).toString()}`;
+    return res.redirect(`/?next=${encodeURIComponent(returnTo)}`);
+  }
+
+  // Store the validated request in memory so the consent handler can retrieve
+  // the correct client_id without trusting form-posted values.
+  const requestId = crypto.randomBytes(12).toString('hex');
+  oauthRequests.set(requestId, {
+    client_id,
+    redirect_uri,       // the validated URI — used as fallback if body omits it
+    state:  state  || '',
+    scope:  scope  || 'openid',
+    userId: decoded.id,
+    ts:     Date.now()
+  });
+
+  // Prune stale requests (older than 30 minutes)
+  for (const [id, r] of oauthRequests) {
+    if (Date.now() - r.ts > 30 * 60 * 1000) oauthRequests.delete(id);
+  }
+
+  // Forward to the consent page as query params so oauth-confirm.html can
+  // read them and render the app name, scopes, and hidden form fields.
+  const params = new URLSearchParams({
+    client_id,
+    redirect_uri,
+    state:      state  || '',
+    scope:      scope  || 'openid',
+    request_id: requestId
+  });
+
+  res.redirect(`/oauth/confirm_access?${params}`);
+});
+
+// GET /oauth/confirm_access
+// Serves the consent UI. Auth check here ensures the cookie hasn't expired
+// between /oauth/authorize and the user clicking Allow.
+app.get('/oauth/confirm_access', (req, res) => {
+  const token = req.cookies.token;
+  if (!token) {
+    const returnTo = `/oauth/confirm_access?${new URLSearchParams(req.query).toString()}`;
+    return res.redirect(`/?next=${encodeURIComponent(returnTo)}`);
+  }
+
+  try {
+    jwt.verify(token, JWT_SECRET);
+  } catch {
+    const returnTo = `/oauth/confirm_access?${new URLSearchParams(req.query).toString()}`;
+    return res.redirect(`/?next=${encodeURIComponent(returnTo)}`);
+  }
+
+  res.sendFile(path.join(__dirname, 'public', 'oauth-confirm.html'));
+});
+
+// POST /oauth/confirm_access
+// Processes the user's Allow / Deny decision.
+//
+// VULNERABLE (Vuln 3b — session poisoning / redirect_uri override):
+// redirect_uri is read from req.body (the form submission) rather than from the
+// stored oauthRequests record that was validated in /oauth/authorize.
+//
+// The consent form includes redirect_uri as a hidden field. An attacker who
+// tricks a victim into submitting that form — or who intercepts and modifies the
+// field before submission — can redirect the authorization code to any URI,
+// regardless of what was validated upstream. The stored record provides client_id
+// and scope; only redirect_uri is taken from the body.
+app.post('/oauth/confirm_access', authenticateToken, (req, res) => {
+  const { request_id, decision, state } = req.body;
+
+  // VULNERABLE (Vuln 3b): redirect_uri comes from the untrusted form body.
+  const redirect_uri = req.body.redirect_uri;
+
+  if (!request_id) return res.status(400).json({ error: 'Missing request_id' });
+
+  const stored = oauthRequests.get(request_id);
+  if (!stored || stored.userId !== req.user.id) {
+    return res.status(400).json({ error: 'Invalid or expired authorization request' });
+  }
+
+  // Use client_id and scope from the stored (validated) record —
+  // only redirect_uri is taken from the body (the vulnerable part).
+  const { client_id, scope } = stored;
+  const effectiveRedirect = redirect_uri || stored.redirect_uri;
+  const effectiveState    = state        || stored.state;
+
+  oauthRequests.delete(request_id);
+
+  if (decision !== 'allow') {
+    try {
+      const dest = new URL(effectiveRedirect);
+      dest.searchParams.set('error', 'access_denied');
+      if (effectiveState) dest.searchParams.set('state', effectiveState);
+      return res.redirect(dest.toString());
+    } catch {
+      return res.status(400).json({ error: 'Invalid redirect_uri' });
+    }
+  }
+
+  const code = crypto.randomBytes(20).toString('hex');
+
+  // VULNERABLE (Vuln 3b): the body-supplied redirect_uri is what gets stored
+  // with the code — so when /oauth/token later validates that the exchange
+  // redirect_uri matches the stored one, it matches the attacker's URI.
+  db.run(
+    `INSERT INTO oauth_codes (code, user_id, client_id, redirect_uri)
+     VALUES (?, ?, ?, ?)`,
+    [code, req.user.id, client_id, effectiveRedirect],
+    (err) => {
+      if (err) return res.status(500).json({ error: 'Failed to issue authorization code' });
+
+      try {
+        const dest = new URL(effectiveRedirect);
+        dest.searchParams.set('code', code);
+        if (effectiveState) dest.searchParams.set('state', effectiveState);
+        res.redirect(dest.toString());
+      } catch {
+        res.status(400).json({ error: 'Invalid redirect_uri' });
+      }
+    }
+  );
+});
+
+// POST /oauth/token
+// Exchanges an authorization code for a Bearer access token.
+//
+// VULNERABLE (Vuln 3c — reusable authorization codes):
+// The code is never marked as used after a successful exchange. The same code
+// can be submitted repeatedly and will produce a fresh access token each time.
+// Combined with Vuln 3a or 3b, a code intercepted once becomes a permanent
+// credential rather than a single-use secret.
+app.post('/oauth/token', (req, res) => {
+  const { code, client_id, redirect_uri, grant_type } = req.body;
+
+  if (grant_type !== 'authorization_code') {
+    return res.status(400).json({ error: 'Unsupported grant_type' });
+  }
+
+  if (!code || !client_id || !redirect_uri) {
+    return res.status(400).json({ error: 'Missing required parameters' });
+  }
+
+  const client = OAUTH_CLIENTS[client_id];
+  if (!client) return res.status(400).json({ error: 'Invalid client_id' });
+
+  db.get(
+    `SELECT * FROM oauth_codes WHERE code = ? AND client_id = ?`,
+    [code, client_id],
+    (err, row) => {
+      if (err || !row) return res.status(400).json({ error: 'Invalid authorization code' });
+
+      // Validate that the redirect_uri matches what was stored when the code was issued.
+      if (row.redirect_uri !== redirect_uri) {
+        return res.status(400).json({ error: 'redirect_uri mismatch' });
+      }
+
+      // Enforce a 10-minute code lifetime.
+      const ageSeconds = (Date.now() - new Date(row.created_at).getTime()) / 1000;
+      if (ageSeconds > 600) {
+        return res.status(400).json({ error: 'Authorization code expired' });
+      }
+
+      // VULNERABLE (Vuln 3c): intentionally omitted —
+      //   db.run('UPDATE oauth_codes SET used = 1 WHERE id = ?', [row.id]);
+      // The oauth_codes table has no `used` column and no invalidation happens,
+      // so this code remains valid for repeated exchanges until it ages out.
+
+      const accessToken = crypto.randomBytes(32).toString('hex');
+
+      db.run(
+        `INSERT INTO oauth_tokens (token, user_id, client_id) VALUES (?, ?, ?)`,
+        [accessToken, row.user_id, client_id],
+        (err) => {
+          if (err) return res.status(500).json({ error: 'Failed to issue access token' });
+          res.json({ access_token: accessToken, token_type: 'Bearer', scope: 'openid' });
+        }
+      );
+    }
+  );
+});
+
+// GET /oauth/userinfo
+// Returns the authenticated user's profile for a valid Bearer token.
+// Called by support.entityy.site after a successful token exchange.
+app.get('/oauth/userinfo', (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Missing or invalid Authorization header' });
+  }
+
+  const token = authHeader.slice(7);
+
+  db.get(`SELECT * FROM oauth_tokens WHERE token = ?`, [token], (err, tokenRow) => {
+    if (err || !tokenRow) return res.status(401).json({ error: 'Invalid token' });
+
+    db.get(
+      `SELECT id, email, username FROM users WHERE id = ?`,
+      [tokenRow.user_id],
+      (err, user) => {
+        if (err || !user) return res.status(404).json({ error: 'User not found' });
+        res.json({ id: user.id, email: user.email, username: user.username });
+      }
+    );
+  });
 });
 
 // ============ COMMENTS ROUTES ============
@@ -1807,153 +2056,6 @@ app.post('/api/invites/:code/accept', authenticateToken, validateCsrf, (req, res
           res.json({ message: `Joined workspace "${invite.workspace_name}"` });
         });
       });
-  });
-});
-
-// ============ OAUTH ROUTES ============
-
-app.get('/oauth/authorize', (req, res) => {
-  const { client_id, redirect_uri, response_type, state, scope } = req.query;
-
-  const client = OAUTH_CLIENTS[client_id];
-  if (!client) return res.status(400).json({ error: 'Unknown client_id' });
-
-  if (response_type !== 'code') {
-    return res.status(400).json({ error: 'Unsupported response_type' });
-  }
-
-  if (!redirect_uri || !redirect_uri.startsWith('https://support.entityy.site')) {
-    return res.status(400).json({ error: 'Invalid redirect_uri' });
-  }
-
-  const token = req.cookies.token;
-  if (!token) {
-    const returnTo = `/oauth/authorize?${new URLSearchParams(req.query).toString()}`;
-    return res.redirect(`/?next=${encodeURIComponent(returnTo)}`);
-  }
-
-  try {
-    jwt.verify(token, JWT_SECRET);
-  } catch {
-    const returnTo = `/oauth/authorize?${new URLSearchParams(req.query).toString()}`;
-    return res.redirect(`/?next=${encodeURIComponent(returnTo)}`);
-  }
-
-  const requestId = crypto.randomBytes(10).toString('hex');
-  oauthRequests.set(requestId, {
-    client_id,
-    redirect_uri,
-    state:  state  || '',
-    scope:  scope  || 'openid',
-    ts:     Date.now()
-  });
-
-  for (const [id, r] of oauthRequests) {
-    if (Date.now() - r.ts > 30 * 60 * 1000) oauthRequests.delete(id);
-  }
-
-  const params = new URLSearchParams({
-    client_id,
-    redirectUri: redirect_uri,
-    state:       state  || '',
-    scope:       scope  || 'openid',
-    request_id:  requestId
-  });
-
-  res.redirect(`/oauth/confirm_access?${params}`);
-});
-
-app.get('/oauth/confirm_access', (req, res) => {
-  const token = req.cookies.token;
-  if (!token) {
-    const returnTo = `/oauth/confirm_access?${new URLSearchParams(req.query).toString()}`;
-    return res.redirect(`/?next=${encodeURIComponent(returnTo)}`);
-  }
-
-  try {
-    jwt.verify(token, JWT_SECRET);
-  } catch {
-    const returnTo = `/oauth/confirm_access?${new URLSearchParams(req.query).toString()}`;
-    return res.redirect(`/?next=${encodeURIComponent(returnTo)}`);
-  }
-
-  res.sendFile(path.join(__dirname, 'public', 'oauth-confirm.html'));
-});
-
-app.post('/oauth/confirm_access', authenticateToken, (req, res) => {
-  const { redirectUri, state, client_id } = req.body;
-
-  if (!redirectUri) return res.status(400).json({ error: 'Missing redirect_uri' });
-
-  const code = crypto.randomBytes(20).toString('hex');
-
-  db.run(
-    `INSERT INTO oauth_codes (code, user_id, client_id, redirect_uri)
-     VALUES (?, ?, ?, ?)`,
-    [code, req.user.id, client_id || 'support', redirectUri],
-    (err) => {
-      if (err) return res.status(500).json({ error: 'Failed to issue authorization code' });
-
-      try {
-        const dest = new URL(redirectUri);
-        dest.searchParams.set('code', code);
-        if (state) dest.searchParams.set('state', state);
-        res.redirect(dest.toString());
-      } catch {
-        res.status(400).json({ error: 'Invalid redirect_uri' });
-      }
-    }
-  );
-});
-
-app.post('/oauth/token', (req, res) => {
-  const { code, client_id, redirect_uri, grant_type } = req.body;
-
-  if (grant_type !== 'authorization_code') {
-    return res.status(400).json({ error: 'Unsupported grant_type' });
-  }
-
-  if (!code) return res.status(400).json({ error: 'Missing code' });
-
-  db.get(
-    `SELECT * FROM oauth_codes WHERE code = ? AND client_id = ?`,
-    [code, client_id || 'support'],
-    (err, row) => {
-      if (err || !row) return res.status(400).json({ error: 'Invalid authorization code' });
-
-      const accessToken = crypto.randomBytes(32).toString('hex');
-
-      db.run(
-        `INSERT INTO oauth_tokens (token, user_id, client_id) VALUES (?, ?, ?)`,
-        [accessToken, row.user_id, client_id || 'support'],
-        (err) => {
-          if (err) return res.status(500).json({ error: 'Failed to issue access token' });
-          res.json({ access_token: accessToken, token_type: 'Bearer', scope: 'openid' });
-        }
-      );
-    }
-  );
-});
-
-app.get('/oauth/userinfo', (req, res) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Missing or invalid Authorization header' });
-  }
-
-  const token = authHeader.slice(7);
-
-  db.get(`SELECT * FROM oauth_tokens WHERE token = ?`, [token], (err, tokenRow) => {
-    if (err || !tokenRow) return res.status(401).json({ error: 'Invalid token' });
-
-    db.get(
-      `SELECT id, email, username FROM users WHERE id = ?`,
-      [tokenRow.user_id],
-      (err, user) => {
-        if (err || !user) return res.status(404).json({ error: 'User not found' });
-        res.json({ id: user.id, email: user.email, username: user.username });
-      }
-    );
   });
 });
 
