@@ -362,19 +362,6 @@
       el.classList.add('visible');
     }
 
-    (async () => {
-      try {
-        const r    = await fetch('/auth/init');
-        const data = await r.json();
-        // data.url is the full /auth/authorize?... URL with state baked in
-        if (data.url) {
-          document.getElementById('signInBtn').href = data.url;
-        }
-      } catch {
-        // Fall back to bare /auth/authorize — server will generate state there
-      }
-    })();
-
     /* ── If already signed in, skip to redirect target ── */
     (async () => {
       try {
