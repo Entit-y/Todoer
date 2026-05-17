@@ -16,6 +16,7 @@ const nodemailer = require('nodemailer');
 const punycode = require('punycode');
 const rateLimit = require('express-rate-limit');
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const SUPPORT_URL = (process.env.SUPPORT_URL || '').replace(/\/$/, '');
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI;
 const http = require('http');
@@ -2062,14 +2063,25 @@ app.post('/api/invites/:code/accept', authenticateToken, validateCsrf, (req, res
 
 // ============ PAGE ROUTES ============
 
-app.get('/home', (req, res) => res.sendFile(path.join(__dirname, 'public', 'home.html')));
-app.get('/files', (req, res) => res.sendFile(path.join(__dirname, 'public', 'files.html')));
-app.get('/profile', (req, res) => res.sendFile(path.join(__dirname, 'public', 'profile.html')));
+
+// Inject client-side config into widget pages
+function serveWithConfig(res, filename) {
+  const html   = fs.readFileSync(path.join(__dirname, 'public', filename), 'utf8');
+  const config = JSON.stringify({
+    appUrl:     process.env.APP_URL || '',
+    supportUrl: SUPPORT_URL,
+  });
+  res.send(html.replace('__APP_CONFIG__', config));
+}
+
+app.get('/home',       (req, res) => serveWithConfig(res, 'home.html'));
+app.get('/files',      (req, res) => serveWithConfig(res, 'files.html'));
+app.get('/profile',    (req, res) => serveWithConfig(res, 'profile.html'));
 app.get('/register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'register.html')));
 app.get('/forgot-password', (req, res) => res.sendFile(path.join(__dirname, 'public', 'forgot-password.html')));
 app.get('/verify-email', (req, res) => res.sendFile(path.join(__dirname, 'public', 'verify-email.html')));
 app.get('/reset-password', (req, res) => res.sendFile(path.join(__dirname, 'public', 'reset-password.html')));
-app.get('/workspaces', (req, res) => res.sendFile(path.join(__dirname, 'public', 'workspaces.html')));
+app.get('/workspaces', (req, res) => serveWithConfig(res, 'workspaces.html'));
 app.get('/feed', (req, res) => res.sendFile(path.join(__dirname, 'public', 'feed.html')));
 app.get('/invite', (req, res) => res.sendFile(path.join(__dirname, 'public', 'invite.html')));
 app.get('/vdp', (req, res) => res.sendFile(path.join(__dirname, 'public', 'vdp.html')));

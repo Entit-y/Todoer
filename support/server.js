@@ -433,7 +433,11 @@ app.get('/api/conversation/:id/unread', requireAuth, (req, res) => {
 // ============ PAGE ROUTES ============
 
 app.get('/',        (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
-app.get('/chat',    (req, res) => res.sendFile(path.join(__dirname, 'public', 'chat.html')));
+app.get('/chat', (req, res) => {
+  const html = fs.readFileSync(path.join(__dirname, 'public', 'chat.html'), 'utf8');
+  const config = JSON.stringify({ appUrl: TODOER_APP_URL, supportUrl: SUPPORT_URL });
+  res.send(html.replace('__APP_CONFIG__', config));
+});
 app.get('/login',   (req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')));
 app.get('/status',  (req, res) => res.sendFile(path.join(__dirname, 'public', 'status.html')));
 app.get('/articles',(req, res) => res.sendFile(path.join(__dirname, 'public', 'articles.html')));

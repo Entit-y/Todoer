@@ -1090,7 +1090,7 @@
     <div class="support-iframe-wrap" id="supportIframeWrap">
       <iframe
         id="supportFrame"
-        src="https://support.entityy.site/chat"
+        src=""
         title="Todoer Support Chat"
         allow="same-origin"
       ></iframe>
@@ -1114,32 +1114,31 @@
 
   <script>
     (function () {
-      const widget    = document.getElementById('supportWidget');
-      const bubble    = document.getElementById('supportBubble');
+      const widget     = document.getElementById('supportWidget');
+      const bubble     = document.getElementById('supportBubble');
       const iframeWrap = document.getElementById('supportIframeWrap');
-      const frame     = document.getElementById('supportFrame');
-      const badge     = document.getElementById('supportBadge');
-      const toast     = document.getElementById('supportPreviewToast');
+      const frame      = document.getElementById('supportFrame');
+      const badge      = document.getElementById('supportBadge');
+      const toast      = document.getElementById('supportPreviewToast');
+
+      frame.src = APP_CONFIG.supportUrl + '/chat';
 
       let toastTimer = null;
       let frameReady  = false;
 
       function syncTheme() {
         const theme = document.documentElement.getAttribute('data-theme') || 'dark';
-        frame.contentWindow.postMessage({ type: 'support:theme', theme }, 'https://support.entityy.site');
+        frame.contentWindow.postMessage({ type: 'support:theme', theme }, APP_CONFIG.supportUrl);
       }
 
-      // Send theme once iframe has loaded
       frame.addEventListener('load', () => {
         frameReady = true;
         syncTheme();
       });
 
-      // Re-sync theme whenever the toggle changes
-      const themeObserver = new MutationObserver(() => {
+      new MutationObserver(() => {
         if (frameReady) syncTheme();
-      });
-      themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+      }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
       bubble.addEventListener('click', () => {
         const opening = !widget.classList.contains('is-open');
@@ -1153,9 +1152,8 @@
         }
       });
 
-      // Only process messages from the support portal
       window.addEventListener('message', (event) => {
-        if (!event.origin.includes('entityy.site')) return;
+        if (event.origin !== APP_CONFIG.supportUrl) return;
 
         if (event.data.type === 'support:badge') {
           const count = event.data.count;

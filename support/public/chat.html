@@ -441,6 +441,7 @@
     }
   </style>
   <script>if (window.self !== window.top) document.documentElement.classList.add('in-iframe');</script>
+  <script>const APP_CONFIG = __APP_CONFIG__;</script>
 </head>
 <body>
 <div class="chat-page">
@@ -456,7 +457,7 @@
     <nav class="topbar-nav">
       <a href="/articles">Help articles</a>
       <a href="/status">Status</a>
-      <a href="https://entityy.site" target="_blank" rel="noopener">Back to app</a>
+      <a href="" id="backToAppLink" target="_blank" rel="noopener">Back to app</a>
     </nav>
   </header>
 
@@ -679,10 +680,12 @@
     document.getElementById('typingGroup').style.display = 'none';
   }
 
+  document.getElementById('backToAppLink').href = APP_CONFIG.appUrl;
+
   // ── postMessage: emit to parent frame ──
   function notifyParent(type, payload) {
     try {
-      window.parent.postMessage({ type: 'support:' + type, ...payload }, '*');
+      window.parent.postMessage({ type: 'support:' + type, ...payload }, APP_CONFIG.appUrl);
     } catch {}
   }
 
