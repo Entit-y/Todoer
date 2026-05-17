@@ -22,6 +22,9 @@
     }
 
     /* ── Top bar ── */
+    /* Hide topbar when embedded in the widget iframe */
+    html.in-iframe .chat-topbar { display: none; }
+
     .chat-topbar {
       flex-shrink: 0;
       height: 52px;
@@ -437,6 +440,7 @@
       .message-bubble { max-width: 90%; }
     }
   </style>
+  <script>if (window.self !== window.top) document.documentElement.classList.add('in-iframe');</script>
 </head>
 <body>
 <div class="chat-page">
