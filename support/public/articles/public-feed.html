@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Using the public feed — Todoer Support</title>
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    .article-layout { max-width: 1100px; margin: 0 auto; padding: 40px 24px 80px; display: grid; grid-template-columns: 1fr 260px; gap: 48px; align-items: start; }
+    .article-main { min-width: 0; }
+    .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-3); margin-bottom: 28px; flex-wrap: wrap; }
+    .breadcrumb a { color: var(--text-3); text-decoration: none; transition: color 0.15s; }
+    .breadcrumb a:hover { color: var(--text-1); }
+    .breadcrumb-sep { color: var(--border-light); }
+    .article-category { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); background: var(--accent-dim); border: 1px solid var(--accent-border); padding: 2px 8px; border-radius: 4px; }
+    .article-meta { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .article-title { font-size: 26px; font-weight: 700; color: var(--text-1); letter-spacing: -0.03em; line-height: 1.25; margin-bottom: 12px; }
+    .article-updated { font-size: 12px; color: var(--text-3); margin-bottom: 32px; }
+    .article-body { font-size: 14.5px; color: var(--text-2); line-height: 1.75; }
+    .article-body h2 { font-size: 18px; font-weight: 600; color: var(--text-1); letter-spacing: -0.02em; margin: 36px 0 12px; }
+    .article-body p { margin: 0 0 16px; }
+    .article-body ul, .article-body ol { margin: 0 0 16px; padding-left: 22px; }
+    .article-body li { margin-bottom: 6px; }
+    .article-body a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+    .article-body strong { color: var(--text-1); font-weight: 600; }
+    .article-body .callout { background: var(--surface-2); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: var(--radius-sm); padding: 14px 16px; margin: 20px 0; font-size: 13.5px; }
+    .article-body .callout strong { display: block; margin-bottom: 4px; }
+    .helpful { display: flex; align-items: center; gap: 12px; margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--border); font-size: 13.5px; color: var(--text-2); }
+    .helpful-btn { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 6px 14px; font-size: 13px; cursor: pointer; transition: background 0.15s; color: var(--text-2); font-family: var(--font); }
+    .helpful-btn:hover { background: var(--surface-3); color: var(--text-1); }
+    .chat-cta { margin-top: 40px; padding: 20px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-md); text-align: center; }
+    .chat-cta p { margin: 0 0 12px; font-size: 13.5px; color: var(--text-2); }
+    .sidebar-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px; position: sticky; top: 24px; }
+    .sidebar-title { font-size: 12px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-3); margin-bottom: 14px; }
+    .sidebar-links { list-style: none; display: flex; flex-direction: column; gap: 2px; }
+    .sidebar-links a { display: block; font-size: 13px; color: var(--text-2); text-decoration: none; padding: 5px 8px; border-radius: var(--radius-sm); transition: background 0.15s, color 0.15s; line-height: 1.4; }
+    .sidebar-links a:hover { background: var(--surface-2); color: var(--text-1); }
+    @media (max-width: 768px) { .article-layout { grid-template-columns: 1fr; } .sidebar-card { display: none; } }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="/" class="header-logo">
+        <img src="/assets/logo.svg" alt="Todoer">
+        <span>Todoer Support</span>
+      </a>
+      <nav class="header-nav">
+        <a href="/articles">Articles</a>
+        <a href="/status">Status</a>
+        <a href="/chat" class="btn btn-primary btn-sm">Chat with us</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="article-layout">
+    <main class="article-main">
+      <nav class="breadcrumb">
+        <a href="/">Help Center</a>
+        <span class="breadcrumb-sep">›</span>
+        <a href="/articles">Articles</a>
+        <span class="breadcrumb-sep">›</span>
+        <span>Using the public feed</span>
+      </nav>
+
+      <div class="article-meta">
+        <span class="article-category">Workspaces</span>
+      </div>
+      <h1 class="article-title">Using the public feed</h1>
+      <p class="article-updated">Last updated May 2025</p>
+
+      <div class="article-body">
+        <p>The public feed is an opt-in, read-only view of a workspace's completed tasks. It's accessible to anyone without signing in — useful for public project updates, open source changelogs, or client-facing progress reports.</p>
+
+        <h2>Enabling the public feed</h2>
+        <ol>
+          <li>Open workspace settings via the gear icon</li>
+          <li>Go to the <strong>Public Feed</strong> tab</li>
+          <li>Toggle <strong>Enable public feed</strong> on</li>
+          <li>Copy the public URL that appears</li>
+        </ol>
+        <p>The feed is immediately accessible at the URL shown. No additional configuration is required.</p>
+
+        <h2>What the feed shows</h2>
+        <p>The public feed displays completed tasks in reverse chronological order. Each entry shows:</p>
+        <ul>
+          <li>Task title</li>
+          <li>Priority label</li>
+          <li>Completion date</li>
+          <li>The display name of the member who completed it</li>
+        </ul>
+        <p>Tasks that are pending or in progress are not shown. Deleted tasks do not appear even if they were previously completed.</p>
+
+        <div class="callout">
+          <strong>Privacy note</strong>
+          Member display names are visible in the public feed. Make sure your team is comfortable with this before enabling the feature on a workspace with sensitive task titles.
+        </div>
+
+        <h2>Disabling the public feed</h2>
+        <p>Return to the Public Feed tab in workspace settings and toggle it off. The URL immediately stops working — anyone who tries to access it will receive a 404 response.</p>
+
+        <h2>Feed URL</h2>
+        <p>The feed URL follows the pattern <code>entityy.site/feed/[workspace-id]</code>. The workspace ID is a randomly generated identifier — it cannot be guessed, but it should still be treated as semi-private. Don't share it beyond your intended audience.</p>
+      </div>
+
+      <div class="helpful">
+        <span>Was this helpful?</span>
+        <button class="helpful-btn" onclick="this.textContent='Thanks!'">👍 Yes</button>
+        <button class="helpful-btn" onclick="this.textContent='Thanks!'">👎 No</button>
+      </div>
+
+      <div class="chat-cta">
+        <p>Didn't find your answer?</p>
+        <a href="/chat" class="btn btn-primary">Chat with us →</a>
+      </div>
+    </main>
+
+    <aside>
+      <div class="sidebar-card">
+        <div class="sidebar-title">Related articles</div>
+        <ul class="sidebar-links">
+          <li><a href="/articles/workspaces">Creating and managing workspaces</a></li>
+          <li><a href="/articles/task-priorities">Task priorities and due dates</a></li>
+          <li><a href="/articles/inviting-collaborators">Inviting collaborators</a></li>
+        </ul>
+      </div>
+    </aside>
+  </div>
+</body>
+</html>

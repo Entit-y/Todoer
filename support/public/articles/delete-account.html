@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deleting your account — Todoer Support</title>
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    .article-layout { max-width: 1100px; margin: 0 auto; padding: 40px 24px 80px; display: grid; grid-template-columns: 1fr 260px; gap: 48px; align-items: start; }
+    .article-main { min-width: 0; }
+    .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-3); margin-bottom: 28px; flex-wrap: wrap; }
+    .breadcrumb a { color: var(--text-3); text-decoration: none; transition: color 0.15s; }
+    .breadcrumb a:hover { color: var(--text-1); }
+    .breadcrumb-sep { color: var(--border-light); }
+    .article-category { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); background: var(--accent-dim); border: 1px solid var(--accent-border); padding: 2px 8px; border-radius: 4px; }
+    .article-meta { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .article-title { font-size: 26px; font-weight: 700; color: var(--text-1); letter-spacing: -0.03em; line-height: 1.25; margin-bottom: 12px; }
+    .article-updated { font-size: 12px; color: var(--text-3); margin-bottom: 32px; }
+    .article-body { font-size: 14.5px; color: var(--text-2); line-height: 1.75; }
+    .article-body h2 { font-size: 18px; font-weight: 600; color: var(--text-1); letter-spacing: -0.02em; margin: 36px 0 12px; }
+    .article-body p { margin: 0 0 16px; }
+    .article-body ul, .article-body ol { margin: 0 0 16px; padding-left: 22px; }
+    .article-body li { margin-bottom: 6px; }
+    .article-body a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+    .article-body strong { color: var(--text-1); font-weight: 600; }
+    .article-body .callout { background: var(--surface-2); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: var(--radius-sm); padding: 14px 16px; margin: 20px 0; font-size: 13.5px; }
+    .article-body .callout.danger { border-left-color: var(--danger); }
+    .article-body .callout strong { display: block; margin-bottom: 4px; }
+    .helpful { display: flex; align-items: center; gap: 12px; margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--border); font-size: 13.5px; color: var(--text-2); }
+    .helpful-btn { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 6px 14px; font-size: 13px; cursor: pointer; transition: background 0.15s; color: var(--text-2); font-family: var(--font); }
+    .helpful-btn:hover { background: var(--surface-3); color: var(--text-1); }
+    .chat-cta { margin-top: 40px; padding: 20px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-md); text-align: center; }
+    .chat-cta p { margin: 0 0 12px; font-size: 13.5px; color: var(--text-2); }
+    .sidebar-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px; position: sticky; top: 24px; }
+    .sidebar-title { font-size: 12px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-3); margin-bottom: 14px; }
+    .sidebar-links { list-style: none; display: flex; flex-direction: column; gap: 2px; }
+    .sidebar-links a { display: block; font-size: 13px; color: var(--text-2); text-decoration: none; padding: 5px 8px; border-radius: var(--radius-sm); transition: background 0.15s, color 0.15s; line-height: 1.4; }
+    .sidebar-links a:hover { background: var(--surface-2); color: var(--text-1); }
+    @media (max-width: 768px) { .article-layout { grid-template-columns: 1fr; } .sidebar-card { display: none; } }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="/" class="header-logo">
+        <img src="/assets/logo.svg" alt="Todoer">
+        <span>Todoer Support</span>
+      </a>
+      <nav class="header-nav">
+        <a href="/articles">Articles</a>
+        <a href="/status">Status</a>
+        <a href="/chat" class="btn btn-primary btn-sm">Chat with us</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="article-layout">
+    <main class="article-main">
+      <nav class="breadcrumb">
+        <a href="/">Help Center</a>
+        <span class="breadcrumb-sep">›</span>
+        <a href="/articles">Articles</a>
+        <span class="breadcrumb-sep">›</span>
+        <span>Deleting your account</span>
+      </nav>
+
+      <div class="article-meta">
+        <span class="article-category">Account &amp; Billing</span>
+      </div>
+      <h1 class="article-title">Deleting your account</h1>
+      <p class="article-updated">Last updated May 2025</p>
+
+      <div class="article-body">
+        <p>You can permanently delete your Todoer account from your profile page. This removes all your personal data from the system.</p>
+
+        <div class="callout danger">
+          <strong>This cannot be undone</strong>
+          Account deletion is permanent. Your tasks, workspaces you own, uploaded files, and account data will be deleted and cannot be recovered.
+        </div>
+
+        <h2>Before you delete</h2>
+        <p>Consider the following before proceeding:</p>
+        <ul>
+          <li><strong>Workspaces you own</strong> — if you are the sole owner of any workspaces, those workspaces and all their contents will be deleted. Transfer ownership first if you want collaborators to retain access.</li>
+          <li><strong>Shared workspaces</strong> — your tasks and contributions to workspaces you don't own will remain visible to other members after deletion, attributed to a deleted account.</li>
+          <li><strong>Files</strong> — any files you uploaded will be permanently removed from workspaces you own. Files in shared workspaces will be removed too.</li>
+        </ul>
+
+        <h2>How to delete your account</h2>
+        <ol>
+          <li>Sign in and go to your <a href="https://entityy.site/profile">profile page</a></li>
+          <li>Scroll to the bottom of the page</li>
+          <li>Click <strong>Delete account</strong></li>
+          <li>Confirm by entering your password when prompted</li>
+        </ol>
+        <p>Your account will be deleted immediately. You'll be signed out and redirected to the homepage.</p>
+
+        <h2>Google accounts</h2>
+        <p>If you signed up with Google and haven't set a password, you'll be asked to confirm deletion by signing in with Google one final time instead of entering a password.</p>
+
+        <h2>Reactivating a deleted account</h2>
+        <p>Deleted accounts cannot be reactivated. If you want to use Todoer again after deleting, you'll need to create a new account with the same or a different email address.</p>
+      </div>
+
+      <div class="helpful">
+        <span>Was this helpful?</span>
+        <button class="helpful-btn" onclick="this.textContent='Thanks!'">👍 Yes</button>
+        <button class="helpful-btn" onclick="this.textContent='Thanks!'">👎 No</button>
+      </div>
+
+      <div class="chat-cta">
+        <p>Didn't find your answer?</p>
+        <a href="/chat" class="btn btn-primary">Chat with us →</a>
+      </div>
+    </main>
+
+    <aside>
+      <div class="sidebar-card">
+        <div class="sidebar-title">Related articles</div>
+        <ul class="sidebar-links">
+          <li><a href="/articles/workspaces">Creating and managing workspaces</a></li>
+          <li><a href="/articles/password-reset">Resetting your password</a></li>
+          <li><a href="/articles/connect-google">Connecting your Google account</a></li>
+        </ul>
+      </div>
+    </aside>
+  </div>
+</body>
+</html>
