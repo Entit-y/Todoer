@@ -195,11 +195,10 @@ h1, h2, h3, h4 { font-family: var(--font); font-weight: 600; letter-spacing: -0.
    Hero
 ───────────────────────────────────────── */
 .hero {
-  border-bottom: 1px solid var(--border);
   padding: 64px 24px 56px;
   text-align: center;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .hero::before {
