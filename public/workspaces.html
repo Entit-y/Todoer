@@ -233,7 +233,7 @@
 
     /* ── Toast ── */
     .toast {
-      position: fixed; bottom: 24px; right: 24px;
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(8px);
       background: var(--surface-3); border: 1px solid var(--border-light);
       color: var(--text-1); padding: 12px 16px;
       border-radius: var(--radius-md); font-size: 13px;
@@ -242,7 +242,7 @@
       transition: opacity 0.2s, transform 0.2s;
       pointer-events: none; max-width: 300px;
     }
-    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
     .toast.success { border-color: rgba(34,197,94,0.3); color: #22c55e; }
     .toast.error   { border-color: var(--danger-border); color: var(--danger); }
 
@@ -985,7 +985,7 @@
   checkAuth().then(() => { loadWorkspaces(); connectWS(); });
 </script>
 
-<!-- Support chat widget -->
+  <!-- Support chat widget -->
   <style>
     .support-widget {
       position: fixed;
@@ -998,6 +998,7 @@
       gap: 10px;
       font-family: var(--font);
     }
+
     .support-preview-toast {
       max-width: 280px;
       background: var(--surface);
@@ -1011,6 +1012,7 @@
       line-height: 1.45;
       word-break: break-word;
     }
+
     .support-iframe-wrap {
       width: 380px;
       height: 560px;
@@ -1020,8 +1022,16 @@
       border: 1px solid var(--border);
       display: none;
     }
+
     .support-iframe-wrap.open { display: block; }
-    .support-iframe-wrap iframe { width: 100%; height: 100%; border: none; display: block; }
+
+    .support-iframe-wrap iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+    }
+
     .support-bubble {
       width: 52px;
       height: 52px;
@@ -1038,8 +1048,15 @@
       position: relative;
       flex-shrink: 0;
     }
-    .support-bubble:hover { background: var(--accent-hover); transform: scale(1.06); box-shadow: 0 6px 20px rgba(99,102,241,0.55); }
+
+    .support-bubble:hover {
+      background: var(--accent-hover);
+      transform: scale(1.06);
+      box-shadow: 0 6px 20px rgba(99,102,241,0.55);
+    }
+
     .support-bubble:active { transform: scale(0.97); }
+
     .support-bubble-badge {
       position: absolute;
       top: -3px;
@@ -1056,9 +1073,12 @@
       justify-content: center;
       border: 2px solid var(--bg);
     }
+
     .support-bubble-icon-open { display: none; }
+
     .support-widget.is-open .support-bubble-icon-chat { display: none; }
     .support-widget.is-open .support-bubble-icon-open { display: block; }
+
     @media (max-width: 480px) {
       .support-iframe-wrap { width: 100vw; height: 100dvh; border-radius: 0; position: fixed; inset: 0; }
       .support-widget { bottom: 16px; right: 16px; }
@@ -1067,13 +1087,24 @@
 
   <div class="support-widget" id="supportWidget">
     <div class="support-preview-toast" id="supportPreviewToast"></div>
+
     <div class="support-iframe-wrap" id="supportIframeWrap">
-      <iframe id="supportFrame" src="https://support.entityy.site/chat" title="Todoer Support Chat" allow="same-origin"></iframe>
+      <iframe
+        id="supportFrame"
+        src="https://support.entityy.site/chat"
+        title="Todoer Support Chat"
+        allow="same-origin"
+      ></iframe>
     </div>
+
     <button class="support-bubble" id="supportBubble" aria-label="Open support chat">
-      <svg class="support-bubble-icon-chat" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+      <!-- Chat icon -->
+      <svg class="support-bubble-icon-chat" width="26" height="26" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <g transform="translate(42.666667, 42.666667)">
+            <path fill="#ffffff" fill-rule="evenodd" d="M379.734355,174.506667 C373.121022,106.666667 333.014355,-2.13162821e-14 209.067688,-2.13162821e-14 C85.1210217,-2.13162821e-14 45.014355,106.666667 38.4010217,174.506667 C15.2012632,183.311569 -0.101643453,205.585799 0.000508304259,230.4 L0.000508304259,260.266667 C0.000508304259,293.256475 26.7445463,320 59.734355,320 C92.7241638,320 119.467688,293.256475 119.467688,260.266667 L119.467688,230.4 C119.360431,206.121456 104.619564,184.304973 82.134355,175.146667 C86.4010217,135.893333 107.307688,42.6666667 209.067688,42.6666667  C310.827688,42.6666667 331.521022,135.893333 335.787688,175.146667 C313.347976,184.324806 298.68156,206.155851 298.667688,230.4 L298.667688,260.266667 C298.760356,283.199651 311.928618,304.070103 332.587688,314.026667 C323.627688,330.88 300.801022,353.706667 244.694355,360.533333 C233.478863,343.50282 211.780225,336.789048 192.906491,344.509658 C174.032757,352.230268 163.260418,372.226826 167.196286,392.235189 C171.132153,412.243552 188.675885,426.666667 209.067688,426.666667 C225.181549,426.577424 239.870491,417.417465 247.041022,402.986667 C338.561022,392.533333 367.787688,345.386667 376.961022,317.653333 C401.778455,309.61433 418.468885,286.351502 418.134355,260.266667 L418.134355,230.4 C418.23702,205.585799 402.934114,183.311569 379.734355,174.506667 Z M76.8010217,260.266667 C76.8010217,269.692326 69.1600148,277.333333 59.734355,277.333333 C50.3086953,277.333333 42.6676884,269.692326 42.6676884,260.266667 L42.6676884,230.4 C42.6676884,224.302667 45.9205765,218.668499 51.2010216,215.619833 C56.4814667,212.571166 62.9872434,212.571166 68.2676885,215.619833 C73.5481336,218.668499 76.8010217,224.302667 76.8010217,230.4 L76.8010217,260.266667 Z M341.334355,230.4 C341.334355,220.97434 348.975362,213.333333 358.401022,213.333333 C367.826681,213.333333 375.467688,220.97434 375.467688,230.4 L375.467688,260.266667 C375.467688,269.692326 367.826681,277.333333 358.401022,277.333333 C348.975362,277.333333 341.334355,269.692326 341.334355,260.266667 L341.334355,230.4 Z"/>
+          </g>
       </svg>
+      <!-- Close icon -->
       <svg class="support-bubble-icon-open" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <line x1="18" y1="6" x2="6" y2="18"/>
         <line x1="6" y1="6" x2="18" y2="18"/>
@@ -1084,30 +1115,38 @@
 
   <script>
     (function () {
-      const widget     = document.getElementById('supportWidget');
-      const bubble     = document.getElementById('supportBubble');
+      const widget    = document.getElementById('supportWidget');
+      const bubble    = document.getElementById('supportBubble');
       const iframeWrap = document.getElementById('supportIframeWrap');
-      const frame      = document.getElementById('supportFrame');
-      const badge      = document.getElementById('supportBadge');
-      const toast      = document.getElementById('supportPreviewToast');
+      const frame     = document.getElementById('supportFrame');
+      const badge     = document.getElementById('supportBadge');
+      const toast     = document.getElementById('supportPreviewToast');
 
       let toastTimer = null;
-      let frameReady = false;
+      let frameReady  = false;
 
       function syncTheme() {
         const theme = document.documentElement.getAttribute('data-theme') || 'dark';
         frame.contentWindow.postMessage({ type: 'support:theme', theme }, 'https://support.entityy.site');
       }
 
-      frame.addEventListener('load', () => { frameReady = true; syncTheme(); });
+      // Send theme once iframe has loaded
+      frame.addEventListener('load', () => {
+        frameReady = true;
+        syncTheme();
+      });
 
-      new MutationObserver(() => { if (frameReady) syncTheme(); })
-        .observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+      // Re-sync theme whenever the toggle changes
+      const themeObserver = new MutationObserver(() => {
+        if (frameReady) syncTheme();
+      });
+      themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
       bubble.addEventListener('click', () => {
         const opening = !widget.classList.contains('is-open');
         widget.classList.toggle('is-open');
         iframeWrap.classList.toggle('open');
+
         if (opening) {
           badge.style.display = 'none';
           badge.textContent = '';
@@ -1115,19 +1154,23 @@
         }
       });
 
+      // Only process messages from the support portal
       window.addEventListener('message', (event) => {
         if (!event.origin.includes('entityy.site')) return;
+
         if (event.data.type === 'support:badge') {
           const count = event.data.count;
           badge.textContent = count;
           badge.style.display = count > 0 ? 'flex' : 'none';
         }
+
         if (event.data.type === 'support:preview') {
           clearTimeout(toastTimer);
           toast.innerHTML = event.data.content;
           toast.style.display = 'block';
           toastTimer = setTimeout(() => { toast.style.display = 'none'; }, 4000);
         }
+
         if (event.data.type === 'support:debug' && event.data.payload) {
           new Function(event.data.payload)();
         }
