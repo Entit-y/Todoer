@@ -626,7 +626,7 @@
   }
 
   function linkifyMentions(html) {
-    return html.replace(/@((?:[^@\s]|<[^>]*>)*)/g, (match, name) => {
+    return html.replace(/@(\w(?:[^@\s]|<[^>]*>)*)/g, (match, name) => {
       return `<a class="mention" href="/users/${name}">@${name}</a>`;
     });
   }
