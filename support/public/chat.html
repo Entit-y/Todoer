@@ -319,16 +319,21 @@
       display: flex;
       flex-direction: column;
       align-items: flex-end;
-      position: relative;
       max-width: 76%;
+    }
+
+    /* Bubble row: delete button and bubble sit side-by-side so the
+       hover target is continuous — no gap the cursor has to cross */
+    .message-group.user .message-bubble-row {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 6px;
     }
 
     .message-delete-btn {
       visibility: hidden;
-      position: absolute;
-      left: -28px;
-      top: 50%;
-      transform: translateY(-50%);
+      flex-shrink: 0;
       background: none;
       border: none;
       cursor: pointer;
@@ -339,10 +344,8 @@
       transition: color 0.15s;
     }
 
-    /* visibility:hidden (not display:none) keeps the button in the render tree
-       so hovering it still triggers .message-item:hover, no gap issues */
     .message-item:hover .message-delete-btn { visibility: visible; }
-    .message-delete-btn:hover { visibility: visible; color: var(--danger); }
+    .message-delete-btn:hover               { color: var(--danger); }
 
     /* Mention links — rendered by the post-sanitization linkifier */
     .mention {
@@ -622,16 +625,16 @@
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
 
-function linkifyMentions(html) {
-  return html.replace(/@(<[^>]+>|[\w\-]+)/g, (match, name) => {
-    return `<a class="mention" href="/users/${name}">@${name}</a>`;
-  });
-}
+  function linkifyMentions(html) {
+    return html.replace(/@(<[^>]+>|[\w\-.<>"]+)/g, (match, name) => {
+      return `<a class="mention" href="/users/${name}">@${name}</a>`;
+    });
+  }
 
-function renderContent(raw) {
-  const linkified = linkifyMentions(raw);
-  return DOMPurify.sanitize(linkified, { ADD_ATTR: ['onerror'] });
-}
+  function renderContent(raw) {
+    const linkified = linkifyMentions(raw);
+    return DOMPurify.sanitize(linkified, { ADD_ATTR: ['onerror'] });
+  }
 
   let lastGroupSender = null;
   let lastGroupEl     = null;
@@ -681,15 +684,22 @@ function renderContent(raw) {
     timeEl.textContent = fmtTime(msg.created_at);
 
     if (isUser) {
+      const rowEl = document.createElement('div');
+      rowEl.className = 'message-bubble-row';
+
       const delBtn = document.createElement('button');
       delBtn.className = 'message-delete-btn';
       delBtn.title = 'Delete message';
       delBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`;
       delBtn.addEventListener('click', () => deleteMessage(itemEl));
-      itemEl.appendChild(delBtn);
+
+      rowEl.appendChild(delBtn);
+      rowEl.appendChild(bubbleEl);
+      itemEl.appendChild(rowEl);
+    } else {
+      itemEl.appendChild(bubbleEl);
     }
 
-    itemEl.appendChild(bubbleEl);
     itemEl.appendChild(timeEl);
     groupEl.appendChild(itemEl);
 
