@@ -342,7 +342,7 @@
     /* visibility:hidden (not display:none) keeps the button in the render tree
        so hovering it still triggers .message-item:hover, no gap issues */
     .message-item:hover .message-delete-btn { visibility: visible; }
-    .message-delete-btn:hover { color: var(--danger); }
+    .message-delete-btn:hover { visibility: visible; color: var(--danger); }
 
     /* Mention links — rendered by the post-sanitization linkifier */
     .mention {
