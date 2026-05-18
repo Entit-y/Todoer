@@ -254,6 +254,29 @@
       flex-shrink: 0;
     }
 
+    .conv-clear-btn {
+      flex-shrink: 0;
+      width: 30px;
+      height: 30px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+
+    .conv-clear-btn:hover {
+      background: var(--surface-2);
+      border-color: var(--border-light);
+      color: var(--text-2);
+    }
+
+    .conv-clear-btn:active { opacity: 0.7; }
+
     /* Messages */
     .messages-wrap {
       flex: 1;
@@ -560,6 +583,14 @@
             We typically reply within a few hours
           </div>
         </div>
+        <button class="conv-clear-btn" onclick="clearConversation()" title="Clear conversation">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+            <path d="M10 11v6M14 11v6"/>
+            <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+          </svg>
+        </button>
       </div>
 
       <div class="messages-wrap" id="messagesList">
@@ -841,6 +872,24 @@
     // Remove the group if only the sender label remains
     const remaining = groupEl.querySelectorAll('.message-item');
     if (remaining.length === 0) groupEl.remove();
+  }
+
+  // ── Clear all messages ──
+  async function clearConversation() {
+    if (!conversation) return;
+    try {
+      const r = await fetch(`/api/conversation/${conversation.id}/messages`, { method: 'DELETE' });
+      if (!r.ok) return;
+    } catch { return; }
+
+    // Reset all client-side message state
+    const list = document.getElementById('messagesList');
+    // Remove every group except the persistent typing indicator group
+    list.querySelectorAll('.message-group:not(#typingGroup)').forEach(g => g.remove());
+    hideTyping();
+    lastMsgTime   = null;
+    lastGroupSender = null;
+    document.getElementById('messagesEmpty').style.display = '';
   }
 
   // ── Send message ──

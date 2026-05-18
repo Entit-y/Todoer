@@ -438,6 +438,24 @@ app.delete('/api/conversation/:id/messages/:msgId', requireAuth, (req, res) => {
     });
 });
 
+// Clear all messages in a conversation
+app.delete('/api/conversation/:id/messages', requireAuth, (req, res) => {
+  const convId = parseInt(req.params.id);
+  if (isNaN(convId)) return res.status(400).json({ error: 'Invalid conversation ID' });
+
+  db.get('SELECT id FROM conversations WHERE id = ? AND user_id = ?',
+    [convId, req.session.userId], (err, conv) => {
+      if (err)   return res.status(500).json({ error: 'Database error' });
+      if (!conv) return res.status(404).json({ error: 'Conversation not found' });
+
+      db.run('DELETE FROM messages WHERE conversation_id = ?', [convId], function(err) {
+        if (err) return res.status(500).json({ error: 'Failed to clear messages' });
+        db.run('UPDATE conversations SET updated_at = CURRENT_TIMESTAMP WHERE id = ?', [convId]);
+        res.json({ cleared: true });
+      });
+    });
+});
+
 // Unread support message count since a given timestamp — drives the badge
 app.get('/api/conversation/:id/unread', requireAuth, (req, res) => {
   const convId = parseInt(req.params.id);
