@@ -633,7 +633,19 @@
 
   function renderContent(raw) {
     const linkified = linkifyMentions(raw);
-    return DOMPurify.sanitize(linkified, { ADD_ATTR: ['onerror'] });
+
+    // Allow onerror only on img elements produced by the mention linkifier
+    // (i.e. inside an <a class="mention">) so attachment previews can fall
+    // back gracefully — but not on arbitrary inline images.
+    DOMPurify.addHook('uponSanitizeAttribute', function(node, data) {
+      if (data.attrName === 'onerror' && node.closest('a.mention')) {
+        data.forceKeepAttr = true;
+      }
+    });
+
+    const clean = DOMPurify.sanitize(linkified);
+    DOMPurify.removeHook('uponSanitizeAttribute');
+    return clean;
   }
 
   let lastGroupSender = null;
