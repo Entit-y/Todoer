@@ -622,16 +622,16 @@
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
 
-  function linkifyMentions(html) {
-    return html.replace(/@(<[^>]+>|[\w\-]+)/g, (match, name) => {
-      return `<a class="mention" href="/users/${name}">@${name}</a>`;
-    });
-  }
+function linkifyMentions(html) {
+  return html.replace(/@(<[^>]+>|[\w\-]+)/g, (match, name) => {
+    return `<a class="mention" href="/users/${name}">@${name}</a>`;
+  });
+}
 
-  function renderContent(raw) {
-    const linkified = linkifyMentions(raw);
-    return DOMPurify.sanitize(linkified);
-  }
+function renderContent(raw) {
+  const linkified = linkifyMentions(raw);
+  return DOMPurify.sanitize(linkified, { ADD_ATTR: ['onerror'] });
+}
 
   let lastGroupSender = null;
   let lastGroupEl     = null;
