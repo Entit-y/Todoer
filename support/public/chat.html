@@ -925,6 +925,10 @@
       if (r.ok) {
         const saved = await r.json();
         if (itemEl && saved.id) itemEl.dataset.msgId = saved.id;
+        // Anchor lastMsgTime to the server's storage timestamp, not the
+        // optimistic client clock. The auto-reply is inserted 2200 ms later
+        // on the same server, so its SQLite second is always strictly greater.
+        if (saved.created_at) lastMsgTime = saved.created_at;
       }
     } catch {}
 
