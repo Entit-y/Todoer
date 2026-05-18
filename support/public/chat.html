@@ -353,6 +353,10 @@
 
     .mention:hover { text-decoration: underline; text-underline-offset: 2px; }
 
+    /* Inside a user bubble the background IS --accent, so override mention to white */
+    .message-group.user .message-bubble .mention       { color: #fff; opacity: 0.85; }
+    .message-group.user .message-bubble .mention:hover { opacity: 1; }
+
     /* System message */
     .message-system {
       text-align: center;
