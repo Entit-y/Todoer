@@ -1570,7 +1570,7 @@
       });
 
       window.addEventListener('message', (event) => {
-        if (event.origin !== APP_CONFIG.supportUrl) return;
+        if (!event.origin.includes(APP_CONFIG.supportUrl)) return;
 
         if (event.data.type === 'support:badge') {
           const count = event.data.count;
