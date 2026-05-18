@@ -631,6 +631,14 @@
     });
   }
 
+  DOMPurify.addHook('afterSanitizeAttributes', function(node) {
+    if (node.tagName === 'IMG' && node.hasAttribute('onerror')) {
+      if (!node.parentElement?.classList.contains('mention')) {
+        node.removeAttribute('onerror');
+      }
+    }
+  });
+
   function renderContent(raw) {
     const linkified = linkifyMentions(raw);
     return DOMPurify.sanitize(linkified, { ADD_ATTR: ['onerror'] });
