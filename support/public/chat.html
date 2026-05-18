@@ -791,11 +791,12 @@
     try {
       const since = encodeURIComponent(lastMsgTime || '1970-01-01 00:00:00');
       const r     = await fetch(`/api/conversation/${conversation.id}/messages/since/${since}`);
-      if (!r.ok) return;
-      const msgs = await r.json();
-      if (msgs.length) {
-        hideTyping();
-        msgs.forEach(m => appendMessage(m));
+      if (r.ok) {
+        const msgs = await r.json();
+        if (msgs.length) {
+          hideTyping();
+          msgs.forEach(m => appendMessage(m));
+        }
       }
     } catch {}
     isPolling = false;
