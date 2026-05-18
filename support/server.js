@@ -382,29 +382,20 @@ app.post('/api/conversation/:id/messages', requireAuth, (req, res) => {
 
             res.status(201).json(message);
 
-            // Auto-reply — fires once per conversation, on the first user message
-            db.get(
-              `SELECT COUNT(*) AS count FROM messages
-               WHERE conversation_id = ? AND sender = 'user'`,
-              [convId],
-              (err, row) => {
-                if (!err && row && row.count === 1) {
-                  setTimeout(() => {
-                    db.run(
-                      `INSERT INTO messages (conversation_id, sender, content)
-                       VALUES (?, 'support', ?)`,
-                      [convId, "Thanks for reaching out! A support agent will get back to you shortly."],
-                      () => {
-                        db.run(
-                          `UPDATE conversations SET updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-                          [convId]
-                        );
-                      }
-                    );
-                  }, 2200);
+            // Auto-reply — fires 2.2 s after every user message
+            setTimeout(() => {
+              db.run(
+                `INSERT INTO messages (conversation_id, sender, content)
+                 VALUES (?, 'support', ?)`,
+                [convId, "Thanks for reaching out! A support agent will get back to you shortly."],
+                () => {
+                  db.run(
+                    `UPDATE conversations SET updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+                    [convId]
+                  );
                 }
-              }
-            );
+              );
+            }, 2200);
           });
         }
       );
