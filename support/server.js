@@ -403,6 +403,32 @@ app.post('/api/conversation/:id/messages', requireAuth, (req, res) => {
   );
 });
 
+// Delete a user message
+app.delete('/api/conversation/:id/messages/:msgId', requireAuth, (req, res) => {
+  const convId = parseInt(req.params.id);
+  const msgId  = parseInt(req.params.msgId);
+
+  if (isNaN(convId) || isNaN(msgId)) return res.status(400).json({ error: 'Invalid ID' });
+
+  db.get('SELECT id FROM conversations WHERE id = ? AND user_id = ?',
+    [convId, req.session.userId], (err, conv) => {
+      if (err)   return res.status(500).json({ error: 'Database error' });
+      if (!conv) return res.status(404).json({ error: 'Conversation not found' });
+
+      db.get('SELECT id, sender FROM messages WHERE id = ? AND conversation_id = ?',
+        [msgId, convId], (err, msg) => {
+          if (err)  return res.status(500).json({ error: 'Database error' });
+          if (!msg) return res.status(404).json({ error: 'Message not found' });
+          if (msg.sender !== 'user') return res.status(403).json({ error: 'Cannot delete support messages' });
+
+          db.run('DELETE FROM messages WHERE id = ?', [msgId], function(err) {
+            if (err) return res.status(500).json({ error: 'Failed to delete message' });
+            res.json({ deleted: true });
+          });
+        });
+    });
+});
+
 // Unread support message count since a given timestamp — drives the badge
 app.get('/api/conversation/:id/unread', requireAuth, (req, res) => {
   const convId = parseInt(req.params.id);

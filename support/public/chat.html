@@ -310,6 +310,38 @@
       margin-top: 2px;
     }
 
+    /* Message item wrapper — groups bubble + time for clean deletion */
+    .message-item {
+      display: contents;
+    }
+
+    /* Delete button — appears on hover for user messages */
+    .message-group.user .message-item {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      position: relative;
+    }
+
+    .message-delete-btn {
+      display: none;
+      position: absolute;
+      left: -28px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-3);
+      padding: 4px;
+      border-radius: var(--radius-sm);
+      line-height: 0;
+      transition: color 0.15s;
+    }
+
+    .message-item:hover .message-delete-btn { display: flex; }
+    .message-delete-btn:hover { color: var(--danger); }
+
     /* Mention links — rendered by the post-sanitization linkifier */
     .mention {
       color: var(--accent);
@@ -629,6 +661,10 @@
       lastGroupEl     = groupEl;
     }
 
+    const itemEl = document.createElement('div');
+    itemEl.className = 'message-item';
+    if (msg.id) itemEl.dataset.msgId = msg.id;
+
     const bubbleEl = document.createElement('div');
     bubbleEl.className = 'message-bubble';
     bubbleEl.innerHTML = renderContent(msg.content);
@@ -637,8 +673,18 @@
     timeEl.className = 'message-time';
     timeEl.textContent = fmtTime(msg.created_at);
 
-    groupEl.appendChild(bubbleEl);
-    groupEl.appendChild(timeEl);
+    if (isUser) {
+      const delBtn = document.createElement('button');
+      delBtn.className = 'message-delete-btn';
+      delBtn.title = 'Delete message';
+      delBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`;
+      delBtn.addEventListener('click', () => deleteMessage(itemEl));
+      itemEl.appendChild(delBtn);
+    }
+
+    itemEl.appendChild(bubbleEl);
+    itemEl.appendChild(timeEl);
+    groupEl.appendChild(itemEl);
 
     if (animate) {
       bubbleEl.style.animation = 'none';
@@ -658,6 +704,7 @@
     }
 
     lastMsgTime = msg.created_at;
+    return itemEl;
   }
 
   function renderMessages(msgs) {
@@ -735,6 +782,37 @@
     clearTimeout(pollTimer);
   }
 
+  // ── Delete message ──
+  async function deleteMessage(itemEl) {
+    const msgId = itemEl.dataset.msgId;
+    if (!msgId || !conversation) return;
+
+    itemEl.style.opacity = '0.4';
+    itemEl.style.pointerEvents = 'none';
+
+    try {
+      const r = await fetch(`/api/conversation/${conversation.id}/messages/${msgId}`, {
+        method: 'DELETE'
+      });
+      if (!r.ok) {
+        itemEl.style.opacity = '';
+        itemEl.style.pointerEvents = '';
+        return;
+      }
+    } catch {
+      itemEl.style.opacity = '';
+      itemEl.style.pointerEvents = '';
+      return;
+    }
+
+    const groupEl = itemEl.parentElement;
+    itemEl.remove();
+
+    // Remove the group if only the sender label remains
+    const remaining = groupEl.querySelectorAll('.message-item');
+    if (remaining.length === 0) groupEl.remove();
+  }
+
   // ── Send message ──
   async function sendMessage() {
     const input   = document.getElementById('chatInput');
@@ -748,8 +826,8 @@
 
     // Optimistic render
     lastGroupSender = null; // force new group
-    appendMessage({
-      id:              Date.now(),
+    const itemEl = appendMessage({
+      id:              null,
       conversation_id: conversation.id,
       sender:          'user',
       content,
@@ -760,11 +838,15 @@
     showTyping();
 
     try {
-      await fetch(`/api/conversation/${conversation.id}/messages`, {
+      const r   = await fetch(`/api/conversation/${conversation.id}/messages`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ content })
       });
+      if (r.ok) {
+        const saved = await r.json();
+        if (itemEl && saved.id) itemEl.dataset.msgId = saved.id;
+      }
     } catch {}
 
     sendBtn.disabled = false;
