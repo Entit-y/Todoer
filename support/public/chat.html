@@ -282,7 +282,6 @@
     }
 
     .message-bubble {
-      max-width: 76%;
       padding: 10px 14px;
       border-radius: var(--radius-md);
       font-size: 13.5px;
@@ -297,6 +296,7 @@
     }
 
     .message-group.support .message-bubble {
+      max-width: 76%;
       background: var(--surface-2);
       color: var(--text-1);
       border: 1px solid var(--border);
@@ -320,6 +320,7 @@
       flex-direction: column;
       align-items: flex-end;
       position: relative;
+      max-width: 76%;
     }
 
     .message-delete-btn {
@@ -470,7 +471,8 @@
     /* ── Responsive ── */
     @media (max-width: 480px) {
       .gate-card { padding: 28px 20px; }
-      .message-bubble { max-width: 90%; }
+      .message-group.user .message-item { max-width: 90%; }
+      .message-group.support .message-bubble { max-width: 90%; }
     }
   </style>
   <script>if (window.self !== window.top) document.documentElement.classList.add('in-iframe');</script>
