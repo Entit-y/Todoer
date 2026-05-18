@@ -60,6 +60,15 @@ db.serialize(() => {
   `);
 });
 
+// ============ HELPERS ============
+
+// Normalise any timestamp the client might send to SQLite's storage format
+// ("YYYY-MM-DD HH:MM:SS") before doing string comparisons against created_at.
+// Handles ISO 8601 ("2026-05-18T11:45:25.123Z") and already-normalised values.
+function toSQLiteTimestamp(ts) {
+  return ts.replace('T', ' ').replace(/(\.\d+)?Z?$/, '');
+}
+
 // ============ MIDDLEWARE ============
 
 app.set('trust proxy', 1);
@@ -318,7 +327,7 @@ app.get('/api/conversation/:id/messages', requireAuth, (req, res) => {
 // Poll for messages newer than a given timestamp
 app.get('/api/conversation/:id/messages/since/:ts', requireAuth, (req, res) => {
   const convId = parseInt(req.params.id);
-  const since  = decodeURIComponent(req.params.ts);
+  const since  = toSQLiteTimestamp(decodeURIComponent(req.params.ts));
 
   if (isNaN(convId)) return res.status(400).json({ error: 'Invalid conversation ID' });
 
@@ -432,7 +441,7 @@ app.delete('/api/conversation/:id/messages/:msgId', requireAuth, (req, res) => {
 // Unread support message count since a given timestamp — drives the badge
 app.get('/api/conversation/:id/unread', requireAuth, (req, res) => {
   const convId = parseInt(req.params.id);
-  const since  = req.query.since || '1970-01-01 00:00:00';
+  const since  = toSQLiteTimestamp(req.query.since || '1970-01-01 00:00:00');
 
   if (isNaN(convId)) return res.status(400).json({ error: 'Invalid conversation ID' });
 
