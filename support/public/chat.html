@@ -320,22 +320,12 @@
       flex-direction: column;
       align-items: flex-end;
       position: relative;
-      /* Extend the hover area leftward to cover the absolutely-positioned
-         delete button, so the cursor doesn't leave the element on the way there */
-      padding-left: 32px;
-    }
-
-    /* Bubble + timestamp stack inside the row */
-    .message-item-body {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
     }
 
     .message-delete-btn {
       visibility: hidden;
       position: absolute;
-      left: 0;
+      left: -28px;
       top: 50%;
       transform: translateY(-50%);
       background: none;
@@ -348,6 +338,8 @@
       transition: color 0.15s;
     }
 
+    /* visibility:hidden (not display:none) keeps the button in the render tree
+       so hovering it still triggers .message-item:hover, no gap issues */
     .message-item:hover .message-delete-btn { visibility: visible; }
     .message-delete-btn:hover { color: var(--danger); }
 
@@ -691,11 +683,8 @@
       itemEl.appendChild(delBtn);
     }
 
-    const bodyEl = document.createElement('div');
-    bodyEl.className = 'message-item-body';
-    bodyEl.appendChild(bubbleEl);
-    bodyEl.appendChild(timeEl);
-    itemEl.appendChild(bodyEl);
+    itemEl.appendChild(bubbleEl);
+    itemEl.appendChild(timeEl);
     groupEl.appendChild(itemEl);
 
     if (animate) {
