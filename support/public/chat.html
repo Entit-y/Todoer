@@ -315,18 +315,27 @@
       display: contents;
     }
 
-    /* Delete button — appears on hover for user messages */
     .message-group.user .message-item {
       display: flex;
       flex-direction: column;
       align-items: flex-end;
       position: relative;
+      /* Extend the hover area leftward to cover the absolutely-positioned
+         delete button, so the cursor doesn't leave the element on the way there */
+      padding-left: 32px;
+    }
+
+    /* Bubble + timestamp stack inside the row */
+    .message-item-body {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
     }
 
     .message-delete-btn {
-      display: none;
+      visibility: hidden;
       position: absolute;
-      left: -28px;
+      left: 0;
       top: 50%;
       transform: translateY(-50%);
       background: none;
@@ -339,7 +348,7 @@
       transition: color 0.15s;
     }
 
-    .message-item:hover .message-delete-btn { display: flex; }
+    .message-item:hover .message-delete-btn { visibility: visible; }
     .message-delete-btn:hover { color: var(--danger); }
 
     /* Mention links — rendered by the post-sanitization linkifier */
@@ -682,8 +691,11 @@
       itemEl.appendChild(delBtn);
     }
 
-    itemEl.appendChild(bubbleEl);
-    itemEl.appendChild(timeEl);
+    const bodyEl = document.createElement('div');
+    bodyEl.className = 'message-item-body';
+    bodyEl.appendChild(bubbleEl);
+    bodyEl.appendChild(timeEl);
+    itemEl.appendChild(bodyEl);
     groupEl.appendChild(itemEl);
 
     if (animate) {
