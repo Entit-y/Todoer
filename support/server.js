@@ -9,7 +9,7 @@ const fs            = require('fs');
 const app  = express();
 const PORT = process.env.PORT || 3002;
 
-const TODOER_APP_URL = (process.env.TODOER_APP_URL || 'https://entityy.site').replace(/\/$/, '');
+const TODOER_APP_URL = (process.env.APP_URL || 'https://entityy.site').replace(/\/$/, '');
 const SUPPORT_URL    = (process.env.SUPPORT_URL    || 'https://support.entityy.site').replace(/\/$/, '');
 const SESSION_SECRET = process.env.SESSION_SECRET  || crypto.randomBytes(32).toString('hex');
 
@@ -72,6 +72,10 @@ function toSQLiteTimestamp(ts) {
 // ============ MIDDLEWARE ============
 
 app.set('trust proxy', 1);
+app.use((req, res, next) => {
+  res.setHeader('Content-Security-Policy', `frame-ancestors 'self' ${TODOER_APP_URL}`);
+  next();
+});
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
@@ -499,4 +503,4 @@ app.get('/articles/:slug', (req, res) => {
 
 // ============ START ============
 
-app.listen(PORT, () => console.log(`Support server running on port ${PORT}`));  
+app.listen(PORT, () => console.log(`Support server running on port ${PORT}`));
