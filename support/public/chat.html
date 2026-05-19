@@ -755,12 +755,9 @@
 
     if (!isUser) {
       unreadCount++;
-      notifyParent('unread', { count: unreadCount });
-      // Notify parent with sender and content preview for badge/toast display
-      notifyParent('message', {
-        sender:  currentUser ? currentUser.display_name : 'Support Team',
-        preview: msg.content.slice(0, 80)
-      });
+      notifyParent('badge', { count: unreadCount });
+      // Notify parent with content preview for toast display
+      notifyParent('preview', { content: msg.content.slice(0, 80) });
     }
 
     lastMsgTime = msg.created_at;
@@ -812,8 +809,18 @@
           document.documentElement.setAttribute('data-theme', e.data.theme);
         }
         break;
+      case 'support:prefill':
+        const input = document.getElementById('chatInput');
+        if (input && typeof e.data.content === 'string') {
+          input.value = e.data.content;
+          autoResize(input);
+          sendMessage();
+        }
+        break;
     }
   });
+
+  
 
   // ── Poll loop ──
   async function poll() {
