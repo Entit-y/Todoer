@@ -1563,7 +1563,7 @@
 
       // Opens the support widget and pre-fills a message with task context.
       // Called from the task detail drawer via "Get help with this task".
-      function openSupportWithContext(taskTitle) {
+      window.openSupportWithContext = function openSupportWithContext(taskTitle) {
         widget.classList.add('is-open');
         iframeWrap.classList.add('open');
         const send = () => frame.contentWindow.postMessage(
