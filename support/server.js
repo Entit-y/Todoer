@@ -9,8 +9,8 @@ const fs            = require('fs');
 const app  = express();
 const PORT = process.env.PORT || 3002;
 
-const TODOER_APP_URL = (process.env.APP_URL || 'https://entityy.site').replace(/\/$/, '');
-const SUPPORT_URL    = (process.env.SUPPORT_URL    || 'https://support.entityy.site').replace(/\/$/, '');
+const TODOER_APP_URL = (process.env.APP_URL || 'http://localhost:3000').replace(/\/$/, '');
+const SUPPORT_URL    = (process.env.SUPPORT_URL    || 'http://localhost:3002').replace(/\/$/, '');
 const SESSION_SECRET = process.env.SESSION_SECRET  || crypto.randomBytes(32).toString('hex');
 
 // ============ DATABASE ============
@@ -480,24 +480,31 @@ app.get('/api/conversation/:id/unread', requireAuth, (req, res) => {
 
 // ============ PAGE ROUTES ============
 
-app.get('/',        (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
-app.get('/chat', (req, res) => {
-  const html = fs.readFileSync(path.join(__dirname, 'public', 'chat.html'), 'utf8');
+function serveHtml(res, filename) {
+  let html = fs.readFileSync(path.join(__dirname, 'public', filename), 'utf8');
+  html = html.replace(/__APP_URL__/g,         TODOER_APP_URL);
+  html = html.replace(/__SUPPORT_URL__/g,     SUPPORT_URL);
+  html = html.replace(/__APP_DOMAIN__/g,      TODOER_APP_URL.replace(/^https?:\/\//, ''));
+  html = html.replace(/__SUPPORT_DOMAIN__/g,  SUPPORT_URL.replace(/^https?:\/\//, ''));
   const config = JSON.stringify({ appUrl: TODOER_APP_URL, supportUrl: SUPPORT_URL });
-  res.send(html.replace('__APP_CONFIG__', config));
-});
-app.get('/login',   (req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')));
-app.get('/status',  (req, res) => res.sendFile(path.join(__dirname, 'public', 'status.html')));
-app.get('/articles',(req, res) => res.sendFile(path.join(__dirname, 'public', 'articles.html')));
+  html = html.replace('__APP_CONFIG__', config);
+  res.send(html);
+}
+
+app.get('/',        (req, res) => serveHtml(res, 'index.html'));
+app.get('/chat',    (req, res) => serveHtml(res, 'chat.html'));
+app.get('/login',   (req, res) => serveHtml(res, 'login.html'));
+app.get('/status',  (req, res) => serveHtml(res, 'status.html'));
+app.get('/articles',(req, res) => serveHtml(res, 'articles.html'));
 
 app.get('/articles/:slug', (req, res) => {
   const slug     = req.params.slug.replace(/[^a-z0-9-]/g, '');
   const filePath = path.join(__dirname, 'public', 'articles', `${slug}.html`);
 
   if (fs.existsSync(filePath)) {
-    res.sendFile(filePath);
+    serveHtml(res, `articles/${slug}.html`);
   } else {
-    res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
+    serveHtml(res, '404.html');
   }
 });
 

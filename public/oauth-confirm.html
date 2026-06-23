@@ -313,10 +313,11 @@
     document.getElementById('fieldStateDeny').value     = state;
 
     const CLIENT_NAMES = { support: 'Todoer Support' };
-    const CLIENT_DOMAINS = { support: 'support.entityy.site' };
 
     const displayName   = CLIENT_NAMES[clientId]   || clientId;
-    const displayDomain = CLIENT_DOMAINS[clientId] || '';
+    // Derive the display domain from the redirect_uri so it works with any deployment
+    let displayDomain = '';
+    try { displayDomain = new URL(redirectUri).hostname; } catch (e) { /* ignore */ }
 
     document.getElementById('appName').innerHTML   = displayName;   // Vuln 3d sink
     document.getElementById('appDomain').textContent = displayDomain;

@@ -1,5 +1,7 @@
 .env
+.env.local
+.env.backup
+docker-compose.override.yml
 uploads/
 backup/
 todoer.db
-.env.backup

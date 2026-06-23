@@ -1206,7 +1206,7 @@ const oauthStates = new Map();
 const OAUTH_CLIENTS = {
   support: {
     name:              'Todoer Support',
-    redirect_uri_base: 'https://support.entityy.site'
+    redirect_uri_base: (SUPPORT_URL || 'http://localhost:3002')
   }
 };
 
@@ -2066,12 +2066,13 @@ app.post('/api/invites/:code/accept', authenticateToken, validateCsrf, (req, res
 
 // Inject client-side config into widget pages
 function serveWithConfig(res, filename) {
-  const html   = fs.readFileSync(path.join(__dirname, 'public', filename), 'utf8');
-  const config = JSON.stringify({
-    appUrl:     process.env.APP_URL || '',
-    supportUrl: SUPPORT_URL,
-  });
-  res.send(html.replace('__APP_CONFIG__', config));
+  let html   = fs.readFileSync(path.join(__dirname, 'public', filename), 'utf8');
+  const appUrl = process.env.APP_URL || '';
+  const supportUrl = SUPPORT_URL;
+  const config = JSON.stringify({ appUrl, supportUrl });
+  html = html.replace('__APP_CONFIG__', config);
+  html = html.replace(/__APP_DOMAIN__/g, appUrl ? appUrl.replace(/^https?:\/\//, '') : 'todoer.test');
+  res.send(html);
 }
 
 app.get('/home',       (req, res) => serveWithConfig(res, 'home.html'));
@@ -2083,7 +2084,7 @@ app.get('/verify-email', (req, res) => res.sendFile(path.join(__dirname, 'public
 app.get('/reset-password', (req, res) => res.sendFile(path.join(__dirname, 'public', 'reset-password.html')));
 app.get('/workspaces', (req, res) => serveWithConfig(res, 'workspaces.html'));
 app.get('/feed', (req, res) => serveWithConfig(res, 'feed.html'));app.get('/invite', (req, res) => res.sendFile(path.join(__dirname, 'public', 'invite.html')));
-app.get('/vdp', (req, res) => res.sendFile(path.join(__dirname, 'public', 'vdp.html')));
+app.get('/vdp', (req, res) => serveWithConfig(res, 'vdp.html'));
 app.get('/', (req, res) => {
   const token = req.cookies.token;
   if (token) res.redirect('/home');
