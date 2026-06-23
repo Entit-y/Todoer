@@ -73,11 +73,27 @@ def confirm(label):
 
 # ── Banner ────────────────────────────────────────────────────────────────────
 
+NIMBUS_LOGO = r"""     ######     # ############## #     ######
+     ##########   ##            ##   #########
+     #######  ##                   ## ########
+     ###### ##                       # ######
+     ##### #      #            #      # #####
+     ####  #      #              #     . ####
+     ####  #     #                ##   . ####
+           #     #                     .
+     ####  #     #                 #   . ####
+     ####         #              #     . ####
+     ##### #      #            #      # #####
+     ###### ##                       # ######
+     #######  #                    ## ########
+     #########   ##             #   ##########
+     ######     # ############## #     ######"""
+
 BANNER = f"""
-{c(C.BBLUE,    '  ╔══════════════════════════════════════════════╗')}
-{c(C.BBLUE,    '  ║')}  {c(C.BOLD + C.BWHITE, 'Todoer')}  {c(C.DIM, '·')}  {c(C.DIM, 'practice target for bug hunters')}  {c(C.BBLUE, '║')}
-{c(C.BBLUE,    '  ║')}  {c(C.BMAGENTA, 'nimbusvault.app')}   {c(C.DIM, '·')}   {c(C.DIM, '@entit_yy on X')}       {c(C.BBLUE, ' ║')}
-{c(C.BBLUE,    '  ╚══════════════════════════════════════════════╝')}
+{c(C.BBLUE, '  ╔══════════════════════════════════════════════╗')}
+{c(C.BBLUE, '  ║')}  {c(C.BOLD + C.BWHITE, 'Todoer')}  {c(C.DIM, '·')}  {c(C.DIM, 'practice target for bug hunters')}  {c(C.BBLUE, '║')}
+{c(C.BBLUE, '  ║')}  {c(C.BMAGENTA, 'nimbusvault.app')}   {c(C.DIM, '·')}   {c(C.DIM, '@entit_yy on X')}       {c(C.BBLUE, ' ║')}
+{c(C.BBLUE, '  ╚══════════════════════════════════════════════╝')}
 """
 
 
@@ -484,6 +500,7 @@ Example config file ({c(C.DIM, 'key=value, # comments, blank lines ignored')}):
 def main():
     args = parse_args()
 
+    print(NIMBUS_LOGO)
     print(BANNER)
 
     if args.config:
