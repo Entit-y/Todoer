@@ -6,14 +6,15 @@ Built for Nimbus Vault (nimbusvault.app) by @entit_yy
 """
 
 import os
-import subprocess
 import sys
-import time
 import re
-import getpass
-import shutil
+import time
 import stat
 import secrets
+import argparse
+import getpass
+import shutil
+import subprocess
 from pathlib import Path
 
 
@@ -87,6 +88,42 @@ def run(cmd, check=True, shell=False):
     if isinstance(cmd, str) and not shell:
         cmd = cmd.split()
     return subprocess.run(cmd, check=check, shell=shell, capture_output=True, text=True)
+
+
+# ── Config file support ─────────────────────────────────────────────────────
+
+REQUIRED_CONFIG = {
+    'DOMAIN':              'Your domain (e.g. todoer.site)',
+    'LE_EMAIL':            "Email for Let's Encrypt notifications",
+    'BREVO_USER':           'Brevo SMTP login (user@smtp-brevo.com)',
+    'BREVO_KEY':            'Brevo SMTP key',
+    'GOOGLE_CLIENT_ID':     'Google OAuth client ID',
+    'GOOGLE_CLIENT_SECRET': 'Google OAuth client secret',
+}
+
+
+def parse_config(path):
+    """Read a KEY=VALUE config file, return a dict of {KEY: value}."""
+    cfg = {}
+    with open(path) as f:
+        for line in f:
+            stripped = line.strip()
+            if not stripped or stripped.startswith('#'):
+                continue
+            if '=' not in stripped:
+                continue
+            key, _, val = stripped.partition('=')
+            cfg[key.strip()] = val.strip()
+    return cfg
+
+
+def validate_config(cfg):
+    """Check all required keys present. Return (valid: bool, [errors])."""
+    errors = []
+    for key, desc in REQUIRED_CONFIG.items():
+        if key not in cfg or not cfg[key].strip():
+            errors.append(f"  {c(C.BYELLOW, key)} — {desc}")
+    return len(errors) == 0, errors
 
 
 # ── Setup steps ───────────────────────────────────────────────────────────────
@@ -422,10 +459,97 @@ def success(domain):
 
 # ── Entry point ───────────────────────────────────────────────────────────────
 
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description='Todoer installation wizard',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=f"""
+Example config file ({c(C.DIM, 'key=value, # comments, blank lines ignored')}):
+
+  DOMAIN=todoer.site
+  LE_EMAIL=you@example.com
+  BREVO_USER=a69588001@smtp-brevo.com
+  BREVO_KEY=xsmtpsib-...
+  BREVO_FROM=noreply@todoer.site
+  GOOGLE_CLIENT_ID=....apps.googleusercontent.com
+  GOOGLE_CLIENT_SECRET=GOCSPX-...
+  ADMIN_USERNAME=admin
+  ADMIN_PASSWORD=yourpassword
+""")
+    parser.add_argument('--config', '-c', metavar='FILE',
+                        help='Read all config from FILE (key=value format) instead of prompting interactively.')
+    return parser.parse_args()
+
+
 def main():
+    args = parse_args()
+
     print(BANNER)
+
+    if args.config:
+        cfg_path = Path(args.config)
+        if not cfg_path.exists():
+            die(f"Config file not found: {cfg_path}")
+        cfg = parse_config(cfg_path)
+        valid, errors = validate_config(cfg)
+        if not valid:
+            print(f"\n  {c(C.BRED, 'Missing required config keys:')}")
+            for e in errors:
+                print(e)
+            print()
+            die("Fix the config file and re-run.")
+        domain = cfg['DOMAIN']
+        le_email = cfg['LE_EMAIL']
+        brevo_user = cfg['BREVO_USER']
+        brevo_key = cfg['BREVO_KEY']
+        brevo_from = cfg.get('BREVO_FROM') or f"noreply@{domain}"
+        google_id = cfg['GOOGLE_CLIENT_ID']
+        google_secret = cfg['GOOGLE_CLIENT_SECRET']
+        google_redirect = f"https://{domain}/auth/oauth/callback"
+        admin_user = cfg.get('ADMIN_USERNAME') or ("admin_" + secrets.token_hex(4))
+        admin_pass = cfg.get('ADMIN_PASSWORD') or secrets.token_hex(16)
+        if not cfg.get('ADMIN_USERNAME'):
+            info("Auto-generated admin credentials:")
+            info(f"  Username: {c(C.BWHITE, admin_user)}")
+            info(f"  Password: {c(C.BWHITE, admin_pass)}")
+            info("Save these somewhere. They won't be shown again.")
+
+        print(f"  {c(C.BCYAN, '→')} Config loaded from {c(C.BOLD, str(cfg_path))}")
+        print()
+
+        check_prereqs()
+        get_repo()
+        section("Config Files")
+        create_dirs()
+        create_docker_override(domain, le_email)
+        env_values = {
+            "BREVO_USER":           brevo_user,
+            "BREVO_KEY":            brevo_key,
+            "BREVO_FROM":           brevo_from,
+            "GOOGLE_CLIENT_ID":     google_id,
+            "GOOGLE_CLIENT_SECRET": google_secret,
+            "GOOGLE_REDIRECT_URI":  google_redirect,
+            "APP_URL":              f"https://{domain}",
+            "SUPPORT_URL":          f"https://support.{domain}",
+            "ADMIN_USERNAME":       admin_user,
+            "ADMIN_PASSWORD":       admin_pass,
+            "SUPPORT_SESSION_SECRET": secrets.token_hex(32),
+        }
+        create_env(env_values)
+        launch()
+        if wait_for_https(domain):
+            success(domain)
+        else:
+            print(f"\n  {c(C.BYELLOW, 'Setup complete, but TLS may still be provisioning.')}")
+            print(f"  {c(C.BCYAN, 'App:')}    {c(C.BWHITE, f'https://{domain}')}")
+            print(f"  {c(C.BCYAN, 'Admin:')}  {c(C.BWHITE, f'https://admin.{domain}')}")
+            print(f"  {c(C.BCYAN, 'Support:')}{c(C.BWHITE, f'https://support.{domain}')}\n")
+        return
+
+    # ── Interactive mode ──
     print(f"  {c(C.BOLD, 'Welcome to the Todoer setup wizard.')}")
     print(f"  {c(C.DIM,  'This will configure and launch your instance step by step.')}\n")
+    print(f"  {c(C.DIM,  'Tip: use')} {c(C.BOLD, '--config FILE')} {c(C.DIM, 'to skip prompts next time.')}\n")
 
     check_prereqs()
     get_repo()
