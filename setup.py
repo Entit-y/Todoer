@@ -224,8 +224,13 @@ def get_admin_creds():
 
     user = prompt("Admin username (leave blank to skip)")
     if not user:
-        warn("Skipped — admin credentials will not be written to .env.")
-        return None, None
+        rand_user = "admin_" + secrets.token_hex(4)
+        rand_pw   = secrets.token_hex(16)
+        warn(f"Skipped — generating random admin credentials:")
+        info(f"  Username: {c(C.BWHITE, rand_user)}")
+        info(f"  Password: {c(C.BWHITE, rand_pw)}")
+        info("Save these somewhere. They won't be shown again.")
+        return rand_user, rand_pw
 
     pw = prompt("Admin password", secret=True)
     while not pw:
@@ -279,6 +284,7 @@ def create_docker_override(domain, letsencrypt_email):
       - LETSENCRYPT_HOST={domain}
       - LETSENCRYPT_EMAIL={letsencrypt_email}
       - APP_URL=https://{domain}
+      - SUPPORT_URL=https://support.{domain}
   admin:
     environment:
       - VIRTUAL_HOST=admin.{domain}
@@ -289,6 +295,7 @@ def create_docker_override(domain, letsencrypt_email):
       - VIRTUAL_HOST=support.{domain}
       - LETSENCRYPT_HOST=support.{domain}
       - LETSENCRYPT_EMAIL={letsencrypt_email}
+      - APP_URL=https://{domain}
       - TODOER_APP_URL=https://{domain}
       - SUPPORT_URL=https://support.{domain}
   letsencrypt-companion:
@@ -314,6 +321,7 @@ def create_docker_override(domain, letsencrypt_email):
 def create_dirs():
     for d in ["certs", "vhost.d", "html", "acme", "data", "uploads"]:
         Path(d).mkdir(exist_ok=True)
+    Path("todoer.db").touch()
     ok("Required directories created")
 
 
@@ -438,6 +446,7 @@ def main():
         "GOOGLE_CLIENT_ID":     google_id,
         "GOOGLE_CLIENT_SECRET": google_secret,
         "GOOGLE_REDIRECT_URI":  google_redirect,
+        "APP_URL":              f"https://{domain}",
         "SUPPORT_URL":          f"https://support.{domain}",
     }
     if admin_user is not None:
