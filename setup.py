@@ -13,6 +13,7 @@ import re
 import getpass
 import shutil
 import stat
+import secrets
 from pathlib import Path
 
 
@@ -283,6 +284,13 @@ def create_docker_override(domain, letsencrypt_email):
       - VIRTUAL_HOST=admin.{domain}
       - LETSENCRYPT_HOST=admin.{domain}
       - LETSENCRYPT_EMAIL={letsencrypt_email}
+  support:
+    environment:
+      - VIRTUAL_HOST=support.{domain}
+      - LETSENCRYPT_HOST=support.{domain}
+      - LETSENCRYPT_EMAIL={letsencrypt_email}
+      - TODOER_APP_URL=https://{domain}
+      - SUPPORT_URL=https://support.{domain}
   letsencrypt-companion:
     environment:
       - DEFAULT_EMAIL={letsencrypt_email}
@@ -381,18 +389,21 @@ def wait_for_https(domain, timeout=300):
 
 
 def success(domain):
-    app_url   = f"https://{domain}"
-    admin_url = f"https://admin.{domain}"
+    app_url      = f"https://{domain}"
+    admin_url    = f"https://admin.{domain}"
+    support_url  = f"https://support.{domain}"
     # Pad plain strings first, then colorize — ANSI codes break :<N alignment
-    app_padded   = c(C.BWHITE, f"{app_url:<36}")
-    admin_padded = c(C.BWHITE, f"{admin_url:<36}")
-    note_padded  = c(C.DIM,    f"{'chmod 600, gitignored':<36}")
+    app_padded      = c(C.BWHITE, f"{app_url:<36}")
+    admin_padded    = c(C.BWHITE, f"{admin_url:<36}")
+    support_padded  = c(C.BWHITE, f"{support_url:<36}")
+    note_padded     = c(C.DIM,    f"{'chmod 600, gitignored':<36}")
     print(f"""
 {c(C.BBLUE, '  ╔══════════════════════════════════════════════╗')}
 {c(C.BBLUE, '  ║')}  {c(C.BGREEN + C.BOLD, '✓ Todoer is live!')}                              {c(C.BBLUE, '║')}
 {c(C.BBLUE, '  ║')}                                              {c(C.BBLUE, '║')}
-{c(C.BBLUE, '  ║')}  {c(C.BCYAN, 'App  ')}  {app_padded}  {c(C.BBLUE, '║')}
-{c(C.BBLUE, '  ║')}  {c(C.BCYAN, 'Admin')}  {admin_padded}  {c(C.BBLUE, '║')}
+{c(C.BBLUE, '  ║')}  {c(C.BCYAN, 'App    ')}  {app_padded}  {c(C.BBLUE, '║')}
+{c(C.BBLUE, '  ║')}  {c(C.BCYAN, 'Admin  ')}  {admin_padded}  {c(C.BBLUE, '║')}
+{c(C.BBLUE, '  ║')}  {c(C.BCYAN, 'Support')}  {support_padded}  {c(C.BBLUE, '║')}
 {c(C.BBLUE, '  ║')}                                              {c(C.BBLUE, '║')}
 {c(C.BBLUE, '  ║')}  {c(C.DIM, '.env + override:')}  {note_padded}  {c(C.BBLUE, '║')}
 {c(C.BBLUE, '  ╚══════════════════════════════════════════════╝')}
@@ -427,10 +438,13 @@ def main():
         "GOOGLE_CLIENT_ID":     google_id,
         "GOOGLE_CLIENT_SECRET": google_secret,
         "GOOGLE_REDIRECT_URI":  google_redirect,
+        "SUPPORT_URL":          f"https://support.{domain}",
     }
     if admin_user is not None:
         env_values["ADMIN_USERNAME"] = admin_user
         env_values["ADMIN_PASSWORD"] = admin_pass
+
+    env_values["SUPPORT_SESSION_SECRET"] = secrets.token_hex(32)
 
     create_env(env_values)
     launch()
@@ -440,7 +454,8 @@ def main():
     else:
         print(f"\n  {c(C.BYELLOW, 'Setup complete, but TLS may still be provisioning.')}")
         print(f"  {c(C.BCYAN, 'App:')}    {c(C.BWHITE, f'https://{domain}')}")
-        print(f"  {c(C.BCYAN, 'Admin:')}  {c(C.BWHITE, f'https://admin.{domain}')}\n")
+        print(f"  {c(C.BCYAN, 'Admin:')}  {c(C.BWHITE, f'https://admin.{domain}')}")
+        print(f"  {c(C.BCYAN, 'Support:')}{c(C.BWHITE, f'https://support.{domain}')}\n")
 
 
 if __name__ == "__main__":
