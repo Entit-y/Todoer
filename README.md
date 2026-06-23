@@ -38,13 +38,12 @@ It's a real task management app: workspaces, file uploads, public feed, real-tim
 
 | Layer | Tech |
 |---|---|
-| Backend | Node.js + Express |
+| Backend | Node.js + Express (3 services: app, admin, support chat) |
 | Database | SQLite |
-| Auth | JWT + cookies, Google OAuth |
+| Auth | JWT + cookies, Google OAuth, first-party OAuth server |
 | Real-time | WebSocket |
 | Frontend | Vanilla HTML/CSS/JS + client-side templating |
 | File handling | `unzipper`, `tar-stream`, `multer` |
-| Admin | Separate Express service |
 | Infrastructure | Docker + Docker Compose + nginx-proxy + Let's Encrypt |
 
 ---
@@ -71,9 +70,10 @@ Todoer is built to run on a VPS with a real domain. It uses [nginx-proxy](https:
 
 - Linux (Ubuntu 22.04+ recommended)
 - Docker + Docker Compose — [install guide](https://docs.docker.com/engine/install/ubuntu/)
-- A domain with two DNS A records pointing to your VPS:
+- A domain with **three** DNS A records pointing to your VPS:
   - `yourdomain.com` → VPS IP
   - `admin.yourdomain.com` → same VPS IP
+  - `support.yourdomain.com` → same VPS IP
 
 ---
 
@@ -93,6 +93,30 @@ The script handles: checking prerequisites, collecting config values, generating
 > - Point your DNS A records to your VPS IP
 > - Authenticate your sending domain in Brevo (Part A below)
 > - Create a Google OAuth client and consent screen (the script will remind you)
+
+#### Unattended install with a config file
+
+For repeatable deployments, create a `KEY=VALUE` config file and pass it with `--config`:
+
+```bash
+python3 setup.py --config todoer.conf
+```
+
+Example config (`#` comments and blank lines are ignored):
+
+```ini
+DOMAIN=todoer.site
+LE_EMAIL=you@example.com
+BREVO_USER=user@smtp-brevo.com
+BREVO_KEY=xsmtpsib-...
+BREVO_FROM=noreply@todoer.site
+GOOGLE_CLIENT_ID=....apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GOCSPX-...
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=yourpassword
+```
+
+If `ADMIN_USERNAME`/`ADMIN_PASSWORD` are omitted, random credentials are generated and printed once. Run `python3 setup.py --help` for the full list of required keys.
 
 ---
 
@@ -202,22 +226,36 @@ GOOGLE_REDIRECT_URI=https://yourdomain.com/auth/oauth/callback
 
 ---
 
-#### 4. Update docker-compose.yml
+#### 4. Create docker-compose.override.yml
 
-Replace every occurrence of `your-domain.com` with your actual domain:
+Instead of editing `docker-compose.yml` directly, create a `docker-compose.override.yml` with your domain. Docker Compose merges it automatically:
 
 ```yaml
-# app service
-- VIRTUAL_HOST=yourdomain.com
-- LETSENCRYPT_HOST=yourdomain.com
-- APP_URL=https://yourdomain.com
-
-# admin service
-- VIRTUAL_HOST=admin.yourdomain.com
-- LETSENCRYPT_HOST=admin.yourdomain.com
+services:
+  app:
+    environment:
+      - VIRTUAL_HOST=yourdomain.com
+      - LETSENCRYPT_HOST=yourdomain.com
+      - LETSENCRYPT_EMAIL=you@example.com
+      - APP_URL=https://yourdomain.com
+      - SUPPORT_URL=https://support.yourdomain.com
+  admin:
+    environment:
+      - VIRTUAL_HOST=admin.yourdomain.com
+      - LETSENCRYPT_HOST=admin.yourdomain.com
+      - LETSENCRYPT_EMAIL=you@example.com
+  support:
+    environment:
+      - VIRTUAL_HOST=support.yourdomain.com
+      - LETSENCRYPT_HOST=support.yourdomain.com
+      - LETSENCRYPT_EMAIL=you@example.com
+      - APP_URL=https://yourdomain.com
+      - TODOER_APP_URL=https://yourdomain.com
+      - SUPPORT_URL=https://support.yourdomain.com
+  letsencrypt-companion:
+    environment:
+      - DEFAULT_EMAIL=you@example.com
 ```
-
-Also update `LETSENCRYPT_EMAIL` in both services and the `letsencrypt-companion` section.
 
 #### 5. Launch
 
@@ -229,6 +267,7 @@ docker compose up -d --build
 |---|---|
 | `todoer-app` | Main app (port 3000, internal) |
 | `todoer-admin` | Admin panel (port 3001, internal) |
+| `todoer-support` | Support chat + help articles (port 3002, internal) |
 | `nginx-proxy` | Reverse proxy, TLS termination (ports 80/443) |
 | `nginx-proxy-acme` | Auto-provisions + renews Let's Encrypt certs |
 
@@ -236,6 +275,7 @@ Give acme-companion a minute or two on first boot to issue certificates. Then:
 
 - App → `https://yourdomain.com`
 - Admin → `https://admin.yourdomain.com`
+- Support → `https://support.yourdomain.com`
 
 #### 6. Verify
 
@@ -265,6 +305,7 @@ rm -rf uploads/*
 .
 ├── server.js                 ← main app server
 ├── docker-compose.yml
+├── setup.py                  ← installation wizard
 ├── todoer.db                 ← SQLite database (auto-created on first run)
 ├── uploads/                  ← user-uploaded files (persisted via volume)
 ├── data/                     ← persistent data volume
@@ -272,8 +313,6 @@ rm -rf uploads/*
 ├── vhost.d/                  ← nginx vhost overrides (optional)
 ├── acme/                     ← acme.sh state
 ├── public/                   ← frontend
-│   ├── vendor/               ← self-hosted JS libraries
-│   ├── fonts/                ← self-hosted fonts
 │   ├── home.html
 │   ├── feed.html
 │   ├── files.html
@@ -281,10 +320,19 @@ rm -rf uploads/*
 │   ├── invite.html
 │   ├── profile.html
 │   ├── vdp.html
+│   ├── oauth-confirm.html
 │   └── ...
-└── admin/                    ← separate admin panel service
+├── admin/                    ← separate admin panel service
+│   ├── server.js
+│   └── public/
+└── support/                  ← support chat + help articles service
     ├── server.js
     └── public/
+        ├── articles/         ← knowledge base articles
+        ├── chat.html
+        ├── login.html
+        ├── status.html
+        └── ...
 ```
 
 ---
