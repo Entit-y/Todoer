@@ -73,35 +73,38 @@
       <p class="article-updated">Last updated May 2025</p>
 
       <div class="article-body">
-        <p>Todoer supports file uploads at the workspace level. Files are shared across all members of the workspace and can be downloaded by anyone with access.</p>
+        <p>Todoer supports file uploads in both personal and workspace contexts. Access your files from the <strong>Files</strong> page via the sidebar navigation.</p>
 
         <h2>Uploading a file</h2>
         <ol>
-          <li>Open a workspace and click the <strong>Files</strong> tab</li>
-          <li>Click <strong>Upload file</strong> or drag and drop files onto the upload area</li>
-          <li>Wait for the upload to complete — a progress indicator will appear for larger files</li>
+          <li>Navigate to the <strong>Files</strong> page from the sidebar</li>
+          <li>Click <strong>Upload file</strong> and select a file using the standard file picker</li>
+          <li>Click the <strong>Upload</strong> button to complete the upload</li>
         </ol>
-        <p>Uploaded files appear in the list immediately. Each entry shows the filename, uploader, file size, and upload date.</p>
-
-        <h2>Supported file types</h2>
-        <p>Todoer accepts most common file types including documents, images, archives, and spreadsheets. Executable files (<code>.exe</code>, <code>.sh</code>, <code>.bat</code>) are blocked at upload.</p>
-        <p>ZIP archives are accepted and their contents are extracted automatically for preview. The extracted files are stored alongside the original archive.</p>
+        <p>Uploaded files appear as cards showing the filename, file size, and upload date.</p>
 
         <div class="callout">
           <strong>Note</strong>
-          ZIP extraction is performed server-side. Very large archives or archives with deeply nested paths may take a moment to process.
+          Each file is limited to <strong>10 MB</strong>. If you need to share something larger, consider using an external file sharing service and pasting the link into a task.
         </div>
 
-        <h2>File size limits</h2>
-        <p>Individual file uploads are limited to <strong>50 MB</strong>. If you need to share something larger, consider splitting the archive or using an external file sharing service and pasting the link into a task.</p>
+        <h2>File types</h2>
+        <p>Todoer accepts files of all types — there are no restrictions on file extensions. Whatever you need to share, you can upload it.</p>
+
+        <h2>Working with archives</h2>
+        <p>Todoer supports <strong>.zip</strong>, <strong>.tar</strong>, and <strong>.gz</strong> archives. After uploading an archive, click the <strong>Extract</strong> button on its card to extract its contents manually. Extraction is not automatic.</p>
+        <p>You can also create archives from selected files directly within Todoer.</p>
 
         <h2>Downloading and deleting files</h2>
-        <p>Click any file in the list to download it. To delete a file, hover over it and click the trash icon. Workspace owners and the original uploader can delete files — other members cannot.</p>
+        <p>Click the download icon on any file card to download it. To delete a file, use the delete option on the card.</p>
+        <p>In a workspace, owners and admins can delete any file. Members can delete files they uploaded. Viewers cannot delete files.</p>
         <p>Deleted files are permanently removed and cannot be recovered.</p>
 
+        <h2>Image previews</h2>
+        <p>Image files can be previewed directly in Todoer. Click an image file to open a preview modal with zoom controls.</p>
+
         <h2>File visibility</h2>
-        <p>Files are visible to all workspace members. There is currently no per-file permission control — if a user has access to the workspace, they can see and download all files in it.</p>
-        <p>Files are not exposed through the public feed, even if the workspace's public feed is enabled.</p>
+        <p>Files are visible to all members of the workspace. There is currently no per-file permission control — if a user has access to the workspace, they can see and download all files in it.</p>
       </div>
 
       <div class="helpful">

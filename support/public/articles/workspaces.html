@@ -71,49 +71,48 @@
         <span class="article-category">Workspaces</span>
       </div>
       <h1 class="article-title">Creating and managing workspaces</h1>
-      <p class="article-updated">Last updated May 2025</p>
+      <p class="article-updated">Last updated June 2026</p>
 
       <div class="article-body">
-        <p>Workspaces are the top-level containers in Todoer. Every task, file, and collaborator belongs to a workspace. You can have as many workspaces as you need — one per project, client, or team.</p>
+        <p>Workspaces let you organize tasks and files around a project or team. Each workspace has its own member list with role-based permissions. Tasks and files can also exist outside of any workspace in your personal context — but when you need to collaborate, a workspace is the place to do it.</p>
 
         <h2>Creating a workspace</h2>
-        <p>From the Workspaces page, click <strong>New workspace</strong>. You'll be prompted to enter:</p>
-        <ul>
-          <li><strong>Name</strong> — required, up to 64 characters</li>
-          <li><strong>Description</strong> — optional, shown on the workspace overview</li>
-        </ul>
-        <p>Once created, you'll be taken directly into the new workspace.</p>
+        <p>Go to the <strong>Workspaces</strong> page and click <strong>New Workspace</strong>. You'll be prompted to enter a name (required, up to 64 characters). That's it — workspaces have no description field. Once created, you can open it to view its detail page showing the workspace name, member count, and creation date.</p>
 
-        <h2>Workspace settings</h2>
-        <p>Click the gear icon in the top-right corner of any workspace to open its settings. From here you can:</p>
-        <ul>
-          <li>Rename the workspace or update its description</li>
-          <li>Manage members and their roles</li>
-          <li>Configure the public feed</li>
-          <li>Delete the workspace</li>
-        </ul>
-
-        <h2>Switching between workspaces</h2>
-        <p>The workspace switcher lives in the top navigation bar. Click your current workspace name to open the dropdown and select another, or click <strong>Create new</strong> to add one.</p>
+        <h2>Activating and deactivating a workspace</h2>
+        <p>From the Workspaces page sidebar, each workspace has an <strong>Activate</strong> button. Click it to activate that workspace as your current context. When a workspace is activated, the tasks and files you see are scoped to that workspace. You can deactivate a workspace at any time to return to your personal context. Your active workspace is persisted across sessions.</p>
 
         <h2>Workspace roles</h2>
-        <p>Every member of a workspace has one of two roles:</p>
+        <p>Every member of a workspace has one of four roles, with different permission levels:</p>
         <ul>
-          <li><strong>Owner</strong> — can manage settings, invite and remove members, and delete the workspace. The creator of a workspace is its owner by default.</li>
-          <li><strong>Member</strong> — can view, add, and complete tasks, and upload files. Cannot change workspace settings or remove other members.</li>
+          <li><strong>Owner</strong> — full control. Can manage all members, change roles, remove anyone except themselves, and delete the workspace. The creator of a workspace is its owner by default. Ownership cannot be transferred.</li>
+          <li><strong>Admin</strong> — can invite members, remove members with the member or viewer role, and manage most workspace settings.</li>
+          <li><strong>Member</strong> — can view, add, and complete tasks, upload files, and see other members. Cannot invite, remove, or change settings.</li>
+          <li><strong>Viewer</strong> — read-only access. Can view tasks and files but cannot create, edit, or complete anything.</li>
         </ul>
-        <p>Ownership can be transferred to another member from the Members tab in workspace settings.</p>
+
+        <h2>Inviting members</h2>
+        <p>From the workspace detail page, open the <strong>Members</strong> section and click <strong>Invite</strong>. Enter the email address of the person you want to invite and select their role (admin, member, or viewer). The invited user will receive an email with a join link.</p>
+        <p>You can revoke a pending invitation at any time by clicking <strong>Cancel</strong> next to it in the pending invitations list.</p>
+
+        <h2>Managing members</h2>
+        <p>The member list shows everyone in the workspace along with their role. Depending on your permissions, you can:</p>
+        <ul>
+          <li><strong>Remove a member</strong> — the owner can remove any member except themselves. An admin can remove members and viewers but cannot remove other admins or the owner.</li>
+          <li><strong>Change a member's role</strong> — only the owner can change roles, and the owner's own role cannot be changed.</li>
+        </ul>
+        <p>There is no "leave workspace" option — members who wish to leave must ask the owner or an admin to remove them.</p>
 
         <h2>Deleting a workspace</h2>
-        <p>Only the workspace owner can delete a workspace. Go to workspace settings and scroll to the bottom of the page. Deleting a workspace is permanent — all tasks, files, and conversation history associated with it are removed and cannot be recovered.</p>
+        <p>Only the workspace owner can delete a workspace. Deleting is permanent — all tasks, files, and data associated with the workspace are removed and cannot be recovered.</p>
 
         <div class="callout">
           <strong>Warning</strong>
           Workspace deletion cannot be undone. Export or back up any files you need before proceeding.
         </div>
 
-        <h2>Workspace limits</h2>
-        <p>There is no hard limit on the number of workspaces you can create. Task and file limits depend on your plan. If you hit an unexpected limit, <a href="/chat">contact support</a>.</p>
+        <h2>Real-time updates</h2>
+        <p>Workspace changes — new tasks, member additions, role changes, and more — are pushed instantly to all connected members via WebSocket. No manual refreshing needed.</p>
       </div>
 
       <div class="helpful">
@@ -134,7 +133,6 @@
         <ul class="sidebar-links">
           <li><a href="/articles/getting-started">Getting started with Todoer</a></li>
           <li><a href="/articles/inviting-collaborators">Inviting collaborators</a></li>
-          <li><a href="/articles/public-feed">Using the public feed</a></li>
           <li><a href="/articles/file-uploads">How file uploads work</a></li>
         </ul>
       </div>

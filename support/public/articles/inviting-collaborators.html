@@ -73,33 +73,25 @@
       <p class="article-updated">Last updated May 2025</p>
 
       <div class="article-body">
-        <p>Workspaces support multiple members. You can invite anyone with a Todoer account — or send an invite to someone who hasn't signed up yet.</p>
+        <p>Workspaces support multiple members with four roles: <strong>owner</strong>, <strong>admin</strong>, <strong>member</strong>, and <strong>viewer</strong>. You can invite anyone with a Todoer account — or send an invite to someone who hasn't signed up yet. Invites are sent by email only — there is no shareable invite link.</p>
 
         <h2>Sending an invitation</h2>
         <ol>
-          <li>Open the workspace you want to share</li>
-          <li>Click the gear icon to open workspace settings</li>
-          <li>Go to the <strong>Members</strong> tab</li>
-          <li>Enter the email address of the person you want to invite and click <strong>Send invite</strong></li>
+          <li>Navigate to the workspace you want to share and select it to open its detail panel</li>
+          <li>Click <strong>Invite</strong> in the members section</li>
+          <li>Enter the email address of the person you want to invite</li>
+          <li>Select a role — owners can assign <strong>admin</strong>, <strong>member</strong>, or <strong>viewer</strong>; admins can only assign <strong>member</strong> or <strong>viewer</strong></li>
+          <li>Click <strong>Send invite</strong></li>
         </ol>
+        <p>Workspace owners and admins can send invitations. Admins cannot invite other users as admins.</p>
         <p>If the email belongs to an existing Todoer account, the invitation is sent directly. If not, they'll receive an email inviting them to create an account first — the workspace invite will be waiting for them after they verify their email.</p>
-
-        <h2>Invitation link</h2>
-        <p>Each workspace also has a shareable invite link. From the Members tab, click <strong>Copy invite link</strong>. Anyone who opens this link will be prompted to sign in or create an account, then added to the workspace as a member.</p>
-
-        <div class="callout">
-          <strong>Note</strong>
-          Invite links grant Member-level access. They cannot be used to add Owners. Rotate or disable the link from the Members tab if you no longer want it to work.
-        </div>
+        <p>The invited user receives an email containing a unique invite link. When clicked, the invite code is verified against the email address used during the invitation — only the intended recipient can accept.</p>
 
         <h2>Pending invitations</h2>
-        <p>Invitations that haven't been accepted yet appear under <strong>Pending invites</strong> in the Members tab. You can resend or revoke them at any time.</p>
+        <p>Invitations that haven't been accepted yet appear in the workspace detail panel. You can cancel a pending invitation at any time.</p>
 
         <h2>Removing a member</h2>
-        <p>Owners can remove any member from the workspace. Go to the Members tab, find the person, and click <strong>Remove</strong>. Removed members immediately lose access to the workspace and its contents.</p>
-
-        <h2>Leaving a workspace</h2>
-        <p>Members can leave a workspace at any time from the Members tab by clicking <strong>Leave workspace</strong>. Workspace owners cannot leave — they must transfer ownership to another member first, or delete the workspace.</p>
+        <p>Workspace owners can remove any member from the workspace, regardless of their role. Admins can remove members and viewers but cannot remove other admins or the owner. Go to the workspace detail panel, find the person, and click <strong>Remove</strong>. Removed members immediately lose access to the workspace and its contents.</p>
       </div>
 
       <div class="helpful">

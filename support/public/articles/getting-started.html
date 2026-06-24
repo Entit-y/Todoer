@@ -185,48 +185,48 @@
         <span class="article-category">Getting Started</span>
       </div>
       <h1 class="article-title">Getting started with Todoer</h1>
-      <p class="article-updated">Last updated May 2025</p>
+      <p class="article-updated">Last updated June 2026</p>
 
       <div class="article-body">
-        <p>Todoer is a task management app built around workspaces, lists, and collaboration. This guide covers everything you need to get up and running in the first few minutes.</p>
+        <p>Todoer is a task management app that helps you stay organized, both on your own and with your team. This guide covers everything you need to get up and running in the first few minutes.</p>
 
         <h2>Creating your account</h2>
-        <p>Head to <a href="__APP_URL__/register">__APP_DOMAIN__/register</a> and sign up with your email address. You'll receive a verification email — click the link inside to activate your account before you can sign in.</p>
-        <p>If you'd prefer to sign in with Google, use the <strong>Continue with Google</strong> button on the sign-in page. Google accounts don't require a separate email verification step.</p>
+        <p>Head to <a href="__APP_URL__/register">__APP_DOMAIN__/register</a> and sign up with your email address and password. You can also optionally provide a username during registration. After submitting, you'll receive a 6-digit verification code by email.</p>
+
+        <h2>Verifying your email</h2>
+        <p>Once you have the code, go to <a href="__APP_URL__/verify-email">__APP_DOMAIN__/verify-email</a> and enter the 6-digit code to activate your account. You won't be able to sign in until your email is verified.</p>
+        <p>If you'd prefer to skip this step, use the <strong>Continue with Google</strong> button on the sign-in page. Google-authenticated accounts are automatically verified, so no code is needed.</p>
 
         <div class="callout">
           <strong>Tip</strong>
           If you don't see the verification email within a few minutes, check your spam folder. The email comes from the Todoer address configured for your installation.
         </div>
 
-        <h2>Your first workspace</h2>
-        <p>After signing in you'll land on the Workspaces page. A workspace is a shared space for a project or team — everything in Todoer lives inside one. Click <strong>New workspace</strong> to create your first one.</p>
-        <p>Give the workspace a name and optional description. You can change both at any time from the workspace settings page.</p>
+        <h2>Your first look at Todoer</h2>
+        <p>After signing in you'll land on the <strong>/home</strong> page — your personal Tasks view. This is where you can manage tasks that belong to you alone. Your tasks stay here unless you activate a workspace context.</p>
 
         <h2>Adding tasks</h2>
-        <p>Inside a workspace, the main view is your task list. Click the input field at the top of the list and type to add a new task. Press <strong>Enter</strong> or click the add button to save it.</p>
-        <p>Each task supports:</p>
+        <p>Tasks are created using a <strong>modal form</strong>. Click the <strong>Add Task</strong> button to open it. The form includes:</p>
         <ul>
-          <li><strong>Priority levels</strong> — Low, Medium, High, and Urgent</li>
-          <li><strong>Due dates</strong> — click the calendar icon on any task to set one</li>
-          <li><strong>Completion toggle</strong> — check the circle on the left to mark a task done</li>
+          <li><strong>Title</strong> — required</li>
+          <li><strong>Description</strong> — optional, for additional details</li>
+          <li><strong>Priority</strong> — Low, Medium, or High</li>
+          <li><strong>Due date</strong> — optional, pick a date from the date picker</li>
         </ul>
+        <p>Tasks live in your personal context by default. When a workspace is activated, new tasks are created inside that workspace instead and are visible to all workspace members.</p>
 
-        <h2>Inviting collaborators</h2>
-        <p>Workspaces are more useful with your team. Open the workspace settings and navigate to the <strong>Members</strong> tab to invite people by email. Invited users receive an email with a join link.</p>
-        <p>See <a href="/articles/inviting-collaborators">Inviting collaborators to a workspace</a> for the full details.</p>
+        <h2>Creating or joining a workspace</h2>
+        <p>Need to collaborate? Head to the <strong>Workspaces</strong> page to create a new workspace (just give it a name) or accept an invitation to join an existing one. Workspaces give you and your team a shared space for tasks and files, with role-based access control.</p>
+        <p>See <a href="/articles/workspaces">Creating and managing workspaces</a> for the full details.</p>
 
-        <h2>Uploading files</h2>
-        <p>Todoer supports file attachments at the workspace level. Use the Files tab inside any workspace to upload documents, images, and other assets. Supported formats and size limits are covered in <a href="/articles/file-uploads">How file uploads work</a>.</p>
-
-        <h2>The public feed</h2>
-        <p>Each workspace has an optional public feed — a read-only view of completed tasks that anyone can see without signing in. This is useful for public project updates or changelogs. See <a href="/articles/public-feed">Using the public feed</a> for setup instructions.</p>
+        <h2>Sharing files</h2>
+        <p>Todoer supports file uploads in both personal and workspace contexts. Use the Files tab to upload documents, images, and other assets. When a workspace is active, uploaded files are shared with all workspace members. Supported formats and size limits are covered in <a href="/articles/file-uploads">How file uploads work</a>.</p>
 
         <h2>Next steps</h2>
         <ul>
           <li><a href="/articles/workspaces">Creating and managing workspaces</a></li>
           <li><a href="/articles/task-priorities">Understanding task priorities and due dates</a></li>
-          <li><a href="/articles/connect-google">Connecting your Google account</a></li>
+          <li><a href="/articles/inviting-collaborators">Inviting collaborators to a workspace</a></li>
         </ul>
       </div>
 
@@ -250,7 +250,6 @@
           <li><a href="/articles/inviting-collaborators">Inviting collaborators</a></li>
           <li><a href="/articles/task-priorities">Task priorities and due dates</a></li>
           <li><a href="/articles/file-uploads">How file uploads work</a></li>
-          <li><a href="/articles/connect-google">Connecting your Google account</a></li>
         </ul>
       </div>
     </aside>

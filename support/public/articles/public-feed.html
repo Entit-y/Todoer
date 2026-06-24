@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Using the public feed — Todoer Support</title>
+  <title>Using the feed — Todoer Support</title>
   <link rel="stylesheet" href="/styles.css">
   <style>
     .article-layout { max-width: 1100px; margin: 0 auto; padding: 40px 24px 80px; display: grid; grid-template-columns: 1fr 260px; gap: 48px; align-items: start; }
@@ -63,47 +63,54 @@
         <span class="breadcrumb-sep">›</span>
         <a href="/articles">Articles</a>
         <span class="breadcrumb-sep">›</span>
-        <span>Using the public feed</span>
+        <span>Using the feed</span>
       </nav>
 
       <div class="article-meta">
-        <span class="article-category">Workspaces</span>
+        <span class="article-category">Features</span>
       </div>
-      <h1 class="article-title">Using the public feed</h1>
-      <p class="article-updated">Last updated May 2025</p>
+      <h1 class="article-title">Using the feed</h1>
+      <p class="article-updated">Last updated June 2026</p>
 
       <div class="article-body">
-        <p>The public feed is an opt-in, read-only view of a workspace's completed tasks. It's accessible to anyone without signing in — useful for public project updates, open source changelogs, or client-facing progress reports.</p>
+        <p>The feed is a global social space where authenticated Todoer users can post short messages, share updates, and interact with the wider community. It is accessible at <code>/feed</code> from within the app — there is no public or anonymous access.</p>
 
-        <h2>Enabling the public feed</h2>
+        <h2>Posting a message</h2>
         <ol>
-          <li>Open workspace settings via the gear icon</li>
-          <li>Go to the <strong>Public Feed</strong> tab</li>
-          <li>Toggle <strong>Enable public feed</strong> on</li>
-          <li>Copy the public URL that appears</li>
+          <li>Navigate to the <strong>Feed</strong> page using the sidebar navigation</li>
+          <li>Type your message in the compose box at the top of the page</li>
+          <li>Messages are limited to <strong>280 characters</strong> — a counter and progress ring show how many remain</li>
+          <li>Click <strong>Post</strong> or press <kbd>Ctrl+Enter</kbd> (<kbd>Cmd+Enter</kbd> on Mac) to submit</li>
         </ol>
-        <p>The feed is immediately accessible at the URL shown. No additional configuration is required.</p>
+        <p>Your message appears immediately for all authenticated users. New messages from others appear in real time via WebSocket — no page refresh needed.</p>
 
-        <h2>What the feed shows</h2>
-        <p>The public feed displays completed tasks in reverse chronological order. Each entry shows:</p>
+        <h2>Viewing the feed</h2>
+        <p>The feed displays messages from all platform users in reverse chronological order (newest first). Each entry shows:</p>
         <ul>
-          <li>Task title</li>
-          <li>Priority label</li>
-          <li>Completion date</li>
-          <li>The display name of the member who completed it</li>
+          <li>Your avatar and username</li>
+          <li>Message content with auto-linked URLs</li>
+          <li>A relative timestamp (<em>just now</em>, <em>5m ago</em>, <em>3h ago</em>, etc.)</li>
         </ul>
-        <p>Tasks that are pending or in progress are not shown. Deleted tasks do not appear even if they were previously completed.</p>
+        <p>To browse older messages, click the <strong>Load older messages</strong> button at the bottom of the feed. Messages are loaded in pages of 50.</p>
+
+        <h2>Deleting your own messages</h2>
+        <p>Hover over any message you posted and click the delete icon that appears. The message is removed immediately for all users and deleted permanently from the server. You cannot delete messages posted by other users.</p>
+
+        <h2>Activity sidebar</h2>
+        <p>The right sidebar shows live activity statistics for the feed:</p>
+        <ul>
+          <li><strong>Online now</strong> — how many users are currently viewing the feed</li>
+          <li><strong>Messages today</strong> — total messages posted so far today</li>
+          <li><strong>Total messages</strong> — all-time message count</li>
+        </ul>
 
         <div class="callout">
-          <strong>Privacy note</strong>
-          Member display names are visible in the public feed. Make sure your team is comfortable with this before enabling the feature on a workspace with sensitive task titles.
+          <strong>Guidelines</strong>
+          The feed is shared across all platform users. Keep messages respectful, stay within the 280-character limit, and remember that you can only delete your own messages.
         </div>
 
-        <h2>Disabling the public feed</h2>
-        <p>Return to the Public Feed tab in workspace settings and toggle it off. The URL immediately stops working — anyone who tries to access it will receive a 404 response.</p>
-
         <h2>Feed URL</h2>
-        <p>The feed URL follows the pattern <code>__APP_DOMAIN__/feed/[workspace-id]</code>. The workspace ID is a randomly generated identifier — it cannot be guessed, but it should still be treated as semi-private. Don't share it beyond your intended audience.</p>
+        <p>The feed is located at <code>__APP_DOMAIN__/feed</code>. There is no separate per-workspace or public feed — the feed is a single global space for all signed-in users.</p>
       </div>
 
       <div class="helpful">
