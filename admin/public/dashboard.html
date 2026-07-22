@@ -9,7 +9,6 @@
 </head>
 <body class="dashboard-body">
 
-  <!-- Mobile header -->
   <header class="mobile-header" id="mobile-header">
     <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Toggle menu">
       <svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
@@ -25,7 +24,6 @@
 
   <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
 
-  <!-- Sidebar -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo">
       <embed src="/assets/logo.svg" type="image/svg+xml" width="24" height="24">
@@ -77,10 +75,8 @@
     </div>
   </aside>
 
-  <!-- Main content -->
   <main class="main-content" id="main-content" onclick="closeSidebarOnMainClick(event)">
 
-    <!-- ── Overview ── -->
     <section id="view-overview">
       <div class="page-header">
         <h1 class="page-title">Overview</h1>
@@ -166,7 +162,6 @@
       </div>
     </section>
 
-    <!-- ── Users ── -->
     <section id="view-users" class="hidden">
       <div class="page-header">
         <h1 class="page-title">Users</h1>
@@ -186,7 +181,6 @@
       </div>
     </section>
 
-    <!-- ── Tasks ── -->
     <section id="view-tasks" class="hidden">
       <div class="page-header">
         <h1 class="page-title">Tasks</h1>
@@ -206,7 +200,6 @@
       </div>
     </section>
 
-    <!-- ── Files ── -->
     <section id="view-files" class="hidden">
       <div class="page-header">
         <h1 class="page-title">Files</h1>
@@ -226,7 +219,6 @@
       </div>
     </section>
 
-    <!-- ── Feed ── -->
     <section id="view-feed" class="hidden">
       <div class="page-header">
         <h1 class="page-title">Feed</h1>
@@ -246,7 +238,6 @@
       </div>
     </section>
 
-    <!-- ── Comments ── -->
     <section id="view-comments" class="hidden">
       <div class="page-header">
         <h1 class="page-title">Comments</h1>
@@ -266,7 +257,6 @@
       </div>
     </section>
 
-    <!-- ── Workspaces ── -->
     <section id="view-workspaces" class="hidden">
       <div class="page-header">
         <h1 class="page-title">Workspaces</h1>
@@ -286,7 +276,6 @@
       </div>
     </section>
 
-    <!-- ── Settings ── -->
     <section id="view-settings" class="hidden">
       <div class="page-header">
         <h1 class="page-title">Settings</h1>
@@ -318,7 +307,6 @@
 
   </main>
 
-  <!-- Reset Password Modal -->
   <div class="modal-overlay hidden" id="reset-modal">
     <div class="modal">
       <h2 class="modal-title">Reset password</h2>
@@ -334,7 +322,6 @@
     </div>
   </div>
 
-  <!-- Delete Confirm Modal -->
   <div class="modal-overlay hidden" id="delete-modal">
     <div class="modal">
       <h2 class="modal-title">Confirm deletion</h2>

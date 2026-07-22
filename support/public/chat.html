@@ -511,7 +511,6 @@
 <body>
 <div class="chat-page">
 
-  <!-- Top bar -->
   <header class="chat-topbar">
     <a href="/" class="topbar-brand">
       <img src="/assets/logo.svg" alt="Todoer">
@@ -526,10 +525,8 @@
     </nav>
   </header>
 
-  <!-- Main area -->
   <div class="chat-main" id="chatMain">
 
-    <!-- Gate: shown when not authenticated -->
     <div class="gate-wrap" id="gateView">
       <div class="gate-card">
         <div class="gate-logo">
@@ -568,7 +565,6 @@
       </div>
     </div>
 
-    <!-- Chat: shown when authenticated -->
     <div class="chat-ui" id="chatView" style="display:none;">
       <div class="conv-header">
         <div class="conv-avatar">
@@ -819,8 +815,6 @@
         break;
     }
   });
-
-  
 
   // ── Poll loop ──
   async function poll() {

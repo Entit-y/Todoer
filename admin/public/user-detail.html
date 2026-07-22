@@ -8,7 +8,6 @@
 </head>
 <body class="dashboard-body">
 
-  <!-- Mobile header -->
   <header class="mobile-header" id="mobile-header">
     <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Toggle menu">
       <svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
@@ -24,7 +23,6 @@
 
   <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
 
-  <!-- Sidebar -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo">
       <embed src="/assets/logo.svg" type="image/svg+xml" width="24" height="24">
@@ -73,20 +71,16 @@
 
   <main class="main-content" id="main-content" onclick="closeSidebarOnMainClick(event)">
 
-    <!-- Back -->
     <a href="/dashboard" class="back-btn" onclick="history.length > 1 && (event.preventDefault(), history.back())">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
       Back to Users
     </a>
 
-    <!-- Loading state -->
     <div id="loading-state" style="text-align:center;padding:60px 20px;color:var(--text-3);font-size:13px">Loading user…</div>
     <div id="error-state" class="hidden" style="text-align:center;padding:60px 20px;color:var(--red);font-size:13px">User not found.</div>
 
-    <!-- User content (hidden until loaded) -->
     <div id="user-content" class="hidden">
 
-      <!-- Header -->
       <div class="user-detail-header">
         <div class="user-header-left">
           <div class="user-avatar" id="user-avatar">?</div>
@@ -111,7 +105,6 @@
         </div>
       </div>
 
-      <!-- Stats strip -->
       <div class="user-stats-strip">
         <div class="user-stat-pill">
           <div class="val" id="stat-tasks" style="color:var(--blue)">0</div>
@@ -139,7 +132,6 @@
         </div>
       </div>
 
-      <!-- Tabs -->
       <div class="detail-tabs">
         <button class="detail-tab active" data-tab="tasks"      onclick="switchTab('tasks')">Tasks</button>
         <button class="detail-tab"        data-tab="files"      onclick="switchTab('files')">Files</button>
@@ -148,7 +140,6 @@
         <button class="detail-tab"        data-tab="workspaces" onclick="switchTab('workspaces')">Workspaces</button>
       </div>
 
-      <!-- Tasks tab -->
       <div class="tab-pane active" id="tab-tasks">
         <div class="table-wrap">
           <div class="table-scroll">
@@ -162,7 +153,6 @@
         </div>
       </div>
 
-      <!-- Files tab -->
       <div class="tab-pane" id="tab-files">
         <div class="table-wrap">
           <div class="table-scroll">
@@ -176,7 +166,6 @@
         </div>
       </div>
 
-      <!-- Comments tab -->
       <div class="tab-pane" id="tab-comments">
         <div class="table-wrap">
           <div class="table-scroll">
@@ -190,7 +179,6 @@
         </div>
       </div>
 
-      <!-- Feed tab -->
       <div class="tab-pane" id="tab-feed">
         <div class="table-wrap">
           <div class="table-scroll">
@@ -204,7 +192,6 @@
         </div>
       </div>
 
-      <!-- Workspaces tab -->
       <div class="tab-pane" id="tab-workspaces">
         <div class="table-wrap">
           <div class="table-scroll">
@@ -218,11 +205,10 @@
         </div>
       </div>
 
-    </div><!-- /user-content -->
+    </div>
 
   </main>
 
-  <!-- Reset Password Modal -->
   <div class="modal-overlay hidden" id="reset-modal">
     <div class="modal">
       <h2 class="modal-title">Reset password</h2>
@@ -238,7 +224,6 @@
     </div>
   </div>
 
-  <!-- Delete Confirm Modal -->
   <div class="modal-overlay hidden" id="delete-modal">
     <div class="modal">
       <h2 class="modal-title">Confirm deletion</h2>

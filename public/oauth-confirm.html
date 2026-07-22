@@ -221,7 +221,6 @@
     <h1 class="oauth-title">Authorize access</h1>
     <p class="oauth-sub">An application is requesting access to your Todoer account.</p>
 
-    <!-- App info strip -->
     <div class="app-strip">
       <div class="app-strip-icon">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -236,7 +235,6 @@
 
     <div class="oauth-error" id="oauthError"></div>
 
-    <!-- Scope list -->
     <ul class="scope-list">
       <li class="scope-item">
         <div class="scope-check">
@@ -268,7 +266,7 @@
       <form method="POST" action="/oauth/confirm_access" style="flex:1;" id="allowForm">
         <input type="hidden" name="request_id"  id="fieldRequestId">
         <input type="hidden" name="decision"    value="allow">
-        <!-- VULNERABLE (Vuln 3b): redirect_uri in form body, not from stored record -->
+        
         <input type="hidden" name="redirect_uri" id="fieldRedirectUri">
         <input type="hidden" name="state"       id="fieldStateAllow">
         <button type="submit" class="btn-allow" style="width:100%;">Allow</button>
