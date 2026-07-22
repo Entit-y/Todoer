@@ -5,3 +5,6 @@ docker-compose.override.yml
 uploads/
 backup/
 todoer.db
+__pycache__/
+animated-logo.svg
+logo.svg
