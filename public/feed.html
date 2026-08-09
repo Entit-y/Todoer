@@ -233,6 +233,7 @@
     }
   </style>
   <script>const APP_CONFIG = __APP_CONFIG__;</script>
+  <script src="/vendor/moment.min.js"></script>
 </head>
 <body>
 <div class="app-layout">
@@ -558,7 +559,7 @@
           <div class="message-meta">
             <span class="message-author">${escapeHtml(displayName)}</span>
             
-            <span class="message-time">${timeAgo(message.created_at)}</span>
+            <span class="message-time">${formatMessageTime(message)}</span>
           </div>
           ${isOwn ? `<button class="message-delete" onclick="deleteMessage(${message.id})" title="Delete">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -634,6 +635,11 @@
       if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
       if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
       return new Date(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+
+    function formatMessageTime(message) {
+      if (message.time_format) return moment(message.created_at).format(message.time_format);
+      return timeAgo(message.created_at);
     }
 
     document.getElementById('logoutBtn').addEventListener('click', async () => {

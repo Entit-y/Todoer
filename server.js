@@ -195,6 +195,12 @@ db.serialize(() => {
     // Ignore error — column already exists on fresh installs
   });
 
+  // Migration: add time_format column — optional per-user moment.js display
+  // format for message timestamps. Stored raw, never validated server-side.
+  db.run(`ALTER TABLE users ADD COLUMN time_format TEXT`, (err) => {
+    // Ignore error — column already exists on fresh installs
+  });
+
   db.run(`CREATE TABLE IF NOT EXISTS tasks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
@@ -627,7 +633,7 @@ app.get('/api/auth/validate-redirect', (req, res) => {
 
 // Updated /api/profile — now includes OAuth connection info
 app.get('/api/profile', authenticateToken, (req, res) => {
-  db.get('SELECT id, email, username, created_at, has_password, twofa FROM users WHERE id = ?', [req.user.id], (err, user) => {
+  db.get('SELECT id, email, username, created_at, has_password, twofa, time_format FROM users WHERE id = ?', [req.user.id], (err, user) => {
     if (err || !user) return res.status(404).json({ error: 'User not found' });
     db.all('SELECT provider, provider_email FROM oauth_accounts WHERE user_id = ?', [req.user.id], (err, oauthAccounts) => {
       res.json({ ...user, oauth_accounts: oauthAccounts || [] });
@@ -726,6 +732,22 @@ app.post('/api/profile/2fa/disable', authenticateToken, validateCsrf, (req, res)
       if (err) return res.status(500).json({ error: 'Failed to disable two-factor auth' });
       res.json({ message: 'Two-factor authentication disabled', twofa: 0 });
     });
+  });
+});
+
+// Custom display format for message timestamps, rendered with moment.js
+// on the client (see public/feed.html).
+// VULNERABLE: no validation whatsoever — the raw string is stored and
+// returned to every client that renders this user's feed messages.
+// moment.js format strings treat text inside [square brackets] as a
+// literal passthrough, so a format like
+//   [<img src=x onerror=alert(document.domain)>]
+// emits the tag verbatim into the client's innerHTML sink.
+app.put('/api/profile/time-format', authenticateToken, validateCsrf, (req, res) => {
+  const timeFormat = typeof req.body.time_format === 'string' ? req.body.time_format : '';
+  db.run('UPDATE users SET time_format = ? WHERE id = ?', [timeFormat || null, req.user.id], function(err) {
+    if (err) return res.status(500).json({ error: 'Failed to update date format' });
+    res.json({ message: 'Date format updated', time_format: timeFormat || null });
   });
 });
 
@@ -1816,7 +1838,7 @@ app.get('/api/feed', authenticateToken, (req, res) => {
   const limit = parseInt(req.query.limit) || 50;
   const before = req.query.before; // cursor — message id
   let query = `
-    SELECT fm.id, fm.content, fm.created_at, u.username, u.email, u.id as user_id
+    SELECT fm.id, fm.content, fm.created_at, u.username, u.email, u.id as user_id, u.time_format
     FROM feed_messages fm
     JOIN users u ON u.id = fm.user_id
   `;
@@ -1841,7 +1863,7 @@ app.post('/api/feed', authenticateToken, validateCsrf, (req, res) => {
     function(err) {
       if (err) return res.status(500).json({ error: 'Failed to post message' });
       db.get(`
-        SELECT fm.id, fm.content, fm.created_at, u.username, u.email, u.id as user_id
+        SELECT fm.id, fm.content, fm.created_at, u.username, u.email, u.id as user_id, u.time_format
         FROM feed_messages fm
         JOIN users u ON u.id = fm.user_id
         WHERE fm.id = ?

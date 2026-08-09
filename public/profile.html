@@ -209,6 +209,19 @@
         <p style="font-size:13px;color:var(--text-3);margin-bottom:16px;">Loading…</p>
       </section>
 
+      <section class="profile-section" id="dateFormatSection">
+        <h2>Date format</h2>
+        <p style="font-size:13px;color:var(--text-3);margin-bottom:16px;">Custom display format for the timestamps on your feed messages (moment.js tokens).</p>
+        <form id="dateFormatForm" class="profile-form">
+          <div class="form-group">
+            <label for="timeFormatInput">Format</label>
+            <input type="text" id="timeFormatInput" placeholder="MMM D, YYYY · h:mm a">
+          </div>
+          <div id="dateFormatMessage" class="message" style="display:none;"></div>
+          <button type="submit" class="btn btn-primary">Save date format</button>
+        </form>
+      </section>
+
       <section class="profile-section" id="connectedAccountsSection">
         <h2>Connected accounts</h2>
         <div id="connectedAccountsList">
@@ -511,6 +524,8 @@
           } catch { msg.textContent = 'An error occurred.'; msg.className = 'message error'; msg.style.display = 'block'; }
         });
 
+        document.getElementById('timeFormatInput').value = data.time_format || '';
+
         // ── Toast if returning from Google connect ──
         if (new URLSearchParams(window.location.search).get('connected') === '1') {
           history.replaceState(null, '', '/profile');
@@ -564,6 +579,19 @@
         const data = await r.json();
         if (r.ok) { msg.textContent = 'Email updated.'; msg.className = 'message success'; document.getElementById('profileEmail').textContent = document.getElementById('newEmail').value; }
         else { msg.textContent = data.error || 'Failed to update email'; msg.className = 'message error'; }
+        msg.style.display = 'block';
+      } catch { msg.textContent = 'An error occurred.'; msg.className = 'message error'; msg.style.display = 'block'; }
+    });
+
+    document.getElementById('dateFormatForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('dateFormatMessage');
+      msg.style.display = 'none'; msg.className = 'message';
+      try {
+        const r = await fetch('/api/profile/time-format', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() }, body: JSON.stringify({ time_format: document.getElementById('timeFormatInput').value }) });
+        const data = await r.json();
+        if (r.ok) { msg.textContent = 'Date format saved.'; msg.className = 'message success'; }
+        else { msg.textContent = data.error || 'Failed to save date format'; msg.className = 'message error'; }
         msg.style.display = 'block';
       } catch { msg.textContent = 'An error occurred.'; msg.className = 'message error'; msg.style.display = 'block'; }
     });
