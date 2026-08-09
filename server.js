@@ -190,6 +190,11 @@ db.serialize(() => {
     // Ignore error — column already exists on fresh installs
   });
 
+  // Migration: add twofa flag — set to 1 when user enables SMS two-factor auth
+  db.run(`ALTER TABLE users ADD COLUMN twofa INTEGER DEFAULT 0`, (err) => {
+    // Ignore error — column already exists on fresh installs
+  });
+
   db.run(`CREATE TABLE IF NOT EXISTS tasks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
@@ -383,6 +388,31 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
+// ============ TWO-FACTOR AUTH ============
+
+// In-memory store of issued SMS OTP codes, keyed by the code itself.
+// VULNERABLE: a plain object used as a lookup table with a truthy gate —
+// property reads walk the prototype chain, so keys like __proto__, toString
+// or constructor resolve to inherited truthy values without any valid code.
+// (Do not "fix" the gate with `in`, `Reflect.has` or `!== undefined` — they
+// all walk the same chain.)
+const pending2faCodes = {}; // { "482916": { userId, expiresAt } }
+
+// Simulated SMS gateway — in production this calls the SMS provider.
+// The code is only visible in the server logs, never in an HTTP response.
+function sendSmsCode(userId, code) {
+  console.log(`[SMS] OTP ${code} sent to user ${userId}`);
+}
+
+// TTL cleanup — expires codes older than 5 minutes.
+// Sweep-based on purpose: the verify gate must stay a bare truthy check.
+setInterval(() => {
+  const cutoff = Date.now();
+  for (const code of Object.keys(pending2faCodes)) {
+    if (pending2faCodes[code].expiresAt < cutoff) delete pending2faCodes[code];
+  }
+}, 60 * 1000);
+
 // ============ AUTH ROUTES ============
 
 app.post('/api/auth/register', registerLimiter, async (req, res) => {
@@ -450,6 +480,19 @@ app.post('/api/auth/login', loginLimiter, (req, res) => {
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) return res.status(401).json({ error: 'Invalid credentials' });
     if (!user.verified) return res.status(403).json({ error: 'Email not verified', email: user.email, unverified: true });
+    if (user.twofa) {
+      // Two-factor auth step — issue an SMS code and a short-lived pending-login
+      // token. No session cookie is set until the code is verified.
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      pending2faCodes[code] = { userId: user.id, expiresAt: Date.now() + 5 * 60 * 1000 };
+      sendSmsCode(user.id, code);
+      const twofaToken = jwt.sign(
+        { id: user.id, email: user.email, username: user.username || null, purpose: '2fa' },
+        JWT_SECRET,
+        { expiresIn: '5m' }
+      );
+      return res.json({ requires2fa: true, twofa_token: twofaToken });
+    }
     const token = jwt.sign({ id: user.id, email: user.email, username: user.username || null }, JWT_SECRET, { expiresIn: '7d' });
     res.cookie('token', token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 });
     setCsrfCookie(res, generateCsrfToken());
@@ -460,6 +503,35 @@ app.post('/api/auth/login', loginLimiter, (req, res) => {
 app.post('/api/auth/logout', (req, res) => {
   res.clearCookie('token');
   res.json({ message: 'Logged out successfully' });
+});
+
+// Verify the SMS code for a pending two-factor login.
+// VULNERABLE: the gate is a bare truthy lookup on a plain object —
+// `pending2faCodes[code]` walks the prototype chain, so sending
+// X-2FA-Code: __proto__ (or toString / constructor) resolves to an
+// inherited truthy value and passes with no valid OTP ever issued.
+app.post('/api/auth/verify-2fa', loginLimiter, (req, res) => {
+  const code = req.headers['x-2fa-code'];
+  const twofaToken = req.body.twofa_token;
+  if (!code || !twofaToken) return res.status(400).json({ error: 'Code and token are required' });
+
+  if (pending2faCodes[code]) {
+    let payload;
+    try {
+      payload = jwt.verify(twofaToken, JWT_SECRET);
+    } catch {
+      return res.status(401).json({ error: 'Invalid 2FA session' });
+    }
+    if (payload.purpose !== '2fa') return res.status(401).json({ error: 'Invalid 2FA session' });
+
+    delete pending2faCodes[code];
+    const token = jwt.sign({ id: payload.id, email: payload.email, username: payload.username || null }, JWT_SECRET, { expiresIn: '7d' });
+    res.cookie('token', token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 });
+    setCsrfCookie(res, generateCsrfToken());
+    res.json({ message: '2FA verified', user: { id: payload.id, email: payload.email, username: payload.username || null } });
+  } else {
+    res.status(401).json({ error: 'Invalid 2FA code' });
+  }
 });
 
 app.post('/api/auth/verify-email', verificationLimiter, (req, res) => {
@@ -555,7 +627,7 @@ app.get('/api/auth/validate-redirect', (req, res) => {
 
 // Updated /api/profile — now includes OAuth connection info
 app.get('/api/profile', authenticateToken, (req, res) => {
-  db.get('SELECT id, email, username, created_at, has_password FROM users WHERE id = ?', [req.user.id], (err, user) => {
+  db.get('SELECT id, email, username, created_at, has_password, twofa FROM users WHERE id = ?', [req.user.id], (err, user) => {
     if (err || !user) return res.status(404).json({ error: 'User not found' });
     db.all('SELECT provider, provider_email FROM oauth_accounts WHERE user_id = ?', [req.user.id], (err, oauthAccounts) => {
       res.json({ ...user, oauth_accounts: oauthAccounts || [] });
@@ -622,6 +694,38 @@ app.post('/api/profile/set-password', authenticateToken, validateCsrf, async (re
   db.run('UPDATE users SET password = ?, has_password = 1 WHERE id = ?', [hashed, req.user.id], function(err) {
     if (err) return res.status(500).json({ error: 'Failed to set password' });
     res.json({ message: 'Password set successfully' });
+  });
+});
+
+// ── Two-factor authentication (SMS) ──
+// Both endpoints require the current password, mirroring the account
+// deletion flow — re-authentication for a security-sensitive change.
+
+app.post('/api/profile/2fa/enable', authenticateToken, validateCsrf, (req, res) => {
+  const { password } = req.body;
+  if (!password) return res.status(400).json({ error: 'Password is required' });
+  db.get('SELECT password FROM users WHERE id = ?', [req.user.id], async (err, user) => {
+    if (err || !user) return res.status(404).json({ error: 'User not found' });
+    const validPassword = await bcrypt.compare(password, user.password);
+    if (!validPassword) return res.status(401).json({ error: 'Current password is incorrect' });
+    db.run('UPDATE users SET twofa = 1 WHERE id = ?', [req.user.id], function(err) {
+      if (err) return res.status(500).json({ error: 'Failed to enable two-factor auth' });
+      res.json({ message: 'Two-factor authentication enabled', twofa: 1 });
+    });
+  });
+});
+
+app.post('/api/profile/2fa/disable', authenticateToken, validateCsrf, (req, res) => {
+  const { password } = req.body;
+  if (!password) return res.status(400).json({ error: 'Password is required' });
+  db.get('SELECT password FROM users WHERE id = ?', [req.user.id], async (err, user) => {
+    if (err || !user) return res.status(404).json({ error: 'User not found' });
+    const validPassword = await bcrypt.compare(password, user.password);
+    if (!validPassword) return res.status(401).json({ error: 'Current password is incorrect' });
+    db.run('UPDATE users SET twofa = 0 WHERE id = ?', [req.user.id], function(err) {
+      if (err) return res.status(500).json({ error: 'Failed to disable two-factor auth' });
+      res.json({ message: 'Two-factor authentication disabled', twofa: 0 });
+    });
   });
 });
 

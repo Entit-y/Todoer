@@ -24,17 +24,22 @@
       <p class="subtitle" id="subtitle">Enter your credentials to access your account</p>
 
       <form id="loginForm">
-        <div class="form-group">
+        <div class="form-group" id="emailGroup">
           <label for="email">Email</label>
           <input type="email" id="email" name="email" required placeholder="you@example.com" autocomplete="email">
         </div>
 
-        <div class="form-group">
+        <div class="form-group" id="passwordGroup">
           <div class="label-row">
             <label for="password">Password</label>
             <a href="/forgot-password">Forgot password?</a>
           </div>
           <input type="password" id="password" name="password" required placeholder="••••••••" autocomplete="current-password">
+        </div>
+
+        <div class="form-group" id="twofaGroup" style="display:none;">
+          <label for="twofaCode">SMS Code</label>
+          <input type="text" id="twofaCode" placeholder="Enter the 6-digit code" inputmode="numeric" autocomplete="one-time-code">
         </div>
 
         <div id="errorMessage" class="error-message" style="display:none;margin-bottom:16px;"></div>
@@ -170,8 +175,14 @@
     }
 
     /* ── Form submit ── */
+    let twofaToken = null;
+
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
+      if (twofaToken) {
+        await submitTwofaCode(e.target.querySelector('button[type="submit"]'));
+        return;
+      }
       const email = document.getElementById('email').value;
       const password = document.getElementById('password').value;
       const errorMessage = document.getElementById('errorMessage');
@@ -197,6 +208,11 @@
           btn.textContent = 'Sign in';
           return;
         }
+        if (data.requires2fa) {
+          twofaToken = data.twofa_token;
+          enterTwofaStep(btn);
+          return;
+        }
         const destination = await resolveRedirect();
         window.location.href = destination;
       } catch {
@@ -206,6 +222,46 @@
         btn.textContent = 'Sign in';
       }
     });
+
+    function enterTwofaStep(btn) {
+      document.getElementById('subtitle').textContent = 'Enter the code sent to your phone';
+      document.getElementById('emailGroup').style.display = 'none';
+      document.getElementById('passwordGroup').style.display = 'none';
+      document.getElementById('twofaGroup').style.display = 'block';
+      btn.textContent = 'Verify code';
+      btn.disabled = false;
+      document.getElementById('twofaCode').focus();
+    }
+
+    async function submitTwofaCode(btn) {
+      const code = document.getElementById('twofaCode').value;
+      const errorMessage = document.getElementById('errorMessage');
+      errorMessage.style.display = 'none';
+      btn.disabled = true;
+      btn.textContent = 'Verifying\u2026';
+      try {
+        const response = await fetch('/api/auth/verify-2fa', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-2FA-Code': code },
+          body: JSON.stringify({ twofa_token: twofaToken })
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          errorMessage.textContent = data.error || 'Verification failed';
+          errorMessage.style.display = 'block';
+          btn.disabled = false;
+          btn.textContent = 'Verify code';
+          return;
+        }
+        const destination = await resolveRedirect();
+        window.location.href = destination;
+      } catch {
+        errorMessage.textContent = 'An error occurred. Please try again.';
+        errorMessage.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Verify code';
+      }
+    }
   </script>
 </body>
 </html>
