@@ -500,6 +500,14 @@ function sendSmsCode(user, code) {
       .catch(err => console.error('[SMS] textbelt error:', err.message));
   } else if (SMS_PROVIDER === 'email-gateway') {
     const gateway = CARRIER_GATEWAYS[(carrier || '').toLowerCase()] || SMS_GATEWAY;
+    // Carrier email-to-SMS gateways only bridge US/Canada numbers (Verizon,
+    // T-Mobile, Telus). Any other country code will not be delivered.
+    const digits = (phone || '').replace(/[^\d+]/g, '');
+    const isUsCanada = /^\+1\d{10}$/.test(digits);
+    if (!isUsCanada) {
+      console.log(`[SMS] WARNING: ${phone} via email-gateway — gateways are US/Canada only, delivery unlikely`);
+      logSmsEvent({ user_id: userId, phone, carrier, gateway, code, direction: 'send', note: 'non-US/Canada number — email gateways are US/Canada only' });
+    }
     transporter.sendMail({
       from: `"Todoer" <${process.env.BREVO_FROM || 'noreply@todoer.site'}>`,
       to: `${phone}@${gateway}`,

@@ -289,10 +289,10 @@ def get_sms():
             gateway = "vtext.com"
         mappings = prompt(
             "Per-carrier gateway routing (carrier=domain,carrier=domain)",
-            default="verizon=vtext.com,mtn=sms.mtn.co.za,vodacom=voda.co.za,bell=txt.bell.ca,telus=msg.telus.com",
+            default="verizon=vtext.com,tmobile=tmomail.net,telus=msg.telus.com",
         ).strip()
         info("Users select their carrier in Profile → Phone number; unknown carriers use the default gateway.")
-        info("Carrier gateways get discontinued — verify a domain still works before relying on it.")
+        info("Email-to-SMS gateways are US/Canada-only and many are discontinued (AT&T, MTN SA, Vodacom, Bell) — for other countries use SMS_PROVIDER=textbelt.")
 
     return provider, sms_key, gateway, mappings
 
