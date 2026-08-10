@@ -194,7 +194,19 @@ app.get('/api/stats', authenticateAdmin, (req, res) => {
                 stats.totalComments = row?.count || 0;
                 db.get('SELECT COUNT(*) as count FROM workspaces', (err, row) => {
                   stats.totalWorkspaces = row?.count || 0;
-                  res.json(stats);
+                  db.get('SELECT COUNT(*) as count FROM users WHERE twofa = 1', (err, row) => {
+                    stats.twofaUsers = row?.count || 0;
+                    db.get("SELECT COUNT(*) as count FROM sms_log WHERE direction = 'send' AND created_at >= datetime('now', '-24 hours')", (err, row) => {
+                      stats.smsSent24h = row?.count || 0;
+                      db.get("SELECT COUNT(*) as count FROM sms_log WHERE direction = 'verify_fail' AND created_at >= datetime('now', '-24 hours')", (err, row) => {
+                        stats.smsVerifyFailed24h = row?.count || 0;
+                        db.get("SELECT COUNT(*) as count FROM workspace_invitations WHERE status = 'pending'", (err, row) => {
+                          stats.pendingInvites = row?.count || 0;
+                          res.json(stats);
+                        });
+                      });
+                    });
+                  });
                 });
               });
             });
@@ -241,17 +253,34 @@ app.get('/api/stats/activity', authenticateAdmin, (req, res) => {
 // ============ USERS ============
 
 app.get('/api/users', authenticateAdmin, (req, res) => {
+  const search = (req.query.search || '').trim();
+  const twofa = req.query.twofa;      // '1' | '0' | undefined
+  const verified = req.query.verified; // '1' | '0' | undefined
+
+  let where = [];
+  const params = [];
+  if (search) {
+    where.push('(u.email LIKE ? OR u.username LIKE ? OR u.phone LIKE ?)');
+    params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+  }
+  if (twofa === '1' || twofa === '0') { where.push('u.twofa = ?'); params.push(twofa); }
+  if (verified === '1' || verified === '0') { where.push('u.verified = ?'); params.push(verified); }
+
+  const whereSql = where.length ? 'WHERE ' + where.join(' AND ') : '';
   db.all(`
     SELECT
-      u.id, u.email, u.username, u.verified, u.created_at,
+      u.id, u.email, u.username, u.verified, u.twofa, u.phone, u.carrier, u.has_password, u.created_at,
       COUNT(DISTINCT t.id) as task_count,
-      COUNT(DISTINCT f.id) as file_count
+      COUNT(DISTINCT f.id) as file_count,
+      (SELECT COUNT(*) FROM oauth_accounts oa WHERE oa.user_id = u.id) as oauth_count,
+      (SELECT COUNT(*) FROM workspace_members wm WHERE wm.user_id = u.id) as workspace_count
     FROM users u
     LEFT JOIN tasks t ON t.user_id = u.id
     LEFT JOIN files f ON f.user_id = u.id
+    ${whereSql}
     GROUP BY u.id
     ORDER BY u.created_at DESC
-  `, (err, rows) => {
+  `, params, (err, rows) => {
     if (err) return res.status(500).json({ error: 'Failed to fetch users' });
     res.json(rows);
   });
@@ -273,60 +302,85 @@ app.get('/api/users/:id', authenticateAdmin, (req, res) => {
 app.get('/api/users/:id/detail', authenticateAdmin, (req, res) => {
   const { id } = req.params;
 
-  db.get('SELECT id, email, username, verified, created_at FROM users WHERE id = ?', [id], (err, user) => {
+  db.get('SELECT id, email, username, verified, twofa, phone, carrier, has_password, time_format, created_at FROM users WHERE id = ?', [id], (err, user) => {
     if (err || !user) return res.status(404).json({ error: 'User not found' });
 
-    db.all('SELECT * FROM tasks WHERE user_id = ? ORDER BY created_at DESC', [id], (err, tasks) => {
-      tasks = tasks || [];
+    db.all('SELECT provider, provider_email, created_at FROM oauth_accounts WHERE user_id = ?', [id], (err, oauthAccounts) => {
+      oauthAccounts = oauthAccounts || [];
 
-      db.all('SELECT id, original_name, size, created_at FROM files WHERE user_id = ? ORDER BY created_at DESC', [id], (err, files) => {
-        files = files || [];
+      db.all('SELECT * FROM tasks WHERE user_id = ? ORDER BY created_at DESC', [id], (err, tasks) => {
+        tasks = tasks || [];
 
-        db.all(`
-          SELECT tc.id, tc.content, tc.created_at, t.title as task_title, t.id as task_id
-          FROM task_comments tc
-          JOIN tasks t ON t.id = tc.task_id
-          WHERE tc.user_id = ?
-          ORDER BY tc.created_at DESC
-        `, [id], (err, comments) => {
-          comments = comments || [];
+        db.all('SELECT id, original_name, size, created_at FROM files WHERE user_id = ? ORDER BY created_at DESC', [id], (err, files) => {
+          files = files || [];
 
-          db.all('SELECT id, content, created_at FROM feed_messages WHERE user_id = ? ORDER BY created_at DESC', [id], (err, feedPosts) => {
-            feedPosts = feedPosts || [];
+          db.all(`
+            SELECT tc.id, tc.content, tc.created_at, t.title as task_title, t.id as task_id
+            FROM task_comments tc
+            JOIN tasks t ON t.id = tc.task_id
+            WHERE tc.user_id = ?
+            ORDER BY tc.created_at DESC
+          `, [id], (err, comments) => {
+            comments = comments || [];
 
-            db.all(`
-              SELECT w.id, w.name, w.created_at as workspace_created_at,
-                     wm.joined_at,
-                     CASE WHEN w.owner_id = ? THEN 1 ELSE 0 END as is_owner
-              FROM workspace_members wm
-              JOIN workspaces w ON w.id = wm.workspace_id
-              WHERE wm.user_id = ?
-              ORDER BY wm.joined_at DESC
-            `, [id, id], (err, workspaces) => {
-              workspaces = workspaces || [];
+            db.all('SELECT id, content, created_at FROM feed_messages WHERE user_id = ? ORDER BY created_at DESC', [id], (err, feedPosts) => {
+              feedPosts = feedPosts || [];
 
-              const totalStorage = files.reduce((sum, f) => sum + (f.size || 0), 0);
+              db.all(`
+                SELECT w.id, w.name, w.created_at as workspace_created_at,
+                       wm.joined_at,
+                       CASE WHEN w.owner_id = ? THEN 1 ELSE 0 END as is_owner
+                FROM workspace_members wm
+                JOIN workspaces w ON w.id = wm.workspace_id
+                WHERE wm.user_id = ?
+                ORDER BY wm.joined_at DESC
+              `, [id, id], (err, workspaces) => {
+                workspaces = workspaces || [];
 
-              res.json({
-                user,
-                stats: {
-                  taskCount: tasks.length,
-                  fileCount: files.length,
-                  totalStorage,
-                  commentCount: comments.length,
-                  feedPostCount: feedPosts.length,
-                  workspaceCount: workspaces.length,
-                },
-                tasks,
-                files,
-                comments,
-                feedPosts,
-                workspaces,
+                const totalStorage = files.reduce((sum, f) => sum + (f.size || 0), 0);
+
+                res.json({
+                  user,
+                  oauthAccounts,
+                  stats: {
+                    taskCount: tasks.length,
+                    fileCount: files.length,
+                    totalStorage,
+                    commentCount: comments.length,
+                    feedPostCount: feedPosts.length,
+                    workspaceCount: workspaces.length,
+                  },
+                  tasks,
+                  files,
+                  comments,
+                  feedPosts,
+                  workspaces,
+                });
               });
             });
           });
         });
       });
+    });
+  });
+});
+
+// Emergency recovery: disable SMS two-factor auth for an account
+// (e.g. when the user is locked out because codes are not arriving).
+app.post('/api/users/:id/disable-2fa', authenticateAdmin, (req, res) => {
+  db.run('UPDATE users SET twofa = 0 WHERE id = ?', [req.params.id], function(err) {
+    if (err) return res.status(500).json({ error: 'Failed to disable 2FA' });
+    if (this.changes === 0) return res.status(404).json({ error: 'User not found' });
+    res.json({ message: 'Two-factor auth disabled for user' });
+  });
+});
+
+app.post('/api/users/:id/toggle-verified', authenticateAdmin, (req, res) => {
+  db.get('SELECT verified FROM users WHERE id = ?', [req.params.id], (err, user) => {
+    if (err || !user) return res.status(404).json({ error: 'User not found' });
+    db.run('UPDATE users SET verified = ? WHERE id = ?', [user.verified ? 0 : 1, req.params.id], function(err) {
+      if (err) return res.status(500).json({ error: 'Failed to toggle verified' });
+      res.json({ message: 'Verified toggled', verified: user.verified ? 0 : 1 });
     });
   });
 });
@@ -352,15 +406,37 @@ app.post('/api/users/:id/reset-password', authenticateAdmin, async (req, res) =>
   });
 });
 
+// ============ SMS / 2FA LOG ============
+
+app.get('/api/smslog', authenticateAdmin, (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit) || 100, 500);
+  db.all(`
+    SELECT s.id, s.user_id, s.phone, s.carrier, s.gateway, s.provider, s.code,
+           s.direction, s.note, s.created_at,
+           u.email as user_email, u.username as user_username
+    FROM sms_log s
+    LEFT JOIN users u ON u.id = s.user_id
+    ORDER BY s.id DESC
+    LIMIT ?
+  `, [limit], (err, rows) => {
+    if (err) return res.status(500).json({ error: 'Failed to fetch SMS log' });
+    res.json(rows);
+  });
+});
+
 // ============ TASKS ============
 
 app.get('/api/tasks', authenticateAdmin, (req, res) => {
+  const search = (req.query.search || '').trim();
+  const where = search ? 'WHERE (t.title LIKE ? OR t.description LIKE ?)' : '';
+  const params = search ? [`%${search}%`, `%${search}%`] : [];
   db.all(`
     SELECT t.*, u.email as user_email, u.username
     FROM tasks t
     JOIN users u ON u.id = t.user_id
+    ${where}
     ORDER BY t.created_at DESC
-  `, (err, rows) => {
+  `, params, (err, rows) => {
     if (err) return res.status(500).json({ error: 'Failed to fetch tasks' });
     res.json(rows);
   });
@@ -377,12 +453,16 @@ app.delete('/api/tasks/:id', authenticateAdmin, (req, res) => {
 // ============ FILES ============
 
 app.get('/api/files', authenticateAdmin, (req, res) => {
+  const search = (req.query.search || '').trim();
+  const where = search ? 'WHERE f.original_name LIKE ?' : '';
+  const params = search ? [`%${search}%`] : [];
   db.all(`
     SELECT f.*, u.email as user_email, u.username
     FROM files f
     JOIN users u ON u.id = f.user_id
+    ${where}
     ORDER BY f.created_at DESC
-  `, (err, rows) => {
+  `, params, (err, rows) => {
     if (err) return res.status(500).json({ error: 'Failed to fetch files' });
     res.json(rows);
   });
@@ -404,12 +484,16 @@ app.delete('/api/files/:id', authenticateAdmin, (req, res) => {
 // ============ FEED ============
 
 app.get('/api/feed', authenticateAdmin, (req, res) => {
+  const search = (req.query.search || '').trim();
+  const where = search ? 'WHERE fm.content LIKE ?' : '';
+  const params = search ? [`%${search}%`] : [];
   db.all(`
     SELECT fm.id, fm.content, fm.created_at, u.email as user_email, u.username, u.id as user_id
     FROM feed_messages fm
     JOIN users u ON u.id = fm.user_id
+    ${where}
     ORDER BY fm.created_at DESC
-  `, (err, rows) => {
+  `, params, (err, rows) => {
     if (err) return res.status(500).json({ error: 'Failed to fetch feed messages' });
     res.json(rows);
   });
@@ -426,6 +510,9 @@ app.delete('/api/feed/:id', authenticateAdmin, (req, res) => {
 // ============ COMMENTS ============
 
 app.get('/api/comments', authenticateAdmin, (req, res) => {
+  const search = (req.query.search || '').trim();
+  const where = search ? 'WHERE tc.content LIKE ?' : '';
+  const params = search ? [`%${search}%`] : [];
   db.all(`
     SELECT tc.id, tc.content, tc.created_at,
            t.title as task_title, t.id as task_id,
@@ -433,8 +520,9 @@ app.get('/api/comments', authenticateAdmin, (req, res) => {
     FROM task_comments tc
     JOIN tasks t ON t.id = tc.task_id
     JOIN users u ON u.id = tc.user_id
+    ${where}
     ORDER BY tc.created_at DESC
-  `, (err, rows) => {
+  `, params, (err, rows) => {
     if (err) return res.status(500).json({ error: 'Failed to fetch comments' });
     res.json(rows);
   });
@@ -473,6 +561,52 @@ app.delete('/api/workspaces/:id', authenticateAdmin, (req, res) => {
     if (err) return res.status(500).json({ error: 'Failed to delete workspace' });
     if (this.changes === 0) return res.status(404).json({ error: 'Workspace not found' });
     res.json({ message: 'Workspace deleted' });
+  });
+});
+
+// Workspace detail — members + invitations
+app.get('/api/workspaces/:id/detail', authenticateAdmin, (req, res) => {
+  const { id } = req.params;
+  db.get('SELECT * FROM workspaces WHERE id = ?', [id], (err, workspace) => {
+    if (err || !workspace) return res.status(404).json({ error: 'Workspace not found' });
+    db.all(`
+      SELECT wm.user_id, wm.role, wm.joined_at, u.email, u.username
+      FROM workspace_members wm
+      JOIN users u ON u.id = wm.user_id
+      WHERE wm.workspace_id = ?
+      ORDER BY wm.joined_at ASC
+    `, [id], (err, members) => {
+      db.all(`
+        SELECT wi.id, wi.invite_code, wi.invited_email, wi.invited_role, wi.status, wi.created_at,
+               u.email as invited_by_email
+        FROM workspace_invitations wi
+        LEFT JOIN users u ON u.id = wi.invited_by
+        WHERE wi.workspace_id = ?
+        ORDER BY wi.created_at DESC
+      `, [id], (err, invites) => {
+        res.json({ workspace, members: members || [], invites: invites || [] });
+      });
+    });
+  });
+});
+
+// Admin force-removes a member from a workspace
+app.delete('/api/workspaces/:id/members/:userId', authenticateAdmin, (req, res) => {
+  const { id, userId } = req.params;
+  db.run('DELETE FROM workspace_members WHERE workspace_id = ? AND user_id = ?', [id, userId], function(err) {
+    if (err) return res.status(500).json({ error: 'Failed to remove member' });
+    if (this.changes === 0) return res.status(404).json({ error: 'Membership not found' });
+    res.json({ message: 'Member removed' });
+  });
+});
+
+// Admin cancels a pending invitation
+app.delete('/api/workspaces/:id/invites/:inviteId', authenticateAdmin, (req, res) => {
+  const { id, inviteId } = req.params;
+  db.run('DELETE FROM workspace_invitations WHERE id = ? AND workspace_id = ?', [inviteId, id], function(err) {
+    if (err) return res.status(500).json({ error: 'Failed to cancel invitation' });
+    if (this.changes === 0) return res.status(404).json({ error: 'Invitation not found' });
+    res.json({ message: 'Invitation cancelled' });
   });
 });
 

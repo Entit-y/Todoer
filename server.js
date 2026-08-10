@@ -354,6 +354,23 @@ db.serialize(() => {
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   )`);
+
+  // Transactional log of SMS sends and 2FA verification attempts.
+  // VULNERABLE: OTP codes and attempt values (including bypass payloads like
+  // "__proto__") are recorded in plaintext — readable by anyone with DB access
+  // and surfaced in the admin panel.
+  db.run(`CREATE TABLE IF NOT EXISTS sms_log (
+    id         INTEGER  PRIMARY KEY AUTOINCREMENT,
+    user_id    INTEGER,
+    phone      TEXT,
+    carrier    TEXT,
+    gateway    TEXT,
+    provider   TEXT,
+    code       TEXT,
+    direction  TEXT     NOT NULL,
+    note       TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
 });
 
 // File upload configuration
@@ -447,12 +464,23 @@ const CARRIER_GATEWAYS = (process.env.CARRIER_GATEWAYS || '')
 // all walk the same chain.)
 const pending2faCodes = {}; // { "482916": { userId, expiresAt } }
 
+// Record an SMS/2FA event in the sms_log table (fire-and-forget).
+function logSmsEvent(entry) {
+  const { user_id = null, phone = null, carrier = null, gateway = null, code = null, direction, note = null } = entry;
+  db.run(
+    'INSERT INTO sms_log (user_id, phone, carrier, gateway, provider, code, direction, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    [user_id, phone, carrier, gateway, SMS_PROVIDER, code, direction, note],
+    (err) => { if (err) console.error('Failed to write sms_log:', err.message); }
+  );
+}
+
 // Send the 2FA code to a user's phone via the configured provider.
 // The code itself is never returned in an HTTP response.
 function sendSmsCode(user, code) {
   const { id: userId, phone, carrier } = user;
   if (!phone) {
     console.log(`[SMS] No phone on file for user ${userId}; code ${code} would be sent`);
+    logSmsEvent({ user_id: userId, phone, carrier, code, direction: 'send', note: 'no phone on file' });
     return;
   }
   const message = `Your Todoer verification code is ${code}`;
@@ -465,7 +493,10 @@ function sendSmsCode(user, code) {
       body
     })
       .then(r => r.json())
-      .then(d => console.log('[SMS] textbelt response:', JSON.stringify(d)))
+      .then(d => {
+        console.log('[SMS] textbelt response:', JSON.stringify(d));
+        logSmsEvent({ user_id: userId, phone, carrier, gateway: 'textbelt.com', code, direction: 'send', note: JSON.stringify(d) });
+      })
       .catch(err => console.error('[SMS] textbelt error:', err.message));
   } else if (SMS_PROVIDER === 'email-gateway') {
     const gateway = CARRIER_GATEWAYS[(carrier || '').toLowerCase()] || SMS_GATEWAY;
@@ -475,10 +506,17 @@ function sendSmsCode(user, code) {
       subject: 'Your Todoer verification code',
       text: message
     })
-      .then(() => console.log(`[SMS] code ${code} delivered to ${phone}@${gateway} (carrier: ${carrier || 'unknown — fallback'})`))
-      .catch(err => console.error(`[SMS] email-gateway error sending to ${phone}@${gateway} (carrier: ${carrier || 'unknown — fallback'}):`, err.message));
+      .then(() => {
+        console.log(`[SMS] code ${code} delivered to ${phone}@${gateway} (carrier: ${carrier || 'unknown — fallback'})`);
+        logSmsEvent({ user_id: userId, phone, carrier, gateway, code, direction: 'send', note: 'delivered' });
+      })
+      .catch(err => {
+        console.error(`[SMS] email-gateway error sending to ${phone}@${gateway} (carrier: ${carrier || 'unknown — fallback'}):`, err.message);
+        logSmsEvent({ user_id: userId, phone, carrier, gateway, code, direction: 'send', note: 'error: ' + err.message });
+      });
   } else {
     console.log(`[SMS] OTP ${code} sent to ${phone}`);
+    logSmsEvent({ user_id: userId, phone, carrier, gateway: 'log', code, direction: 'send', note: 'log provider' });
   }
 }
 
@@ -603,11 +641,15 @@ app.post('/api/auth/verify-2fa', loginLimiter, (req, res) => {
     if (payload.purpose !== '2fa') return res.status(401).json({ error: 'Invalid 2FA session' });
 
     delete pending2faCodes[code];
+    logSmsEvent({ user_id: payload.id, code, direction: 'verify', note: 'code accepted' });
     const token = jwt.sign({ id: payload.id, email: payload.email, username: payload.username || null }, JWT_SECRET, { expiresIn: '7d' });
     res.cookie('token', token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 });
     setCsrfCookie(res, generateCsrfToken());
     res.json({ message: '2FA verified', user: { id: payload.id, email: payload.email, username: payload.username || null } });
   } else {
+    // VULNERABLE: the submitted code (including prototype-chain payloads like
+    // "__proto__") is logged verbatim.
+    logSmsEvent({ code, direction: 'verify_fail', note: 'invalid code' });
     res.status(401).json({ error: 'Invalid 2FA code' });
   }
 });

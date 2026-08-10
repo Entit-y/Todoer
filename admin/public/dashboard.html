@@ -61,6 +61,11 @@
         <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="3"/><path d="M6.5 17.5c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/><circle cx="5" cy="13" r="2.5"/><circle cx="19" cy="13" r="2.5"/><path d="M2 21c0-2 1.5-3.5 3-3.5"/><path d="M22 21c0-2-1.5-3.5-3-3.5"/></svg>
         Workspaces
       </button>
+      <div class="sidebar-section-label" style="margin-top:6px">2FA &amp; SMS</div>
+      <button class="nav-item" data-view="smslog" onclick="showView('smslog')">
+        <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><polyline points="8 9 12 13 16 9"/></svg>
+        SMS Log
+      </button>
       <div class="sidebar-section-label" style="margin-top:6px">System</div>
       <button class="nav-item" data-view="settings" onclick="showView('settings')">
         <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -124,6 +129,21 @@
           <div class="stat-value" id="stat-workspaces">—</div>
           <div class="stat-delta">active</div>
         </div>
+        <div class="stat-card">
+          <div class="stat-label">2FA Enabled</div>
+          <div class="stat-value green" id="stat-twofa">—</div>
+          <div class="stat-delta">accounts</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">SMS Sent 24h</div>
+          <div class="stat-value blue" id="stat-sms-sent">—</div>
+          <div class="stat-delta">delivery attempts</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Failed 2FA 24h</div>
+          <div class="stat-value red" id="stat-sms-failed">—</div>
+          <div class="stat-delta">invalid codes</div>
+        </div>
       </div>
 
       <div class="charts-grid">
@@ -160,6 +180,23 @@
           </table>
         </div>
       </div>
+
+      <div class="section-header">
+        <span class="section-title">Recent SMS Activity</span>
+        <button class="btn-secondary" onclick="showView('smslog')">View all →</button>
+      </div>
+      <div class="table-wrap">
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr><th>ID</th><th>User</th><th>Target</th><th>Event</th><th>Code</th><th>When</th></tr>
+            </thead>
+            <tbody id="overview-sms-body">
+              <tr><td colspan="6" class="loading">fetching data…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </section>
 
     <section id="view-users" class="hidden">
@@ -167,14 +204,27 @@
         <h1 class="page-title">Users</h1>
         <p class="page-subtitle">All registered accounts</p>
       </div>
+      <div class="filter-bar">
+        <input type="text" id="users-search" class="filter-input" placeholder="Search email, username or phone…" oninput="reloadUsers()">
+        <select id="users-filter-twofa" class="filter-input" style="width:auto" onchange="reloadUsers()">
+          <option value="">2FA: all</option>
+          <option value="1">2FA: enabled</option>
+          <option value="0">2FA: disabled</option>
+        </select>
+        <select id="users-filter-verified" class="filter-input" style="width:auto" onchange="reloadUsers()">
+          <option value="">Verified: all</option>
+          <option value="1">Verified: yes</option>
+          <option value="0">Verified: no</option>
+        </select>
+      </div>
       <div class="table-wrap">
         <div class="table-scroll">
           <table>
             <thead>
-              <tr><th>ID</th><th>Email</th><th>Username</th><th>Verified</th><th>Tasks</th><th>Files</th><th>Registered</th><th></th></tr>
+              <tr><th>ID</th><th>Email</th><th>Username</th><th>Verified</th><th>2FA</th><th>Phone</th><th>OAuth</th><th>WS</th><th>Tasks</th><th>Files</th><th>Registered</th><th></th></tr>
             </thead>
             <tbody id="users-body">
-              <tr><td colspan="8" class="loading">fetching data…</td></tr>
+              <tr><td colspan="12" class="loading">fetching data…</td></tr>
             </tbody>
           </table>
         </div>
@@ -276,6 +326,29 @@
       </div>
     </section>
 
+    <section id="view-smslog" class="hidden">
+      <div class="page-header">
+        <h1 class="page-title">SMS &amp; 2FA Log</h1>
+        <p class="page-subtitle">Code deliveries and verification attempts — including failed and bypass payloads</p>
+      </div>
+      <div class="filter-bar">
+        <button class="btn-secondary" onclick="loadSmsLog()">Refresh</button>
+        <span style="font-size:12px;color:var(--text-3);margin-left:4px">auto-refreshes every 15s</span>
+      </div>
+      <div class="table-wrap">
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr><th>ID</th><th>When</th><th>User</th><th>Target</th><th>Event</th><th>Code</th><th>Note</th></tr>
+            </thead>
+            <tbody id="smslog-body">
+              <tr><td colspan="7" class="loading">fetching data…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
     <section id="view-settings" class="hidden">
       <div class="page-header">
         <h1 class="page-title">Settings</h1>
@@ -362,7 +435,7 @@
       window.scrollTo({ top: 0, behavior: 'smooth' });
       if (!loaded.has(name)) {
         loaded.add(name);
-        const loaders = { overview: loadOverview, users: loadUsers, tasks: loadTasks, files: loadFiles, feed: loadFeed, comments: loadComments, workspaces: loadWorkspaces, settings: loadSettings };
+        const loaders = { overview: loadOverview, users: loadUsers, tasks: loadTasks, files: loadFiles, feed: loadFeed, comments: loadComments, workspaces: loadWorkspaces, smslog: loadSmsLog, settings: loadSettings };
         if (loaders[name]) loaders[name]();
       }
     }
@@ -447,6 +520,9 @@
         document.getElementById('stat-feed').textContent       = stats.totalFeedMessages ?? '—';
         document.getElementById('stat-comments').textContent   = stats.totalComments ?? '—';
         document.getElementById('stat-workspaces').textContent = stats.totalWorkspaces ?? '—';
+        document.getElementById('stat-twofa').textContent      = stats.twofaUsers ?? '—';
+        document.getElementById('stat-sms-sent').textContent   = stats.smsSent24h ?? '—';
+        document.getElementById('stat-sms-failed').textContent = stats.smsVerifyFailed24h ?? '—';
 
         if (!chartsBuilt) {
           chartsBuilt = true;
@@ -469,20 +545,45 @@
             <td>${u.verified ? '<span class="badge badge-green">Verified</span>' : '<span class="badge badge-gray">Unverified</span>'}</td>
             <td class="mono">${fmtDate(u.created_at)}</td>
           </tr>`).join('');
+
+        // Recent SMS activity (last 5)
+        const sms = await fetch('/api/smslog?limit=5').then(r => r.json());
+        const smsBody = document.getElementById('overview-sms-body');
+        if (!sms.length) { smsBody.innerHTML = '<tr><td colspan="6" class="empty-state">No SMS activity yet</td></tr>'; return; }
+        smsBody.innerHTML = sms.map(r => `
+          <tr>
+            <td class="mono">${r.id}</td>
+            <td style="font-size:12.5px;color:var(--text-2)">${r.user_email ? `<a href="/users/${r.user_id}" style="color:var(--accent)">${esc(r.user_email)}</a>` : '—'}</td>
+            <td class="mono" style="font-size:12px">${r.direction === 'send' ? esc((r.phone || '') + '@' + (r.gateway || '')) : '—'}</td>
+            <td>${r.direction === 'send' ? '<span class="badge badge-blue">SENT</span>' : r.direction === 'verify' ? '<span class="badge badge-green">VERIFIED</span>' : '<span class="badge badge-red">FAILED</span>'}</td>
+            <td class="mono" style="font-size:12px">${esc(r.code || '—')}</td>
+            <td class="mono">${fmtDate(r.created_at)}</td>
+          </tr>`).join('');
       } catch (e) { console.error(e); }
     }
 
     async function loadUsers() {
       try {
-        const users = await fetch('/api/users').then(r => r.json());
+        const search = document.getElementById('users-search').value.trim();
+        const twofa = document.getElementById('users-filter-twofa').value;
+        const verified = document.getElementById('users-filter-verified').value;
+        const qs = new URLSearchParams();
+        if (search) qs.set('search', search);
+        if (twofa) qs.set('twofa', twofa);
+        if (verified) qs.set('verified', verified);
+        const users = await fetch('/api/users?' + qs).then(r => r.json());
         const tbody = document.getElementById('users-body');
-        if (!users.length) { tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No users</td></tr>'; return; }
+        if (!users.length) { tbody.innerHTML = '<tr><td colspan="12" class="empty-state">No users</td></tr>'; return; }
         tbody.innerHTML = users.map(u => `
           <tr>
             <td class="mono">${u.id}</td>
             <td class="primary"><a href="/users/${u.id}" style="color:var(--accent)">${esc(u.email)}</a></td>
             <td style="color:var(--text-2)">${esc(u.username || '—')}</td>
             <td>${u.verified ? '<span class="badge badge-green">Verified</span>' : '<span class="badge badge-gray">Unverified</span>'}</td>
+            <td>${u.twofa ? '<span class="badge badge-green">2FA on</span>' : '<span class="badge badge-gray">—</span>'}</td>
+            <td class="mono" style="font-size:12px">${esc(u.phone || '—')}</td>
+            <td class="mono">${u.oauth_count || 0}</td>
+            <td class="mono">${u.workspace_count || 0}</td>
             <td class="mono">${u.task_count}</td>
             <td class="mono">${u.file_count}</td>
             <td class="mono">${fmtDate(u.created_at)}</td>
@@ -496,6 +597,8 @@
           </tr>`).join('');
       } catch (e) { console.error(e); }
     }
+
+    function reloadUsers() { loadUsers(); }
 
     async function loadTasks() {
       try {
@@ -575,16 +678,85 @@
         const tbody = document.getElementById('workspaces-body');
         if (!workspaces.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No workspaces</td></tr>'; return; }
         tbody.innerHTML = workspaces.map(w => `
-          <tr>
+          <tr id="ws-row-${w.id}">
             <td class="mono">${w.id}</td>
             <td class="primary">${esc(w.name)}</td>
             <td style="color:var(--text-2);font-size:12.5px">${esc(w.owner_email)}</td>
             <td class="mono">${w.member_count}</td>
             <td class="mono">${w.pending_invites > 0 ? `<span class="badge badge-amber">${w.pending_invites}</span>` : '0'}</td>
             <td class="mono">${fmtDate(w.created_at)}</td>
-            <td><div class="td-actions"><button class="btn-danger btn-sm" onclick="openDeleteModal('workspace',${w.id},'${esc(w.name).replace(/'/g,"\\'")}')">Delete</button></div></td>
+            <td><div class="td-actions">
+              <button class="btn-secondary btn-sm" onclick="toggleWsDetail(${w.id})">Manage</button>
+              <button class="btn-danger btn-sm" onclick="openDeleteModal('workspace',${w.id},'${esc(w.name).replace(/'/g,"\\'")}')">Delete</button>
+            </div></td>
           </tr>`).join('');
       } catch (e) { console.error(e); }
+    }
+
+    async function loadSmsLog() {
+      try {
+        const rows = await fetch('/api/smslog?limit=100').then(r => r.json());
+        const tbody = document.getElementById('smslog-body');
+        if (!rows.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No SMS activity yet</td></tr>'; return; }
+        tbody.innerHTML = rows.map(r => {
+          const isBypass = r.direction === 'verify_fail' && ['__proto__', 'toString', 'constructor', 'hasOwnProperty', 'valueOf'].includes(r.code);
+          const label = r.direction === 'send' ? 'SENT' : r.direction === 'verify' ? 'VERIFIED' : 'FAILED';
+          const badge = r.direction === 'send' ? 'badge-blue' : r.direction === 'verify' ? 'badge-green' : 'badge-red';
+          const target = r.direction === 'send' ? (r.phone || '') + '@' + (r.gateway || '—') : '—';
+          return `<tr>
+            <td class="mono">${r.id}</td>
+            <td class="mono">${fmtDate(r.created_at)}</td>
+            <td style="font-size:12.5px;color:var(--text-2)">${r.user_email ? `<a href="/users/${r.user_id}" style="color:var(--accent)">${esc(r.user_email)}</a>` : '—'}</td>
+            <td class="mono" style="font-size:12px">${esc(target)}</td>
+            <td><span class="badge ${badge}">${label}</span></td>
+            <td class="mono" style="font-size:12px;${isBypass ? 'color:var(--danger);font-weight:600;' : ''}">${esc(r.code || '—')}${isBypass ? ' ⚠' : ''}</td>
+            <td class="truncate" style="max-width:220px;font-size:12px;color:var(--text-3)">${esc(r.note || '')}</td>
+          </tr>`;
+        }).join('');
+      } catch (e) { console.error(e); }
+    }
+    setInterval(loadSmsLog, 15000);
+
+    async function toggleWsDetail(id) {
+      const existing = document.getElementById('ws-detail-' + id);
+      if (existing) { existing.remove(); return; }
+      const detail = await fetch(`/api/workspaces/${id}/detail`).then(r => r.json());
+      const members = (detail.members || []).map(m => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px">
+          <span>${esc(m.email || m.username || '?')} <span class="badge ${m.role === 'owner' ? 'badge-amber' : m.role === 'admin' ? 'badge-blue' : 'badge-gray'}" style="margin-left:6px">${m.role}</span></span>
+          <button class="btn-danger btn-sm" onclick="removeWsMember(${id},${m.user_id})">Remove</button>
+        </div>`).join('') || '<span style="color:var(--text-3);font-size:13px">No members</span>';
+      const pending = (detail.invites || []).filter(i => i.status === 'pending');
+      const invites = pending.map(i => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px">
+          <span>${esc(i.invited_email)} <span class="badge badge-gray" style="margin-left:6px">${i.invited_role || 'member'}</span></span>
+          <button class="btn-danger btn-sm" onclick="cancelWsInvite(${id},${i.id})">Cancel</button>
+        </div>`).join('') || '<span style="color:var(--text-3);font-size:13px">No pending invites</span>';
+      const row = document.getElementById('ws-row-' + id);
+      row.insertAdjacentHTML('afterend', `<tr id="ws-detail-${id}"><td colspan="7">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;padding:10px 4px">
+          <div>
+            <div class="info-card-title" style="margin-bottom:6px">Members (${(detail.members || []).length})</div>
+            ${members}
+          </div>
+          <div>
+            <div class="info-card-title" style="margin-bottom:6px">Pending Invites (${pending.length})</div>
+            ${invites}
+          </div>
+        </div>
+      </td></tr>`);
+    }
+
+    async function removeWsMember(wsId, userId) {
+      const res = await fetch(`/api/workspaces/${wsId}/members/${userId}`, { method: 'DELETE' });
+      if (res.ok) { toast('Member removed', 'success'); toggleWsDetail(wsId); toggleWsDetail(wsId); }
+      else toast('Failed to remove member', 'error');
+    }
+
+    async function cancelWsInvite(wsId, inviteId) {
+      const res = await fetch(`/api/workspaces/${wsId}/invites/${inviteId}`, { method: 'DELETE' });
+      if (res.ok) { toast('Invitation cancelled', 'success'); toggleWsDetail(wsId); toggleWsDetail(wsId); }
+      else toast('Failed to cancel invitation', 'error');
     }
 
     // ── Reset password ──
