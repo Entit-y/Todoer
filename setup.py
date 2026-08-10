@@ -504,7 +504,6 @@ Example config file ({c(C.DIM, 'key=value, # comments, blank lines ignored')}):
   GOOGLE_CLIENT_SECRET=GOCSPX-...
   ADMIN_USERNAME=admin
   ADMIN_PASSWORD=yourpassword
-  # CARRIER_GATEWAYS=verizon=vtext.com,mtn=sms.mtn.co.za,vodacom=voda.co.za
 """)
     parser.add_argument('--config', '-c', metavar='FILE',
                         help='Read all config from FILE (key=value format) instead of prompting interactively.')

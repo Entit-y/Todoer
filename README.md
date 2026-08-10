@@ -24,7 +24,7 @@ Built for ethical hackers who are done with toy labs.
 
 Most practice labs feel like practice labs — labelled boxes, obvious hints, unrealistic setups. Todoer doesn't.
 
-It's a real task management app: workspaces, file uploads, public feed, real-time collaboration over WebSockets, Google OAuth, email verification, password reset, and a separate admin panel. Enough attack surface to keep you busy. It also has real defences — CSRF protection, rate limiting, output sanitisation, JWT auth. Some of them work correctly. Some interact with the bugs in very interesting ways.
+It's a real task management app: workspaces, file uploads, public feed, real-time collaboration over WebSockets, Google OAuth, email verification, password reset, two-factor auth, and a separate admin panel. Enough attack surface to keep you busy. It also has real defences — CSRF protection, rate limiting, output sanitisation, JWT auth. Some of them work correctly. Others don't, and a few of the ones that do make the bugs worse in ways worth understanding.
 
 > There are no flags. No hints. No labels. Approach it like a real target.
 
@@ -59,7 +59,7 @@ No specifics — go find them yourself. But in broad strokes:
 - **Client-side attack chains** — require chaining multiple bugs together to land
 - **Missing security controls** — gaps hiding in plain sight
 
-> Some of the most interesting stuff doesn't work in isolation. The app has at least one multi-stage chain where every step feeds the next, using only information available from within the app itself.
+> The good stuff doesn't work in isolation. There are multi-stage chains in here — every step feeds the next, using nothing but what the app itself gives you.
 
 
 ## Installation
@@ -87,12 +87,12 @@ cd todoer
 python3 setup.py
 ```
 
-The script handles: checking prerequisites, collecting config values, generating `.env` and `docker-compose.override.yml`, launching containers, and waiting for TLS certificates to provision.
+The script checks prerequisites, collects your config, writes `.env` and `docker-compose.override.yml`, launches the containers, and waits for the TLS certs to provision.
 
-> **You still need to do these manually before running:**
-> - Point your DNS A records to your VPS IP
+> **Still on you, before running:**
+> - Point your DNS A records at the VPS
 > - Authenticate your sending domain in Brevo (Part A below)
-> - Create a Google OAuth client and consent screen (the script will remind you)
+> - Create the Google OAuth client and consent screen (the script will remind you)
 
 #### Unattended install with a config file
 
@@ -181,18 +181,16 @@ BREVO_FROM=noreply@yourdomain.com    # must match your verified domain
 
 #### 💬 Two-Factor Codes via Discord *(optional)*
 
-Todoer's per-account two-factor auth posts one-time codes to each user's **own Discord webhook** — 100% free, unlimited, works in every country, no API keys.
+Todoer's two-factor auth posts one-time codes to each user's **own Discord webhook** — no API keys, no cost, works in every country.
 
 **How it works:**
 
-1. User creates a webhook in any Discord server they own (**Server Settings → Integrations → Webhooks → New Webhook**)
-2. Pastes the webhook URL in **Profile → Discord webhook**
+1. The user creates a webhook in any Discord server they own (**Server Settings → Integrations → Webhooks → New Webhook**)
+2. Pastes the URL in **Profile → Discord webhook**
 3. Enables two-factor auth in **Profile → Two-factor authentication** (current password required; OAuth-only accounts don't need one)
-4. On login, the code appears as a message in their Discord channel
+4. On login, the code lands in their Discord channel
 
-The code is never returned in an HTTP response — it only goes to the user's webhook. Failed deliveries are recorded in the admin panel's **2FA & Delivery Log**, along with every verification attempt (including bypass payloads).
-
-No `.env` configuration needed — delivery is per-user.
+The code never appears in an HTTP response — it only goes to the user's webhook. Failed deliveries and verification attempts are recorded in the admin panel's **2FA & Delivery Log**. No `.env` configuration needed — delivery is per-user.
 
 ---
 
