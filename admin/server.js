@@ -3,6 +3,7 @@ const sqlite3 = require('sqlite3').verbose();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const path = require('path');
+const fs = require('fs');
 const cookieParser = require('cookie-parser');
 const WebSocket = require('ws');
 
@@ -628,6 +629,43 @@ app.put('/api/settings/:key', authenticateAdmin, (req, res) => {
     if (err) return res.status(500).json({ error: 'Failed to update setting' });
     res.json({ key, value: String(value) });
   });
+});
+
+// ============ MAINTENANCE ============
+
+// Hard reset of the main app database — wipes all user data.
+// Deletes every row from the app tables (children first), resets AUTOINCREMENT
+// sequences, and clears the uploads directory. The settings table (platform
+// config) and admin credentials (env-based) are kept. Requires confirm: "RESET".
+app.post('/api/reset-database', authenticateAdmin, (req, res) => {
+  const { confirm } = req.body;
+  if (confirm !== 'RESET') return res.status(400).json({ error: 'Type RESET to confirm' });
+
+  const tables = [
+    'sms_log', 'oauth_tokens', 'oauth_codes',
+    'workspace_invitations', 'workspace_members', 'workspaces',
+    'feed_messages', 'task_comments', 'files', 'tasks',
+    'password_resets', 'email_verifications', 'oauth_accounts', 'users'
+  ];
+
+  db.serialize(() => {
+    tables.forEach(t => db.run(`DELETE FROM ${t}`));
+    const placeholders = tables.map(() => '?').join(',');
+    db.run(`DELETE FROM sqlite_sequence WHERE name IN (${placeholders})`, tables, () => {});
+  });
+
+  const uploadsDir = path.join(__dirname, 'uploads');
+  try {
+    if (fs.existsSync(uploadsDir)) {
+      for (const entry of fs.readdirSync(uploadsDir)) {
+        fs.rmSync(path.join(uploadsDir, entry), { recursive: true, force: true });
+      }
+    }
+  } catch (e) {
+    console.error('Failed to clear uploads:', e.message);
+  }
+
+  res.json({ message: 'Database reset complete' });
 });
 
 app.listen(PORT, () => console.log(`Admin panel running on http://localhost:${PORT}`));

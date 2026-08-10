@@ -375,6 +375,16 @@
           </div>
         </div>
 
+        <div class="info-card" style="border-color:rgba(248,113,113,0.25);">
+          <div class="info-card-header">
+            <div class="info-card-title" style="color:var(--red)">Danger zone</div>
+            <div class="info-card-desc">Hard reset the Todoer database — wipes all users, tasks, files, workspaces, feed messages and the 2FA log. Platform settings are kept. This cannot be undone.</div>
+          </div>
+          <div class="info-card-body">
+            <button class="btn-danger" onclick="openResetDbModal()">Reset database</button>
+          </div>
+        </div>
+
       </div>
     </section>
 
@@ -402,6 +412,21 @@
       <div class="modal-actions">
         <button class="btn-secondary" onclick="closeModal('delete-modal')">Cancel</button>
         <button class="btn-danger" style="padding:9px 16px;font-size:13px" onclick="confirmDelete()">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="resetdb-modal">
+    <div class="modal">
+      <h2 class="modal-title" style="color:var(--red)">Reset database</h2>
+      <p class="modal-subtitle">This permanently deletes every user, task, file, workspace, feed message and 2FA log entry. Type <strong style="color:var(--red)">RESET</strong> to confirm.</p>
+      <div class="form-group">
+        <label>Confirmation</label>
+        <input type="text" id="resetdb-confirm-input" placeholder="RESET" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="closeModal('resetdb-modal')">Cancel</button>
+        <button class="btn-danger" style="padding:9px 16px;font-size:13px" onclick="submitResetDb()">Reset everything</button>
       </div>
     </div>
   </div>
@@ -799,6 +824,29 @@
       openModal('delete-modal');
     }
     async function confirmDelete() { if (deleteAction) await deleteAction(); }
+
+    // ── Database reset ──
+    function openResetDbModal() {
+      document.getElementById('resetdb-confirm-input').value = '';
+      openModal('resetdb-modal');
+      document.getElementById('resetdb-confirm-input').focus();
+    }
+    async function submitResetDb() {
+      const val = document.getElementById('resetdb-confirm-input').value.trim();
+      if (val !== 'RESET') { toast('Type RESET to confirm', 'error'); return; }
+      const res = await fetch('/api/reset-database', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirm: val })
+      });
+      closeModal('resetdb-modal');
+      if (res.ok) {
+        toast('Database reset complete', 'success');
+        setTimeout(() => window.location.href = '/dashboard', 800);
+      } else {
+        const d = await res.json().catch(() => ({}));
+        toast(d.error || 'Reset failed', 'error');
+      }
+    }
 
     // ── Settings ──
     async function loadSettings() {
