@@ -339,7 +339,7 @@
 
       const oauthProviders = (data.oauthAccounts || []).map(o => o.provider).join(', ');
       const secParts = [];
-      if (user.phone) secParts.push('📱 ' + esc(user.phone) + (user.carrier ? ' (' + esc(user.carrier) + ')' : ''));
+      if (user.webhook_url) secParts.push('🔗 ' + esc(truncate(user.webhook_url, 48)));
       if (user.has_password) secParts.push('password set');
       if (oauthProviders) secParts.push('OAuth: ' + esc(oauthProviders));
       document.getElementById('user-security-info').textContent = secParts.join(' · ');

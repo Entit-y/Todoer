@@ -61,10 +61,10 @@
         <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="3"/><path d="M6.5 17.5c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/><circle cx="5" cy="13" r="2.5"/><circle cx="19" cy="13" r="2.5"/><path d="M2 21c0-2 1.5-3.5 3-3.5"/><path d="M22 21c0-2-1.5-3.5-3-3.5"/></svg>
         Workspaces
       </button>
-      <div class="sidebar-section-label" style="margin-top:6px">2FA &amp; SMS</div>
+      <div class="sidebar-section-label" style="margin-top:6px">2FA &amp; Delivery</div>
       <button class="nav-item" data-view="smslog" onclick="showView('smslog')">
         <svg class="nav-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><polyline points="8 9 12 13 16 9"/></svg>
-        SMS Log
+        2FA Log
       </button>
       <div class="sidebar-section-label" style="margin-top:6px">System</div>
       <button class="nav-item" data-view="settings" onclick="showView('settings')">
@@ -135,7 +135,7 @@
           <div class="stat-delta">accounts</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">SMS Sent 24h</div>
+          <div class="stat-label">Codes Sent 24h</div>
           <div class="stat-value blue" id="stat-sms-sent">—</div>
           <div class="stat-delta">delivery attempts</div>
         </div>
@@ -182,7 +182,7 @@
       </div>
 
       <div class="section-header">
-        <span class="section-title">Recent SMS Activity</span>
+        <span class="section-title">Recent 2FA Activity</span>
         <button class="btn-secondary" onclick="showView('smslog')">View all →</button>
       </div>
       <div class="table-wrap">
@@ -205,7 +205,7 @@
         <p class="page-subtitle">All registered accounts</p>
       </div>
       <div class="filter-bar">
-        <input type="text" id="users-search" class="filter-input" placeholder="Search email, username or phone…" oninput="reloadUsers()">
+        <input type="text" id="users-search" class="filter-input" placeholder="Search email, username or webhook…" oninput="reloadUsers()">
         <select id="users-filter-twofa" class="filter-input" style="width:auto" onchange="reloadUsers()">
           <option value="">2FA: all</option>
           <option value="1">2FA: enabled</option>
@@ -221,7 +221,7 @@
         <div class="table-scroll">
           <table>
             <thead>
-              <tr><th>ID</th><th>Email</th><th>Username</th><th>Verified</th><th>2FA</th><th>Phone</th><th>OAuth</th><th>WS</th><th>Tasks</th><th>Files</th><th>Registered</th><th></th></tr>
+              <tr><th>ID</th><th>Email</th><th>Username</th><th>Verified</th><th>2FA</th><th>Webhook</th><th>OAuth</th><th>WS</th><th>Tasks</th><th>Files</th><th>Registered</th><th></th></tr>
             </thead>
             <tbody id="users-body">
               <tr><td colspan="12" class="loading">fetching data…</td></tr>
@@ -328,7 +328,7 @@
 
     <section id="view-smslog" class="hidden">
       <div class="page-header">
-        <h1 class="page-title">SMS &amp; 2FA Log</h1>
+        <h1 class="page-title">2FA &amp; Delivery Log</h1>
         <p class="page-subtitle">Code deliveries and verification attempts — including failed and bypass payloads</p>
       </div>
       <div class="filter-bar">
@@ -549,12 +549,12 @@
         // Recent SMS activity (last 5)
         const sms = await fetch('/api/smslog?limit=5').then(r => r.json());
         const smsBody = document.getElementById('overview-sms-body');
-        if (!sms.length) { smsBody.innerHTML = '<tr><td colspan="6" class="empty-state">No SMS activity yet</td></tr>'; return; }
+        if (!sms.length) { smsBody.innerHTML = '<tr><td colspan="6" class="empty-state">No 2FA activity yet</td></tr>'; return; }
         smsBody.innerHTML = sms.map(r => `
           <tr>
             <td class="mono">${r.id}</td>
             <td style="font-size:12.5px;color:var(--text-2)">${r.user_email ? `<a href="/users/${r.user_id}" style="color:var(--accent)">${esc(r.user_email)}</a>` : '—'}</td>
-            <td class="mono" style="font-size:12px">${r.direction === 'send' ? esc((r.phone || '') + '@' + (r.gateway || '')) : '—'}</td>
+            <td class="mono" style="font-size:12px">${r.direction === 'send' ? esc(truncate(r.gateway || '', 42)) : '—'}</td>
             <td>${r.direction === 'send' ? '<span class="badge badge-blue">SENT</span>' : r.direction === 'verify' ? '<span class="badge badge-green">VERIFIED</span>' : '<span class="badge badge-red">FAILED</span>'}</td>
             <td class="mono" style="font-size:12px">${esc(r.code || '—')}</td>
             <td class="mono">${fmtDate(r.created_at)}</td>
@@ -581,7 +581,7 @@
             <td style="color:var(--text-2)">${esc(u.username || '—')}</td>
             <td>${u.verified ? '<span class="badge badge-green">Verified</span>' : '<span class="badge badge-gray">Unverified</span>'}</td>
             <td>${u.twofa ? '<span class="badge badge-green">2FA on</span>' : '<span class="badge badge-gray">—</span>'}</td>
-            <td class="mono" style="font-size:12px">${esc(u.phone || '—')}</td>
+            <td class="mono" style="font-size:12px">${esc(truncate(u.webhook_url || '—', 34))}</td>
             <td class="mono">${u.oauth_count || 0}</td>
             <td class="mono">${u.workspace_count || 0}</td>
             <td class="mono">${u.task_count}</td>
@@ -697,12 +697,12 @@
       try {
         const rows = await fetch('/api/smslog?limit=100').then(r => r.json());
         const tbody = document.getElementById('smslog-body');
-        if (!rows.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No SMS activity yet</td></tr>'; return; }
+        if (!rows.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No 2FA activity yet</td></tr>'; return; }
         tbody.innerHTML = rows.map(r => {
           const isBypass = r.direction === 'verify_fail' && ['__proto__', 'toString', 'constructor', 'hasOwnProperty', 'valueOf'].includes(r.code);
           const label = r.direction === 'send' ? 'SENT' : r.direction === 'verify' ? 'VERIFIED' : 'FAILED';
           const badge = r.direction === 'send' ? 'badge-blue' : r.direction === 'verify' ? 'badge-green' : 'badge-red';
-          const target = r.direction === 'send' ? (r.phone || '') + '@' + (r.gateway || '—') : '—';
+          const target = r.direction === 'send' ? truncate(r.gateway || '—', 42) : '—';
           return `<tr>
             <td class="mono">${r.id}</td>
             <td class="mono">${fmtDate(r.created_at)}</td>

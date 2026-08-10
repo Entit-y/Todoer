@@ -262,41 +262,6 @@ def get_brevo(domain):
     return user, key, brevo_from
 
 
-def get_sms():
-    section("SMS Delivery (2FA)")
-    info("Todoer sends two-factor codes by SMS. Delivery is optional and provider-agnostic:")
-    print()
-    info(f"  {c(C.BOLD, 'log')}            — codes only in server logs (default, no setup)")
-    info(f"  {c(C.BOLD, 'textbelt')}       — hosted API · 1 free text/day with key 'textbelt', then $0.08/text")
-    info(f"  {c(C.BOLD, 'email-gateway')}  — free via Brevo SMTP to <number>@<carrier gateway> (e.g. vtext.com)")
-    print()
-
-    provider = prompt("SMS provider", default="log").strip().lower()
-    if provider not in ("log", "textbelt", "email-gateway"):
-        warn(f"Unknown provider '{provider}' — falling back to 'log'.")
-        provider = "log"
-
-    sms_key = ""
-    gateway = ""
-    mappings = ""
-    if provider == "textbelt":
-        sms_key = prompt("Textbelt API key (blank = 1 free text/day)", default="textbelt")
-        if not sms_key:
-            sms_key = "textbelt"
-    elif provider == "email-gateway":
-        gateway = prompt("Default carrier gateway domain", default="vtext.com")
-        if not gateway:
-            gateway = "vtext.com"
-        mappings = prompt(
-            "Per-carrier gateway routing (carrier=domain,carrier=domain)",
-            default="verizon=vtext.com,tmobile=tmomail.net,telus=msg.telus.com",
-        ).strip()
-        info("Users select their carrier in Profile → Phone number; unknown carriers use the default gateway.")
-        info("Email-to-SMS gateways are US/Canada-only and many are discontinued (AT&T, MTN SA, Vodacom, Bell) — for other countries use SMS_PROVIDER=textbelt.")
-
-    return provider, sms_key, gateway, mappings
-
-
 def get_google_oauth(domain):
     section("Google OAuth")
     redirect_uri = f"https://{domain}/auth/oauth/callback"
@@ -539,10 +504,6 @@ Example config file ({c(C.DIM, 'key=value, # comments, blank lines ignored')}):
   GOOGLE_CLIENT_SECRET=GOCSPX-...
   ADMIN_USERNAME=admin
   ADMIN_PASSWORD=yourpassword
-  # Optional — SMS delivery for 2FA codes (log | textbelt | email-gateway)
-  # SMS_PROVIDER=log
-  # SMS_TEXTBELT_KEY=textbelt
-  # SMS_GATEWAY=vtext.com
   # CARRIER_GATEWAYS=verizon=vtext.com,mtn=sms.mtn.co.za,vodacom=voda.co.za
 """)
     parser.add_argument('--config', '-c', metavar='FILE',
@@ -578,13 +539,6 @@ def main():
         google_redirect = f"https://{domain}/auth/oauth/callback"
         admin_user = cfg.get('ADMIN_USERNAME') or ("admin_" + secrets.token_hex(4))
         admin_pass = cfg.get('ADMIN_PASSWORD') or secrets.token_hex(16)
-        sms_provider = (cfg.get('SMS_PROVIDER') or 'log').strip().lower()
-        if sms_provider not in ("log", "textbelt", "email-gateway"):
-            warn(f"Unknown SMS_PROVIDER '{sms_provider}' — falling back to 'log'.")
-            sms_provider = "log"
-        sms_key = cfg.get('SMS_TEXTBELT_KEY') or ''
-        sms_gateway = cfg.get('SMS_GATEWAY') or ''
-        sms_mappings = cfg.get('CARRIER_GATEWAYS') or ''
         if not cfg.get('ADMIN_USERNAME'):
             info("Auto-generated admin credentials:")
             info(f"  Username: {c(C.BWHITE, admin_user)}")
@@ -611,14 +565,7 @@ def main():
             "ADMIN_USERNAME":       admin_user,
             "ADMIN_PASSWORD":       admin_pass,
             "SUPPORT_SESSION_SECRET": secrets.token_hex(32),
-            "SMS_PROVIDER":         sms_provider,
         }
-        if sms_key:
-            env_values["SMS_TEXTBELT_KEY"] = sms_key
-        if sms_gateway:
-            env_values["SMS_GATEWAY"] = sms_gateway
-        if sms_mappings:
-            env_values["CARRIER_GATEWAYS"] = sms_mappings
         create_env(env_values)
         launch()
         if wait_for_https(domain):
@@ -640,7 +587,6 @@ def main():
 
     domain, le_email = get_domain_info()
     brevo_user, brevo_key, brevo_from = get_brevo(domain)
-    sms_provider, sms_key, sms_gateway, sms_mappings = get_sms()
     google_id, google_secret, google_redirect = get_google_oauth(domain)
     admin_user, admin_pass = get_admin_creds()
 
@@ -657,14 +603,7 @@ def main():
         "GOOGLE_REDIRECT_URI":  google_redirect,
         "APP_URL":              f"https://{domain}",
         "SUPPORT_URL":          f"https://support.{domain}",
-        "SMS_PROVIDER":         sms_provider,
     }
-    if sms_key:
-        env_values["SMS_TEXTBELT_KEY"] = sms_key
-    if sms_gateway:
-        env_values["SMS_GATEWAY"] = sms_gateway
-    if sms_mappings:
-        env_values["CARRIER_GATEWAYS"] = sms_mappings
     if admin_user is not None:
         env_values["ADMIN_USERNAME"] = admin_user
         env_values["ADMIN_PASSWORD"] = admin_pass

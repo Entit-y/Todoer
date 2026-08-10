@@ -114,11 +114,6 @@ GOOGLE_CLIENT_ID=....apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=GOCSPX-...
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=yourpassword
-# Optional — SMS delivery for 2FA codes (log | textbelt | email-gateway)
-# SMS_PROVIDER=log
-# SMS_TEXTBELT_KEY=textbelt
-# SMS_GATEWAY=vtext.com
-# CARRIER_GATEWAYS=verizon=vtext.com,tmobile=tmomail.net,telus=msg.telus.com
 ```
 
 If `ADMIN_USERNAME`/`ADMIN_PASSWORD` are omitted, random credentials are generated and printed once. Run `python3 setup.py --help` for the full list of required keys.
@@ -147,7 +142,7 @@ cp .env.example .env
 nano .env
 ```
 
-Three things to configure: **email (Brevo)**, **Google OAuth**, and **admin credentials**. SMS delivery for 2FA codes is optional — see the SMS section below.
+Three things to configure: **email (Brevo)**, **Google OAuth**, and **admin credentials**. Two-factor codes are delivered per-user via Discord webhooks — see the Two-Factor section below; no extra configuration needed.
 
 ---
 
@@ -184,26 +179,20 @@ BREVO_FROM=noreply@yourdomain.com    # must match your verified domain
 
 ---
 
-#### 📱 SMS — Two-Factor Codes *(optional)*
+#### 💬 Two-Factor Codes via Discord *(optional)*
 
-Todoer's per-account two-factor auth sends one-time codes by SMS. Delivery is provider-agnostic — pick one in `.env`:
+Todoer's per-account two-factor auth posts one-time codes to each user's **own Discord webhook** — 100% free, unlimited, works in every country, no API keys.
 
-| `SMS_PROVIDER` | Cost | Notes |
-|---|---|---|
-| `log` *(default)* | Free | Codes are only written to the server log — fine for testing |
-| `textbelt` | 1 free text/day, then $0.08 | Hosted API at [textbelt.com](https://textbelt.com), **221 countries** (E.164 number, e.g. `+233…`). `key=textbelt` gives one free text per day per IP; set `SMS_TEXTBELT_KEY` to a prepaid key for more |
-| `email-gateway` | Free | Uses your Brevo SMTP to deliver `number@<gateway>` to a carrier's email-to-SMS gateway. **US/Canada numbers only** — most gateways are discontinued (AT&T 2025, MTN SA, Vodacom, Bell all dead). Known-live: Verizon, T-Mobile, Telus |
+**How it works:**
 
-```env
-SMS_PROVIDER=log              # log | textbelt | email-gateway
-SMS_TEXTBELT_KEY=textbelt     # Textbelt key (paid keys cost $0.08/text)
-SMS_GATEWAY=vtext.com         # Default gateway for email-gateway (used when no carrier match)
-CARRIER_GATEWAYS=verizon=vtext.com,tmobile=tmomail.net,telus=msg.telus.com
-```
+1. User creates a webhook in any Discord server they own (**Server Settings → Integrations → Webhooks → New Webhook**)
+2. Pastes the webhook URL in **Profile → Discord webhook**
+3. Enables two-factor auth in **Profile → Two-factor authentication** (current password required; OAuth-only accounts don't need one)
+4. On login, the code appears as a message in their Discord channel
 
-**Carrier routing** — for `email-gateway`, users pick their carrier in **Profile → Phone number** (Verizon, T-Mobile, Telus). The `CARRIER_GATEWAYS` map routes each carrier to its gateway domain; carriers not in the map fall back to `SMS_GATEWAY`. Non-US/Canada numbers are logged with a warning — email gateways can't deliver to them (use `textbelt` for those).
+The code is never returned in an HTTP response — it only goes to the user's webhook. Failed deliveries are recorded in the admin panel's **2FA & Delivery Log**, along with every verification attempt (including bypass payloads).
 
-**Phone numbers and 2FA** — users add a phone number and carrier in **Profile → Phone number**; 2FA codes are sent there once SMS two-factor is enabled. Enable requires a phone on file; OAuth-only accounts don't need a password to enable.
+No `.env` configuration needed — delivery is per-user.
 
 ---
 
@@ -250,10 +239,6 @@ ADMIN_PASSWORD=Password
 GOOGLE_CLIENT_ID=....apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=GOCSPX-...
 GOOGLE_REDIRECT_URI=https://yourdomain.com/auth/oauth/callback
-SMS_PROVIDER=log
-SMS_TEXTBELT_KEY=textbelt
-SMS_GATEWAY=vtext.com
-CARRIER_GATEWAYS=verizon=vtext.com,tmobile=tmomail.net,telus=msg.telus.com
 ```
 
 ---

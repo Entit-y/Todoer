@@ -260,7 +260,7 @@ app.get('/api/users', authenticateAdmin, (req, res) => {
   let where = [];
   const params = [];
   if (search) {
-    where.push('(u.email LIKE ? OR u.username LIKE ? OR u.phone LIKE ?)');
+    where.push('(u.email LIKE ? OR u.username LIKE ? OR u.webhook_url LIKE ?)');
     params.push(`%${search}%`, `%${search}%`, `%${search}%`);
   }
   if (twofa === '1' || twofa === '0') { where.push('u.twofa = ?'); params.push(twofa); }
@@ -269,7 +269,7 @@ app.get('/api/users', authenticateAdmin, (req, res) => {
   const whereSql = where.length ? 'WHERE ' + where.join(' AND ') : '';
   db.all(`
     SELECT
-      u.id, u.email, u.username, u.verified, u.twofa, u.phone, u.carrier, u.has_password, u.created_at,
+      u.id, u.email, u.username, u.verified, u.twofa, u.webhook_url, u.has_password, u.created_at,
       COUNT(DISTINCT t.id) as task_count,
       COUNT(DISTINCT f.id) as file_count,
       (SELECT COUNT(*) FROM oauth_accounts oa WHERE oa.user_id = u.id) as oauth_count,
@@ -302,7 +302,7 @@ app.get('/api/users/:id', authenticateAdmin, (req, res) => {
 app.get('/api/users/:id/detail', authenticateAdmin, (req, res) => {
   const { id } = req.params;
 
-  db.get('SELECT id, email, username, verified, twofa, phone, carrier, has_password, time_format, created_at FROM users WHERE id = ?', [id], (err, user) => {
+  db.get('SELECT id, email, username, verified, twofa, webhook_url, has_password, time_format, created_at FROM users WHERE id = ?', [id], (err, user) => {
     if (err || !user) return res.status(404).json({ error: 'User not found' });
 
     db.all('SELECT provider, provider_email, created_at FROM oauth_accounts WHERE user_id = ?', [id], (err, oauthAccounts) => {

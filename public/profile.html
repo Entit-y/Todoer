@@ -222,25 +222,16 @@
         </form>
       </section>
 
-      <section class="profile-section" id="phoneSection">
-        <h2>Phone number</h2>
-        <p style="font-size:13px;color:var(--text-3);margin-bottom:16px;">Used to deliver SMS codes for two-factor authentication. Selecting your carrier helps route delivery.</p>
-        <form id="phoneForm" class="profile-form">
+      <section class="profile-section" id="webhookSection">
+        <h2>Discord webhook</h2>
+        <p style="font-size:13px;color:var(--text-3);margin-bottom:16px;">Used to deliver two-factor authentication codes. Create a webhook in any Discord server (Server Settings → Integrations → Webhooks) and paste the URL here.</p>
+        <form id="webhookForm" class="profile-form">
           <div class="form-group">
-            <label for="phoneInput">Phone</label>
-            <input type="tel" id="phoneInput" placeholder="+15551234567">
+            <label for="webhookInput">Webhook URL</label>
+            <input type="url" id="webhookInput" placeholder="https://discord.com/api/webhooks/…">
           </div>
-          <div class="form-group">
-            <label for="carrierSelect">Carrier</label>
-            <select id="carrierSelect" style="width:100%;padding:10px 12px;border-radius:var(--radius-md);border:1px solid var(--border);background:var(--surface);color:var(--text-1);font-size:14px;">
-              <option value="">Select carrier (if known)</option>
-              <option value="verizon">Verizon (vtext.com)</option>
-              <option value="tmobile">T-Mobile (tmomail.net)</option>
-              <option value="telus">Telus (msg.telus.com)</option>
-            </select>
-          </div>
-          <div id="phoneMessage" class="message" style="display:none;"></div>
-          <button type="submit" class="btn btn-primary">Save phone number</button>
+          <div id="webhookMessage" class="message" style="display:none;"></div>
+          <button type="submit" class="btn btn-primary">Save webhook</button>
         </form>
       </section>
 
@@ -510,7 +501,7 @@
         const twofaNeedsPassword = !hasOAuth || hasPassword;
         document.getElementById('twofaSection').innerHTML = `
           <h2>Two-factor authentication</h2>
-          <p style="font-size:13px;color:var(--text-3);margin-bottom:16px;">Require an SMS code in addition to your password when signing in.</p>
+          <p style="font-size:13px;color:var(--text-3);margin-bottom:16px;">Require a one-time code in addition to your password when signing in. Codes are posted to your Discord webhook.</p>
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
             <span style="font-size:11.5px;font-weight:600;padding:3px 10px;border-radius:20px;${twofaEnabled ? 'background:rgba(34,197,94,0.08);color:#22c55e;border:1px solid rgba(34,197,94,0.2);' : 'background:rgba(148,163,184,0.08);color:var(--text-3);border:1px solid var(--border);'}">${twofaEnabled ? 'Enabled' : 'Not enabled'}</span>
           </div>
@@ -549,8 +540,7 @@
         });
 
         document.getElementById('timeFormatInput').value = data.time_format || '';
-        document.getElementById('phoneInput').value = data.phone || '';
-        document.getElementById('carrierSelect').value = data.carrier || '';
+        document.getElementById('webhookInput').value = data.webhook_url || '';
 
         // ── Toast if returning from Google connect ──
         if (new URLSearchParams(window.location.search).get('connected') === '1') {
@@ -622,15 +612,15 @@
       } catch { msg.textContent = 'An error occurred.'; msg.className = 'message error'; msg.style.display = 'block'; }
     });
 
-    document.getElementById('phoneForm').addEventListener('submit', async (e) => {
+    document.getElementById('webhookForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const msg = document.getElementById('phoneMessage');
+      const msg = document.getElementById('webhookMessage');
       msg.style.display = 'none'; msg.className = 'message';
       try {
-        const r = await fetch('/api/profile/phone', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() }, body: JSON.stringify({ phone: document.getElementById('phoneInput').value, carrier: document.getElementById('carrierSelect').value }) });
+        const r = await fetch('/api/profile/webhook', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() }, body: JSON.stringify({ webhook_url: document.getElementById('webhookInput').value }) });
         const data = await r.json();
-        if (r.ok) { msg.textContent = 'Phone number saved.'; msg.className = 'message success'; }
-        else { msg.textContent = data.error || 'Failed to save phone number'; msg.className = 'message error'; }
+        if (r.ok) { msg.textContent = 'Webhook saved.'; msg.className = 'message success'; }
+        else { msg.textContent = data.error || 'Failed to save webhook'; msg.className = 'message error'; }
         msg.style.display = 'block';
       } catch { msg.textContent = 'An error occurred.'; msg.className = 'message error'; msg.style.display = 'block'; }
     });

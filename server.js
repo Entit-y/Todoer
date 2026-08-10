@@ -211,6 +211,12 @@ db.serialize(() => {
     // Ignore error — column already exists on fresh installs
   });
 
+  // Migration: add webhook_url column — the user's Discord webhook, the
+  // delivery channel for 2FA codes (replaces phone/carrier).
+  db.run(`ALTER TABLE users ADD COLUMN webhook_url TEXT`, (err) => {
+    // Ignore error — column already exists on fresh installs
+  });
+
   db.run(`CREATE TABLE IF NOT EXISTS tasks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
@@ -423,40 +429,11 @@ const authenticateToken = (req, res, next) => {
 
 // ============ TWO-FACTOR AUTH ============
 
-// SMS delivery configuration.
-//   SMS_PROVIDER=textbelt      → hosted Textbelt API (https://textbelt.com).
-//                                key=textbelt sends 1 free text/day per IP;
-//                                set SMS_TEXTBELT_KEY for more ($0.08/text).
-//   SMS_PROVIDER=email-gateway → free carrier email-to-SMS via the Brevo SMTP
-//                                transporter above. Phone numbers are sent as
-//                                <number>@<gateway>. The gateway is resolved per
-//                                user from CARRIER_GATEWAYS (keyed by the user's
-//                                carrier), falling back to SMS_GATEWAY.
-//                                NOTE: many carriers have killed these gateways
-//                                (AT&T 2025, T-Mobile, Verizon flagged) — verify
-//                                a gateway domain still works before relying on
-//                                it, and test with a real number.
-//   SMS_PROVIDER=log (default) → codes are only written to the server log.
-const SMS_PROVIDER = (process.env.SMS_PROVIDER || 'log').toLowerCase();
-const SMS_TEXTBELT_KEY = process.env.SMS_TEXTBELT_KEY || 'textbelt';
-const SMS_GATEWAY = process.env.SMS_GATEWAY || 'vtext.com';
+// 2FA codes are delivered to each user's own Discord webhook URL
+// (Profile → Discord webhook). Free, unlimited, works in every country.
+// The code is never returned in an HTTP response.
 
-// Per-carrier email-to-SMS routing for SMS_PROVIDER=email-gateway.
-// Format: "carrier=domain,carrier=domain" — carrier names are case-insensitive
-// and matched against the user's `carrier` profile field. Unknown carriers
-// fall back to SMS_GATEWAY. Example:
-//   CARRIER_GATEWAYS=verizon=vtext.com,mtn=sms.mtn.co.za,vodacom=voda.co.za
-const CARRIER_GATEWAYS = (process.env.CARRIER_GATEWAYS || '')
-  .split(',')
-  .map(s => s.trim())
-  .filter(Boolean)
-  .reduce((map, entry) => {
-    const [carrier, domain] = entry.split('=').map(s => s.trim());
-    if (carrier && domain) map[carrier.toLowerCase()] = domain;
-    return map;
-  }, {});
-
-// In-memory store of issued SMS OTP codes, keyed by the code itself.
+// In-memory store of issued OTP codes, keyed by the code itself.
 // VULNERABLE: a plain object used as a lookup table with a truthy gate —
 // property reads walk the prototype chain, so keys like __proto__, toString
 // or constructor resolve to inherited truthy values without any valid code.
@@ -464,68 +441,38 @@ const CARRIER_GATEWAYS = (process.env.CARRIER_GATEWAYS || '')
 // all walk the same chain.)
 const pending2faCodes = {}; // { "482916": { userId, expiresAt } }
 
-// Record an SMS/2FA event in the sms_log table (fire-and-forget).
+// Record a 2FA delivery event in the sms_log table (fire-and-forget).
 function logSmsEvent(entry) {
-  const { user_id = null, phone = null, carrier = null, gateway = null, code = null, direction, note = null } = entry;
+  const { user_id = null, gateway = null, code = null, direction, note = null } = entry;
   db.run(
     'INSERT INTO sms_log (user_id, phone, carrier, gateway, provider, code, direction, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-    [user_id, phone, carrier, gateway, SMS_PROVIDER, code, direction, note],
+    [user_id, null, null, gateway, 'discord-webhook', code, direction, note],
     (err) => { if (err) console.error('Failed to write sms_log:', err.message); }
   );
 }
 
-// Send the 2FA code to a user's phone via the configured provider.
+// Deliver the 2FA code to a user's Discord webhook.
 // The code itself is never returned in an HTTP response.
-function sendSmsCode(user, code) {
-  const { id: userId, phone, carrier } = user;
-  if (!phone) {
-    console.log(`[SMS] No phone on file for user ${userId}; code ${code} would be sent`);
-    logSmsEvent({ user_id: userId, phone, carrier, code, direction: 'send', note: 'no phone on file' });
+function sendTwofaCode(user, code) {
+  const { id: userId, webhook_url } = user;
+  if (!webhook_url) {
+    console.log(`[2FA] No webhook on file for user ${userId}; code ${code} would be sent`);
+    logSmsEvent({ user_id: userId, code, direction: 'send', note: 'no webhook on file' });
     return;
   }
-  const message = `Your Todoer verification code is ${code}`;
-
-  if (SMS_PROVIDER === 'textbelt') {
-    const body = new URLSearchParams({ phone, message, key: SMS_TEXTBELT_KEY });
-    fetch('https://textbelt.com/text', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body
+  fetch(webhook_url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content: `📱 Todoer 2FA code: **${code}**` })
+  })
+    .then(r => {
+      console.log(`[2FA] code ${code} delivered to user ${userId} webhook: HTTP ${r.status}`);
+      logSmsEvent({ user_id: userId, gateway: webhook_url, code, direction: 'send', note: `HTTP ${r.status}` });
     })
-      .then(r => r.json())
-      .then(d => {
-        console.log('[SMS] textbelt response:', JSON.stringify(d));
-        logSmsEvent({ user_id: userId, phone, carrier, gateway: 'textbelt.com', code, direction: 'send', note: JSON.stringify(d) });
-      })
-      .catch(err => console.error('[SMS] textbelt error:', err.message));
-  } else if (SMS_PROVIDER === 'email-gateway') {
-    const gateway = CARRIER_GATEWAYS[(carrier || '').toLowerCase()] || SMS_GATEWAY;
-    // Carrier email-to-SMS gateways only bridge US/Canada numbers (Verizon,
-    // T-Mobile, Telus). Any other country code will not be delivered.
-    const digits = (phone || '').replace(/[^\d+]/g, '');
-    const isUsCanada = /^\+1\d{10}$/.test(digits);
-    if (!isUsCanada) {
-      console.log(`[SMS] WARNING: ${phone} via email-gateway — gateways are US/Canada only, delivery unlikely`);
-      logSmsEvent({ user_id: userId, phone, carrier, gateway, code, direction: 'send', note: 'non-US/Canada number — email gateways are US/Canada only' });
-    }
-    transporter.sendMail({
-      from: `"Todoer" <${process.env.BREVO_FROM || 'noreply@todoer.site'}>`,
-      to: `${phone}@${gateway}`,
-      subject: 'Your Todoer verification code',
-      text: message
-    })
-      .then(() => {
-        console.log(`[SMS] code ${code} delivered to ${phone}@${gateway} (carrier: ${carrier || 'unknown — fallback'})`);
-        logSmsEvent({ user_id: userId, phone, carrier, gateway, code, direction: 'send', note: 'delivered' });
-      })
-      .catch(err => {
-        console.error(`[SMS] email-gateway error sending to ${phone}@${gateway} (carrier: ${carrier || 'unknown — fallback'}):`, err.message);
-        logSmsEvent({ user_id: userId, phone, carrier, gateway, code, direction: 'send', note: 'error: ' + err.message });
-      });
-  } else {
-    console.log(`[SMS] OTP ${code} sent to ${phone}`);
-    logSmsEvent({ user_id: userId, phone, carrier, gateway: 'log', code, direction: 'send', note: 'log provider' });
-  }
+    .catch(err => {
+      console.error('[2FA] webhook delivery error:', err.message);
+      logSmsEvent({ user_id: userId, gateway: webhook_url, code, direction: 'send', note: 'error: ' + err.message });
+    });
 }
 
 // TTL cleanup — expires codes older than 5 minutes.
@@ -609,7 +556,7 @@ app.post('/api/auth/login', loginLimiter, (req, res) => {
       // token. No session cookie is set until the code is verified.
       const code = Math.floor(100000 + Math.random() * 900000).toString();
       pending2faCodes[code] = { userId: user.id, expiresAt: Date.now() + 5 * 60 * 1000 };
-      sendSmsCode(user, code);
+      sendTwofaCode(user, code);
       const twofaToken = jwt.sign(
         { id: user.id, email: user.email, username: user.username || null, purpose: '2fa' },
         JWT_SECRET,
@@ -755,7 +702,7 @@ app.get('/api/auth/validate-redirect', (req, res) => {
 
 // Updated /api/profile — now includes OAuth connection info
 app.get('/api/profile', authenticateToken, (req, res) => {
-  db.get('SELECT id, email, username, created_at, has_password, twofa, time_format, phone, carrier FROM users WHERE id = ?', [req.user.id], (err, user) => {
+  db.get('SELECT id, email, username, created_at, has_password, twofa, time_format, webhook_url FROM users WHERE id = ?', [req.user.id], (err, user) => {
     if (err || !user) return res.status(404).json({ error: 'User not found' });
     db.all('SELECT provider, provider_email FROM oauth_accounts WHERE user_id = ?', [req.user.id], (err, oauthAccounts) => {
       res.json({ ...user, oauth_accounts: oauthAccounts || [] });
@@ -831,9 +778,9 @@ app.post('/api/profile/set-password', authenticateToken, validateCsrf, async (re
 
 app.post('/api/profile/2fa/enable', authenticateToken, validateCsrf, (req, res) => {
   const { password } = req.body;
-  db.get('SELECT password, phone, has_password FROM users WHERE id = ?', [req.user.id], async (err, user) => {
+  db.get('SELECT password, webhook_url, has_password FROM users WHERE id = ?', [req.user.id], async (err, user) => {
     if (err || !user) return res.status(404).json({ error: 'User not found' });
-    if (!user.phone) return res.status(400).json({ error: 'Add a phone number to your profile before enabling two-factor auth' });
+    if (!user.webhook_url) return res.status(400).json({ error: 'Add a Discord webhook to your profile before enabling two-factor auth' });
     db.get('SELECT id FROM oauth_accounts WHERE user_id = ?', [req.user.id], async (err, oauthAccount) => {
       // OAuth-only accounts (no explicit password) don't need one here,
       // mirroring the account-deletion flow.
@@ -886,19 +833,17 @@ app.put('/api/profile/time-format', authenticateToken, validateCsrf, (req, res) 
   });
 });
 
-// Update the phone number used for SMS two-factor delivery.
-// VULNERABLE: applied with no verification — no confirmation code is sent to
-// the old number and no password is required. Anyone with a valid session
+// Update the Discord webhook used for 2FA code delivery.
+// VULNERABLE: applied with no verification — no confirmation is sent to the
+// previous webhook and no password is required. Anyone with a valid session
 // (or an XSS / CSRF primitive) can silently redirect a victim's 2FA codes.
-app.put('/api/profile/phone', authenticateToken, validateCsrf, (req, res) => {
-  const { phone, carrier } = req.body;
-  if (!phone || !phone.trim()) return res.status(400).json({ error: 'Phone number is required' });
-  const normalized = phone.trim().replace(/[^\d+]/g, '');
-  if (normalized.length < 7 || normalized.length > 15) return res.status(400).json({ error: 'Phone number must be between 7 and 15 digits' });
-  const normalizedCarrier = typeof carrier === 'string' ? carrier.trim().toLowerCase() : null;
-  db.run('UPDATE users SET phone = ?, carrier = ? WHERE id = ?', [normalized, normalizedCarrier || null, req.user.id], function(err) {
-    if (err) return res.status(500).json({ error: 'Failed to update phone number' });
-    res.json({ message: 'Phone number updated', phone: normalized, carrier: normalizedCarrier || null });
+app.put('/api/profile/webhook', authenticateToken, validateCsrf, (req, res) => {
+  const { webhook_url } = req.body;
+  if (!webhook_url || !webhook_url.trim()) return res.status(400).json({ error: 'Webhook URL is required' });
+  if (!/^https:\/\//.test(webhook_url.trim())) return res.status(400).json({ error: 'Webhook URL must start with https://' });
+  db.run('UPDATE users SET webhook_url = ? WHERE id = ?', [webhook_url.trim(), req.user.id], function(err) {
+    if (err) return res.status(500).json({ error: 'Failed to update webhook' });
+    res.json({ message: 'Webhook updated', webhook_url: webhook_url.trim() });
   });
 });
 
