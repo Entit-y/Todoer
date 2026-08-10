@@ -509,7 +509,7 @@ app.post('/api/auth/register', registerLimiter, async (req, res) => {
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
     // VULNERABLE: username stored raw — no sanitization, allows XSS payloads as usernames
-    db.run('INSERT INTO users (email, username, password, verified) VALUES (?, ?, ?, 0)', [email, username || null, hashedPassword], async function(err) {
+    db.run('INSERT INTO users (email, username, password, verified, has_password) VALUES (?, ?, ?, 0, 1)', [email, username || null, hashedPassword], async function(err) {
       if (err) {
         if (err.message.includes('UNIQUE')) return res.status(400).json({ error: 'Email already exists' });
         return res.status(500).json({ error: 'Registration failed' });
