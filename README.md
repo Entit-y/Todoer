@@ -1,9 +1,3 @@
-<!--
-  If you have a logo, replace the placeholder below with:
-  <img src="./logo.svg" alt="Todoer" width="120" />
-  or an <img> tag pointing to your hosted image.
--->
-
 <div align="center">
 
 <img src="./public/assets/logo.svg" alt="Todoer" width="140" />
