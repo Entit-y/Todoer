@@ -512,6 +512,7 @@
 
         // ── Two-factor authentication UI ──
         const twofaEnabled = data.twofa === 1;
+        const twofaNeedsPassword = !hasOAuth || hasPassword;
         document.getElementById('twofaSection').innerHTML = `
           <h2>Two-factor authentication</h2>
           <p style="font-size:13px;color:var(--text-3);margin-bottom:16px;">Require an SMS code in addition to your password when signing in.</p>
@@ -519,10 +520,10 @@
             <span style="font-size:11.5px;font-weight:600;padding:3px 10px;border-radius:20px;${twofaEnabled ? 'background:rgba(34,197,94,0.08);color:#22c55e;border:1px solid rgba(34,197,94,0.2);' : 'background:rgba(148,163,184,0.08);color:var(--text-3);border:1px solid var(--border);'}">${twofaEnabled ? 'Enabled' : 'Not enabled'}</span>
           </div>
           <form id="twofaForm" class="profile-form">
-            <div class="form-group">
+            ${twofaNeedsPassword ? `<div class="form-group">
               <label for="twofaPassword">Current password</label>
               <input type="password" id="twofaPassword" required placeholder="Enter current password">
-            </div>
+            </div>` : ''}
             <div id="twofaMessage" class="message" style="display:none;"></div>
             <button type="submit" class="btn btn-primary">${twofaEnabled ? 'Disable' : 'Enable'}</button>
           </form>`;
@@ -531,7 +532,8 @@
           e.preventDefault();
           const msg = document.getElementById('twofaMessage');
           msg.style.display = 'none'; msg.className = 'message';
-          const password = document.getElementById('twofaPassword').value;
+          const passwordEl = document.getElementById('twofaPassword');
+          const password = passwordEl ? passwordEl.value : '';
           const action = twofaEnabled ? 'disable' : 'enable';
           try {
             const r = await fetch('/api/profile/2fa/' + action, {

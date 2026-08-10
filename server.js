@@ -781,29 +781,41 @@ app.post('/api/profile/set-password', authenticateToken, validateCsrf, async (re
 
 app.post('/api/profile/2fa/enable', authenticateToken, validateCsrf, (req, res) => {
   const { password } = req.body;
-  if (!password) return res.status(400).json({ error: 'Password is required' });
-  db.get('SELECT password, phone FROM users WHERE id = ?', [req.user.id], async (err, user) => {
+  db.get('SELECT password, phone, has_password FROM users WHERE id = ?', [req.user.id], async (err, user) => {
     if (err || !user) return res.status(404).json({ error: 'User not found' });
     if (!user.phone) return res.status(400).json({ error: 'Add a phone number to your profile before enabling two-factor auth' });
-    const validPassword = await bcrypt.compare(password, user.password);
-    if (!validPassword) return res.status(401).json({ error: 'Current password is incorrect' });
-    db.run('UPDATE users SET twofa = 1 WHERE id = ?', [req.user.id], function(err) {
-      if (err) return res.status(500).json({ error: 'Failed to enable two-factor auth' });
-      res.json({ message: 'Two-factor authentication enabled', twofa: 1 });
+    db.get('SELECT id FROM oauth_accounts WHERE user_id = ?', [req.user.id], async (err, oauthAccount) => {
+      // OAuth-only accounts (no explicit password) don't need one here,
+      // mirroring the account-deletion flow.
+      const needsPassword = !oauthAccount || user.has_password === 1;
+      if (needsPassword) {
+        if (!password) return res.status(400).json({ error: 'Password is required' });
+        const validPassword = await bcrypt.compare(password, user.password);
+        if (!validPassword) return res.status(401).json({ error: 'Current password is incorrect' });
+      }
+      db.run('UPDATE users SET twofa = 1 WHERE id = ?', [req.user.id], function(err) {
+        if (err) return res.status(500).json({ error: 'Failed to enable two-factor auth' });
+        res.json({ message: 'Two-factor authentication enabled', twofa: 1 });
+      });
     });
   });
 });
 
 app.post('/api/profile/2fa/disable', authenticateToken, validateCsrf, (req, res) => {
   const { password } = req.body;
-  if (!password) return res.status(400).json({ error: 'Password is required' });
-  db.get('SELECT password FROM users WHERE id = ?', [req.user.id], async (err, user) => {
+  db.get('SELECT password, has_password FROM users WHERE id = ?', [req.user.id], async (err, user) => {
     if (err || !user) return res.status(404).json({ error: 'User not found' });
-    const validPassword = await bcrypt.compare(password, user.password);
-    if (!validPassword) return res.status(401).json({ error: 'Current password is incorrect' });
-    db.run('UPDATE users SET twofa = 0 WHERE id = ?', [req.user.id], function(err) {
-      if (err) return res.status(500).json({ error: 'Failed to disable two-factor auth' });
-      res.json({ message: 'Two-factor authentication disabled', twofa: 0 });
+    db.get('SELECT id FROM oauth_accounts WHERE user_id = ?', [req.user.id], async (err, oauthAccount) => {
+      const needsPassword = !oauthAccount || user.has_password === 1;
+      if (needsPassword) {
+        if (!password) return res.status(400).json({ error: 'Password is required' });
+        const validPassword = await bcrypt.compare(password, user.password);
+        if (!validPassword) return res.status(401).json({ error: 'Current password is incorrect' });
+      }
+      db.run('UPDATE users SET twofa = 0 WHERE id = ?', [req.user.id], function(err) {
+        if (err) return res.status(500).json({ error: 'Failed to disable two-factor auth' });
+        res.json({ message: 'Two-factor authentication disabled', twofa: 0 });
+      });
     });
   });
 });
