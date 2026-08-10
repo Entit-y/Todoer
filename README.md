@@ -114,6 +114,10 @@ GOOGLE_CLIENT_ID=....apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=GOCSPX-...
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=yourpassword
+# Optional — SMS delivery for 2FA codes (log | textbelt | email-gateway)
+# SMS_PROVIDER=log
+# SMS_TEXTBELT_KEY=textbelt
+# SMS_GATEWAY=vtext.com
 ```
 
 If `ADMIN_USERNAME`/`ADMIN_PASSWORD` are omitted, random credentials are generated and printed once. Run `python3 setup.py --help` for the full list of required keys.
@@ -142,7 +146,7 @@ cp .env.example .env
 nano .env
 ```
 
-Three things to configure: **email (Brevo)**, **Google OAuth**, and **admin credentials**.
+Three things to configure: **email (Brevo)**, **Google OAuth**, and **admin credentials**. SMS delivery for 2FA codes is optional — see the SMS section below.
 
 ---
 
@@ -176,6 +180,26 @@ BREVO_USER={random}@smtp-brevo.com   # shown under "Your SMTP Settings"
 BREVO_KEY=xsmtpsib-...               # key you just generated
 BREVO_FROM=noreply@yourdomain.com    # must match your verified domain
 ```
+
+---
+
+#### 📱 SMS — Two-Factor Codes *(optional)*
+
+Todoer's per-account two-factor auth sends one-time codes by SMS. Delivery is provider-agnostic — pick one in `.env`:
+
+| `SMS_PROVIDER` | Cost | Notes |
+|---|---|---|
+| `log` *(default)* | Free | Codes are only written to the server log — fine for testing |
+| `textbelt` | 1 free text/day, then $0.08 | Hosted API at [textbelt.com](https://textbelt.com). `key=textbelt` gives one free text per day per IP; set `SMS_TEXTBELT_KEY` to a prepaid key for more |
+| `email-gateway` | Free | Uses your Brevo SMTP to deliver `number@<carrier-gateway>` (e.g. `vtext.com`) — same mechanism as open-source Textbelt. Carrier delivery is best-effort (T-Mobile has deprecated these gateways) |
+
+```env
+SMS_PROVIDER=log              # log | textbelt | email-gateway
+SMS_TEXTBELT_KEY=textbelt     # Textbelt key (paid keys cost $0.08/text)
+SMS_GATEWAY=vtext.com         # Carrier gateway for email-gateway (vtext.com, txt.att.net, ...)
+```
+
+Users add a phone number in **Profile → Phone number**; 2FA codes are sent there once SMS two-factor is enabled.
 
 ---
 
@@ -222,6 +246,9 @@ ADMIN_PASSWORD=Password
 GOOGLE_CLIENT_ID=....apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=GOCSPX-...
 GOOGLE_REDIRECT_URI=https://yourdomain.com/auth/oauth/callback
+SMS_PROVIDER=log
+SMS_TEXTBELT_KEY=textbelt
+SMS_GATEWAY=vtext.com
 ```
 
 ---

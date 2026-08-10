@@ -201,6 +201,11 @@ db.serialize(() => {
     // Ignore error — column already exists on fresh installs
   });
 
+  // Migration: add phone column — used for SMS two-factor delivery
+  db.run(`ALTER TABLE users ADD COLUMN phone TEXT`, (err) => {
+    // Ignore error — column already exists on fresh installs
+  });
+
   db.run(`CREATE TABLE IF NOT EXISTS tasks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
@@ -396,6 +401,20 @@ const authenticateToken = (req, res, next) => {
 
 // ============ TWO-FACTOR AUTH ============
 
+// SMS delivery configuration.
+//   SMS_PROVIDER=textbelt      → hosted Textbelt API (https://textbelt.com).
+//                                key=textbelt sends 1 free text/day per IP;
+//                                set SMS_TEXTBELT_KEY for more ($0.08/text).
+//   SMS_PROVIDER=email-gateway → free carrier email-to-SMS via the Brevo SMTP
+//                                transporter above. Phone numbers are sent as
+//                                <number>@<SMS_GATEWAY>. Carriers are picky —
+//                                delivery is best-effort (T-Mobile in
+//                                particular has deprecated these gateways).
+//   SMS_PROVIDER=log (default) → codes are only written to the server log.
+const SMS_PROVIDER = (process.env.SMS_PROVIDER || 'log').toLowerCase();
+const SMS_TEXTBELT_KEY = process.env.SMS_TEXTBELT_KEY || 'textbelt';
+const SMS_GATEWAY = process.env.SMS_GATEWAY || 'vtext.com';
+
 // In-memory store of issued SMS OTP codes, keyed by the code itself.
 // VULNERABLE: a plain object used as a lookup table with a truthy gate —
 // property reads walk the prototype chain, so keys like __proto__, toString
@@ -404,10 +423,37 @@ const authenticateToken = (req, res, next) => {
 // all walk the same chain.)
 const pending2faCodes = {}; // { "482916": { userId, expiresAt } }
 
-// Simulated SMS gateway — in production this calls the SMS provider.
-// The code is only visible in the server logs, never in an HTTP response.
-function sendSmsCode(userId, code) {
-  console.log(`[SMS] OTP ${code} sent to user ${userId}`);
+// Send the 2FA code to a user's phone via the configured provider.
+// The code itself is never returned in an HTTP response.
+function sendSmsCode(userId, phone, code) {
+  if (!phone) {
+    console.log(`[SMS] No phone on file for user ${userId}; code ${code} would be sent`);
+    return;
+  }
+  const message = `Your Todoer verification code is ${code}`;
+
+  if (SMS_PROVIDER === 'textbelt') {
+    const body = new URLSearchParams({ phone, message, key: SMS_TEXTBELT_KEY });
+    fetch('https://textbelt.com/text', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body
+    })
+      .then(r => r.json())
+      .then(d => console.log('[SMS] textbelt response:', JSON.stringify(d)))
+      .catch(err => console.error('[SMS] textbelt error:', err.message));
+  } else if (SMS_PROVIDER === 'email-gateway') {
+    transporter.sendMail({
+      from: `"Todoer" <${process.env.BREVO_FROM || 'noreply@todoer.site'}>`,
+      to: `${phone}@${SMS_GATEWAY}`,
+      subject: 'Your Todoer verification code',
+      text: message
+    })
+      .then(() => console.log(`[SMS] code ${code} delivered via email gateway ${SMS_GATEWAY}`))
+      .catch(err => console.error('[SMS] email-gateway error:', err.message));
+  } else {
+    console.log(`[SMS] OTP ${code} sent to ${phone}`);
+  }
 }
 
 // TTL cleanup — expires codes older than 5 minutes.
@@ -491,7 +537,7 @@ app.post('/api/auth/login', loginLimiter, (req, res) => {
       // token. No session cookie is set until the code is verified.
       const code = Math.floor(100000 + Math.random() * 900000).toString();
       pending2faCodes[code] = { userId: user.id, expiresAt: Date.now() + 5 * 60 * 1000 };
-      sendSmsCode(user.id, code);
+      sendSmsCode(user.id, user.phone, code);
       const twofaToken = jwt.sign(
         { id: user.id, email: user.email, username: user.username || null, purpose: '2fa' },
         JWT_SECRET,
@@ -633,7 +679,7 @@ app.get('/api/auth/validate-redirect', (req, res) => {
 
 // Updated /api/profile — now includes OAuth connection info
 app.get('/api/profile', authenticateToken, (req, res) => {
-  db.get('SELECT id, email, username, created_at, has_password, twofa, time_format FROM users WHERE id = ?', [req.user.id], (err, user) => {
+  db.get('SELECT id, email, username, created_at, has_password, twofa, time_format, phone FROM users WHERE id = ?', [req.user.id], (err, user) => {
     if (err || !user) return res.status(404).json({ error: 'User not found' });
     db.all('SELECT provider, provider_email FROM oauth_accounts WHERE user_id = ?', [req.user.id], (err, oauthAccounts) => {
       res.json({ ...user, oauth_accounts: oauthAccounts || [] });
@@ -710,8 +756,9 @@ app.post('/api/profile/set-password', authenticateToken, validateCsrf, async (re
 app.post('/api/profile/2fa/enable', authenticateToken, validateCsrf, (req, res) => {
   const { password } = req.body;
   if (!password) return res.status(400).json({ error: 'Password is required' });
-  db.get('SELECT password FROM users WHERE id = ?', [req.user.id], async (err, user) => {
+  db.get('SELECT password, phone FROM users WHERE id = ?', [req.user.id], async (err, user) => {
     if (err || !user) return res.status(404).json({ error: 'User not found' });
+    if (!user.phone) return res.status(400).json({ error: 'Add a phone number to your profile before enabling two-factor auth' });
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) return res.status(401).json({ error: 'Current password is incorrect' });
     db.run('UPDATE users SET twofa = 1 WHERE id = ?', [req.user.id], function(err) {
@@ -748,6 +795,21 @@ app.put('/api/profile/time-format', authenticateToken, validateCsrf, (req, res) 
   db.run('UPDATE users SET time_format = ? WHERE id = ?', [timeFormat || null, req.user.id], function(err) {
     if (err) return res.status(500).json({ error: 'Failed to update date format' });
     res.json({ message: 'Date format updated', time_format: timeFormat || null });
+  });
+});
+
+// Update the phone number used for SMS two-factor delivery.
+// VULNERABLE: applied with no verification — no confirmation code is sent to
+// the old number and no password is required. Anyone with a valid session
+// (or an XSS / CSRF primitive) can silently redirect a victim's 2FA codes.
+app.put('/api/profile/phone', authenticateToken, validateCsrf, (req, res) => {
+  const { phone } = req.body;
+  if (!phone || !phone.trim()) return res.status(400).json({ error: 'Phone number is required' });
+  const normalized = phone.trim().replace(/[^\d+]/g, '');
+  if (normalized.length < 7 || normalized.length > 15) return res.status(400).json({ error: 'Phone number must be between 7 and 15 digits' });
+  db.run('UPDATE users SET phone = ? WHERE id = ?', [normalized, req.user.id], function(err) {
+    if (err) return res.status(500).json({ error: 'Failed to update phone number' });
+    res.json({ message: 'Phone number updated', phone: normalized });
   });
 });
 

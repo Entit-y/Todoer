@@ -222,6 +222,19 @@
         </form>
       </section>
 
+      <section class="profile-section" id="phoneSection">
+        <h2>Phone number</h2>
+        <p style="font-size:13px;color:var(--text-3);margin-bottom:16px;">Used to deliver SMS codes for two-factor authentication.</p>
+        <form id="phoneForm" class="profile-form">
+          <div class="form-group">
+            <label for="phoneInput">Phone</label>
+            <input type="tel" id="phoneInput" placeholder="+15551234567">
+          </div>
+          <div id="phoneMessage" class="message" style="display:none;"></div>
+          <button type="submit" class="btn btn-primary">Save phone number</button>
+        </form>
+      </section>
+
       <section class="profile-section" id="connectedAccountsSection">
         <h2>Connected accounts</h2>
         <div id="connectedAccountsList">
@@ -525,6 +538,7 @@
         });
 
         document.getElementById('timeFormatInput').value = data.time_format || '';
+        document.getElementById('phoneInput').value = data.phone || '';
 
         // ── Toast if returning from Google connect ──
         if (new URLSearchParams(window.location.search).get('connected') === '1') {
@@ -592,6 +606,19 @@
         const data = await r.json();
         if (r.ok) { msg.textContent = 'Date format saved.'; msg.className = 'message success'; }
         else { msg.textContent = data.error || 'Failed to save date format'; msg.className = 'message error'; }
+        msg.style.display = 'block';
+      } catch { msg.textContent = 'An error occurred.'; msg.className = 'message error'; msg.style.display = 'block'; }
+    });
+
+    document.getElementById('phoneForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('phoneMessage');
+      msg.style.display = 'none'; msg.className = 'message';
+      try {
+        const r = await fetch('/api/profile/phone', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() }, body: JSON.stringify({ phone: document.getElementById('phoneInput').value }) });
+        const data = await r.json();
+        if (r.ok) { msg.textContent = 'Phone number saved.'; msg.className = 'message success'; }
+        else { msg.textContent = data.error || 'Failed to save phone number'; msg.className = 'message error'; }
         msg.style.display = 'block';
       } catch { msg.textContent = 'An error occurred.'; msg.className = 'message error'; msg.style.display = 'block'; }
     });
