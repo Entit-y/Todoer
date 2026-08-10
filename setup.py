@@ -278,16 +278,23 @@ def get_sms():
 
     sms_key = ""
     gateway = ""
+    mappings = ""
     if provider == "textbelt":
         sms_key = prompt("Textbelt API key (blank = 1 free text/day)", default="textbelt")
         if not sms_key:
             sms_key = "textbelt"
     elif provider == "email-gateway":
-        gateway = prompt("Carrier gateway domain", default="vtext.com")
+        gateway = prompt("Default carrier gateway domain", default="vtext.com")
         if not gateway:
             gateway = "vtext.com"
+        mappings = prompt(
+            "Per-carrier gateway routing (carrier=domain,carrier=domain)",
+            default="verizon=vtext.com,mtn=sms.mtn.co.za,vodacom=voda.co.za,bell=txt.bell.ca,telus=msg.telus.com",
+        ).strip()
+        info("Users select their carrier in Profile → Phone number; unknown carriers use the default gateway.")
+        info("Carrier gateways get discontinued — verify a domain still works before relying on it.")
 
-    return provider, sms_key, gateway
+    return provider, sms_key, gateway, mappings
 
 
 def get_google_oauth(domain):
@@ -536,6 +543,7 @@ Example config file ({c(C.DIM, 'key=value, # comments, blank lines ignored')}):
   # SMS_PROVIDER=log
   # SMS_TEXTBELT_KEY=textbelt
   # SMS_GATEWAY=vtext.com
+  # CARRIER_GATEWAYS=verizon=vtext.com,mtn=sms.mtn.co.za,vodacom=voda.co.za
 """)
     parser.add_argument('--config', '-c', metavar='FILE',
                         help='Read all config from FILE (key=value format) instead of prompting interactively.')
@@ -576,6 +584,7 @@ def main():
             sms_provider = "log"
         sms_key = cfg.get('SMS_TEXTBELT_KEY') or ''
         sms_gateway = cfg.get('SMS_GATEWAY') or ''
+        sms_mappings = cfg.get('CARRIER_GATEWAYS') or ''
         if not cfg.get('ADMIN_USERNAME'):
             info("Auto-generated admin credentials:")
             info(f"  Username: {c(C.BWHITE, admin_user)}")
@@ -608,6 +617,8 @@ def main():
             env_values["SMS_TEXTBELT_KEY"] = sms_key
         if sms_gateway:
             env_values["SMS_GATEWAY"] = sms_gateway
+        if sms_mappings:
+            env_values["CARRIER_GATEWAYS"] = sms_mappings
         create_env(env_values)
         launch()
         if wait_for_https(domain):
@@ -629,7 +640,7 @@ def main():
 
     domain, le_email = get_domain_info()
     brevo_user, brevo_key, brevo_from = get_brevo(domain)
-    sms_provider, sms_key, sms_gateway = get_sms()
+    sms_provider, sms_key, sms_gateway, sms_mappings = get_sms()
     google_id, google_secret, google_redirect = get_google_oauth(domain)
     admin_user, admin_pass = get_admin_creds()
 
@@ -652,6 +663,8 @@ def main():
         env_values["SMS_TEXTBELT_KEY"] = sms_key
     if sms_gateway:
         env_values["SMS_GATEWAY"] = sms_gateway
+    if sms_mappings:
+        env_values["CARRIER_GATEWAYS"] = sms_mappings
     if admin_user is not None:
         env_values["ADMIN_USERNAME"] = admin_user
         env_values["ADMIN_PASSWORD"] = admin_pass

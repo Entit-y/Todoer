@@ -206,6 +206,11 @@ db.serialize(() => {
     // Ignore error — column already exists on fresh installs
   });
 
+  // Migration: add carrier column — used to route email-to-SMS gateway delivery
+  db.run(`ALTER TABLE users ADD COLUMN carrier TEXT`, (err) => {
+    // Ignore error — column already exists on fresh installs
+  });
+
   db.run(`CREATE TABLE IF NOT EXISTS tasks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
@@ -407,13 +412,32 @@ const authenticateToken = (req, res, next) => {
 //                                set SMS_TEXTBELT_KEY for more ($0.08/text).
 //   SMS_PROVIDER=email-gateway → free carrier email-to-SMS via the Brevo SMTP
 //                                transporter above. Phone numbers are sent as
-//                                <number>@<SMS_GATEWAY>. Carriers are picky —
-//                                delivery is best-effort (T-Mobile in
-//                                particular has deprecated these gateways).
+//                                <number>@<gateway>. The gateway is resolved per
+//                                user from CARRIER_GATEWAYS (keyed by the user's
+//                                carrier), falling back to SMS_GATEWAY.
+//                                NOTE: many carriers have killed these gateways
+//                                (AT&T 2025, T-Mobile, Verizon flagged) — verify
+//                                a gateway domain still works before relying on
+//                                it, and test with a real number.
 //   SMS_PROVIDER=log (default) → codes are only written to the server log.
 const SMS_PROVIDER = (process.env.SMS_PROVIDER || 'log').toLowerCase();
 const SMS_TEXTBELT_KEY = process.env.SMS_TEXTBELT_KEY || 'textbelt';
 const SMS_GATEWAY = process.env.SMS_GATEWAY || 'vtext.com';
+
+// Per-carrier email-to-SMS routing for SMS_PROVIDER=email-gateway.
+// Format: "carrier=domain,carrier=domain" — carrier names are case-insensitive
+// and matched against the user's `carrier` profile field. Unknown carriers
+// fall back to SMS_GATEWAY. Example:
+//   CARRIER_GATEWAYS=verizon=vtext.com,mtn=sms.mtn.co.za,vodacom=voda.co.za
+const CARRIER_GATEWAYS = (process.env.CARRIER_GATEWAYS || '')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean)
+  .reduce((map, entry) => {
+    const [carrier, domain] = entry.split('=').map(s => s.trim());
+    if (carrier && domain) map[carrier.toLowerCase()] = domain;
+    return map;
+  }, {});
 
 // In-memory store of issued SMS OTP codes, keyed by the code itself.
 // VULNERABLE: a plain object used as a lookup table with a truthy gate —
@@ -425,7 +449,8 @@ const pending2faCodes = {}; // { "482916": { userId, expiresAt } }
 
 // Send the 2FA code to a user's phone via the configured provider.
 // The code itself is never returned in an HTTP response.
-function sendSmsCode(userId, phone, code) {
+function sendSmsCode(user, code) {
+  const { id: userId, phone, carrier } = user;
   if (!phone) {
     console.log(`[SMS] No phone on file for user ${userId}; code ${code} would be sent`);
     return;
@@ -443,14 +468,15 @@ function sendSmsCode(userId, phone, code) {
       .then(d => console.log('[SMS] textbelt response:', JSON.stringify(d)))
       .catch(err => console.error('[SMS] textbelt error:', err.message));
   } else if (SMS_PROVIDER === 'email-gateway') {
+    const gateway = CARRIER_GATEWAYS[(carrier || '').toLowerCase()] || SMS_GATEWAY;
     transporter.sendMail({
       from: `"Todoer" <${process.env.BREVO_FROM || 'noreply@todoer.site'}>`,
-      to: `${phone}@${SMS_GATEWAY}`,
+      to: `${phone}@${gateway}`,
       subject: 'Your Todoer verification code',
       text: message
     })
-      .then(() => console.log(`[SMS] code ${code} delivered via email gateway ${SMS_GATEWAY}`))
-      .catch(err => console.error('[SMS] email-gateway error:', err.message));
+      .then(() => console.log(`[SMS] code ${code} delivered to ${phone}@${gateway} (carrier: ${carrier || 'unknown — fallback'})`))
+      .catch(err => console.error(`[SMS] email-gateway error sending to ${phone}@${gateway} (carrier: ${carrier || 'unknown — fallback'}):`, err.message));
   } else {
     console.log(`[SMS] OTP ${code} sent to ${phone}`);
   }
@@ -537,7 +563,7 @@ app.post('/api/auth/login', loginLimiter, (req, res) => {
       // token. No session cookie is set until the code is verified.
       const code = Math.floor(100000 + Math.random() * 900000).toString();
       pending2faCodes[code] = { userId: user.id, expiresAt: Date.now() + 5 * 60 * 1000 };
-      sendSmsCode(user.id, user.phone, code);
+      sendSmsCode(user, code);
       const twofaToken = jwt.sign(
         { id: user.id, email: user.email, username: user.username || null, purpose: '2fa' },
         JWT_SECRET,
@@ -679,7 +705,7 @@ app.get('/api/auth/validate-redirect', (req, res) => {
 
 // Updated /api/profile — now includes OAuth connection info
 app.get('/api/profile', authenticateToken, (req, res) => {
-  db.get('SELECT id, email, username, created_at, has_password, twofa, time_format, phone FROM users WHERE id = ?', [req.user.id], (err, user) => {
+  db.get('SELECT id, email, username, created_at, has_password, twofa, time_format, phone, carrier FROM users WHERE id = ?', [req.user.id], (err, user) => {
     if (err || !user) return res.status(404).json({ error: 'User not found' });
     db.all('SELECT provider, provider_email FROM oauth_accounts WHERE user_id = ?', [req.user.id], (err, oauthAccounts) => {
       res.json({ ...user, oauth_accounts: oauthAccounts || [] });
@@ -803,13 +829,14 @@ app.put('/api/profile/time-format', authenticateToken, validateCsrf, (req, res) 
 // the old number and no password is required. Anyone with a valid session
 // (or an XSS / CSRF primitive) can silently redirect a victim's 2FA codes.
 app.put('/api/profile/phone', authenticateToken, validateCsrf, (req, res) => {
-  const { phone } = req.body;
+  const { phone, carrier } = req.body;
   if (!phone || !phone.trim()) return res.status(400).json({ error: 'Phone number is required' });
   const normalized = phone.trim().replace(/[^\d+]/g, '');
   if (normalized.length < 7 || normalized.length > 15) return res.status(400).json({ error: 'Phone number must be between 7 and 15 digits' });
-  db.run('UPDATE users SET phone = ? WHERE id = ?', [normalized, req.user.id], function(err) {
+  const normalizedCarrier = typeof carrier === 'string' ? carrier.trim().toLowerCase() : null;
+  db.run('UPDATE users SET phone = ?, carrier = ? WHERE id = ?', [normalized, normalizedCarrier || null, req.user.id], function(err) {
     if (err) return res.status(500).json({ error: 'Failed to update phone number' });
-    res.json({ message: 'Phone number updated', phone: normalized });
+    res.json({ message: 'Phone number updated', phone: normalized, carrier: normalizedCarrier || null });
   });
 });
 

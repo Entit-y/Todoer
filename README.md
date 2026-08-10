@@ -118,6 +118,7 @@ ADMIN_PASSWORD=yourpassword
 # SMS_PROVIDER=log
 # SMS_TEXTBELT_KEY=textbelt
 # SMS_GATEWAY=vtext.com
+# CARRIER_GATEWAYS=verizon=vtext.com,mtn=sms.mtn.co.za,vodacom=voda.co.za
 ```
 
 If `ADMIN_USERNAME`/`ADMIN_PASSWORD` are omitted, random credentials are generated and printed once. Run `python3 setup.py --help` for the full list of required keys.
@@ -191,15 +192,18 @@ Todoer's per-account two-factor auth sends one-time codes by SMS. Delivery is pr
 |---|---|---|
 | `log` *(default)* | Free | Codes are only written to the server log — fine for testing |
 | `textbelt` | 1 free text/day, then $0.08 | Hosted API at [textbelt.com](https://textbelt.com). `key=textbelt` gives one free text per day per IP; set `SMS_TEXTBELT_KEY` to a prepaid key for more |
-| `email-gateway` | Free | Uses your Brevo SMTP to deliver `number@<carrier-gateway>` (e.g. `vtext.com`) — same mechanism as open-source Textbelt. Carrier delivery is best-effort (T-Mobile has deprecated these gateways) |
+| `email-gateway` | Free | Uses your Brevo SMTP to deliver `number@<gateway>` to a carrier's email-to-SMS gateway. Carrier gateways get **discontinued** — AT&T (2025), T-Mobile and Verizon are flagged as dead/declining, so verify a domain still works before relying on it |
 
 ```env
 SMS_PROVIDER=log              # log | textbelt | email-gateway
 SMS_TEXTBELT_KEY=textbelt     # Textbelt key (paid keys cost $0.08/text)
-SMS_GATEWAY=vtext.com         # Carrier gateway for email-gateway (vtext.com, txt.att.net, ...)
+SMS_GATEWAY=vtext.com         # Default gateway for email-gateway (used when no carrier match)
+CARRIER_GATEWAYS=verizon=vtext.com,mtn=sms.mtn.co.za,vodacom=voda.co.za,bell=txt.bell.ca,telus=msg.telus.com
 ```
 
-Users add a phone number in **Profile → Phone number**; 2FA codes are sent there once SMS two-factor is enabled.
+**Carrier routing** — for `email-gateway`, users pick their carrier in **Profile → Phone number** (e.g. Verizon, MTN, Vodacom…). The `CARRIER_GATEWAYS` map routes each carrier to its gateway domain; carriers not in the map fall back to `SMS_GATEWAY`. Add or remove `carrier=domain` pairs freely — the format is a simple comma-separated list.
+
+Users add a phone number and carrier in **Profile → Phone number**; 2FA codes are sent there once SMS two-factor is enabled.
 
 ---
 
@@ -249,6 +253,7 @@ GOOGLE_REDIRECT_URI=https://yourdomain.com/auth/oauth/callback
 SMS_PROVIDER=log
 SMS_TEXTBELT_KEY=textbelt
 SMS_GATEWAY=vtext.com
+CARRIER_GATEWAYS=verizon=vtext.com,mtn=sms.mtn.co.za,vodacom=voda.co.za,bell=txt.bell.ca,telus=msg.telus.com
 ```
 
 ---
