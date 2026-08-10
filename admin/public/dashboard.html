@@ -833,6 +833,13 @@
     loaded.add('overview');
     loadOverview();
 
+    function viewFromHash() {
+      const v = (location.hash || '').replace('#', '');
+      if (['overview','users','tasks','files','feed','comments','workspaces','smslog','settings'].includes(v)) showView(v);
+    }
+    window.addEventListener('hashchange', viewFromHash);
+    viewFromHash();
+
     // ── Live feed via SSE ──
     const evtSource = new EventSource('/api/events');
     evtSource.onmessage = (e) => {
