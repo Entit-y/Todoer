@@ -369,15 +369,15 @@
 
   <main class="status-page">
 
-    <div class="overall-banner operational">
+    <div class="overall-banner operational" id="overallBanner">
       <div class="overall-icon">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="20 6 9 17 4 12"/>
         </svg>
       </div>
       <div class="overall-text">
-        <h2>All systems operational</h2>
-        <p>No incidents or outages detected.</p>
+        <h2 id="overallTitle">All systems operational</h2>
+        <p id="overallSub">No incidents or outages detected.</p>
       </div>
       <div class="overall-updated" id="updatedAt">
         Updated just now
@@ -385,135 +385,23 @@
     </div>
 
     <div class="status-section">
-      <div class="status-section-title">Core Services</div>
-
-      <div class="component-row">
-        <div>
-          <div class="component-name">Web Application</div>
-          <div class="component-desc">__APP_DOMAIN__ — tasks, files, feed, workspaces</div>
-        </div>
-        <div class="uptime-wrap">
-          <div class="uptime-bars" id="bars-web"></div>
-          <span class="uptime-pct">99.98%</span>
-        </div>
-        <div class="component-status">
-          <span class="status-dot-sm operational"></span>
-          <span class="status-label operational">Operational</span>
-        </div>
-      </div>
-
-      <div class="component-row">
-        <div>
-          <div class="component-name">API</div>
-          <div class="component-desc">REST endpoints and WebSocket connections</div>
-        </div>
-        <div class="uptime-wrap">
-          <div class="uptime-bars" id="bars-api"></div>
-          <span class="uptime-pct">99.97%</span>
-        </div>
-        <div class="component-status">
-          <span class="status-dot-sm operational"></span>
-          <span class="status-label operational">Operational</span>
-        </div>
-      </div>
-
-      <div class="component-row">
-        <div>
-          <div class="component-name">Authentication</div>
-          <div class="component-desc">Sign in, OAuth, and session management</div>
-        </div>
-        <div class="uptime-wrap">
-          <div class="uptime-bars" id="bars-auth"></div>
-          <span class="uptime-pct">100%</span>
-        </div>
-        <div class="component-status">
-          <span class="status-dot-sm operational"></span>
-          <span class="status-label operational">Operational</span>
-        </div>
-      </div>
-
-      <div class="component-row">
-        <div>
-          <div class="component-name">File Storage</div>
-          <div class="component-desc">Upload, download, and archive extraction</div>
-        </div>
-        <div class="uptime-wrap">
-          <div class="uptime-bars" id="bars-files"></div>
-          <span class="uptime-pct">99.95%</span>
-        </div>
-        <div class="component-status">
-          <span class="status-dot-sm operational"></span>
-          <span class="status-label operational">Operational</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="status-section">
-      <div class="status-section-title">Communication</div>
-
-      <div class="component-row">
-        <div>
-          <div class="component-name">Email Delivery</div>
-          <div class="component-desc">Verification, password reset, and invitations</div>
-        </div>
-        <div class="uptime-wrap">
-          <div class="uptime-bars" id="bars-email"></div>
-          <span class="uptime-pct">99.91%</span>
-        </div>
-        <div class="component-status">
-          <span class="status-dot-sm operational"></span>
-          <span class="status-label operational">Operational</span>
-        </div>
-      </div>
-
-      <div class="component-row">
-        <div>
-          <div class="component-name">Support Chat</div>
-          <div class="component-desc">__SUPPORT_DOMAIN__</div>
-        </div>
-        <div class="uptime-wrap">
-          <div class="uptime-bars" id="bars-support"></div>
-          <span class="uptime-pct">99.99%</span>
-        </div>
-        <div class="component-status">
-          <span class="status-dot-sm operational"></span>
-          <span class="status-label operational">Operational</span>
-        </div>
-      </div>
+      <div class="status-section-title">Services</div>
+      <div id="componentsList"></div>
     </div>
 
     <div class="status-section">
       <div class="status-section-title">Incident History — Past 30 days</div>
-
-      <div class="incident-item">
-        <div class="incident-header">
-          <span class="incident-title">Email delivery delays — SMTP relay</span>
-          <span class="incident-date">Jun 3, 2026</span>
-        </div>
-        <span class="incident-badge resolved">Resolved</span>
-        <div class="incident-updates">
-          <div class="incident-update-row">
-            <span class="incident-update-time">09:41 UTC</span>
-            <span class="incident-update">Monitoring — transactional emails (verification codes, password resets) are experiencing delays of up to 8 minutes due to upstream relay congestion.</span>
-          </div>
-          <div class="incident-update-row">
-            <span class="incident-update-time">10:17 UTC</span>
-            <span class="incident-update">Identified — congestion traced to a SMTP provider regional relay. Failover to secondary relay initiated.</span>
-          </div>
-          <div class="incident-update-row">
-            <span class="incident-update-time">10:44 UTC</span>
-            <span class="incident-update">Resolved — email delivery operating normally. No emails were lost; delayed messages delivered.</span>
-          </div>
-        </div>
-      </div>
-
+      <div id="incidentsList"></div>
     </div>
 
     <div class="subscribe-strip">
-      <p><strong>Stay informed.</strong> Subscribe to receive incident notifications and maintenance windows by email.</p>
-      <a href="mailto:status-subscribe@__APP_DOMAIN__" class="btn btn-secondary" style="text-decoration:none;font-size:12.5px;padding:7px 14px;">
-        Subscribe to updates
-      </a>
+      <form id="subscribeForm" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;width:100%;">
+        <p style="margin-right:auto;"><strong>Stay informed.</strong> Subscribe for incident notifications and maintenance windows.</p>
+        <input type="email" id="subEmail" placeholder="you@example.com" autocomplete="email" style="flex:1;min-width:180px;padding:9px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface-2);color:var(--text-1);font-size:13px;">
+        <input type="url" id="subWebhook" placeholder="https://your-webhook.example (optional)" autocomplete="off" spellcheck="false" style="flex:1;min-width:220px;padding:9px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface-2);color:var(--text-1);font-size:13px;">
+        <button type="submit" class="btn btn-secondary" style="padding:9px 16px;">Subscribe</button>
+        <div id="subResult" style="width:100%;font-size:12.5px;color:var(--text-2);"></div>
+      </form>
     </div>
 
   </main>
@@ -535,29 +423,131 @@
 </div>
 
 <script>
-  // ── Updated at timestamp ──
-  document.getElementById('updatedAt').textContent =
-    'Updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-  // ── Uptime bars ── 
-  // 30 bars representing the past 30 days, mostly operational with minor blips.
-  function renderBars(containerId, blipDays) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-    for (let i = 0; i < 30; i++) {
-      const bar = document.createElement('div');
-      bar.className = 'uptime-bar';
-      if (blipDays.includes(i)) bar.className += ' degraded';
-      container.appendChild(bar);
-    }
+  function esc(s) {
+    const d = document.createElement('div');
+    d.textContent = String(s == null ? '' : s);
+    return d.innerHTML;
   }
 
-  renderBars('bars-web',     [26]);
-  renderBars('bars-api',     [26]);
-  renderBars('bars-auth',    []);
-  renderBars('bars-files',   []);
-  renderBars('bars-email',   [26, 27]);
-  renderBars('bars-support', []);
+  function fmtLatency(ms) {
+    if (ms == null) return '—';
+    return ms + ' ms';
+  }
+
+  function fmtDate(s) {
+    if (!s) return '—';
+    return new Date(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  function renderBars() {
+    let html = '';
+    for (let i = 0; i < 30; i++) html += '<div class="uptime-bar"></div>';
+    return html;
+  }
+
+  function statusLabel(status) {
+    const labels = { operational: 'Operational', degraded: 'Degraded', outage: 'Outage' };
+    return labels[status] || status;
+  }
+
+  function renderStatus(data) {
+    const components = data.components || [];
+
+    const anyOutage  = components.some(c => c.status === 'outage');
+    const anyDegraded = components.some(c => c.status === 'degraded');
+    const banner = document.getElementById('overallBanner');
+    banner.className = 'overall-banner ' + (anyOutage ? 'outage' : anyDegraded ? 'degraded' : 'operational');
+    document.getElementById('overallTitle').textContent = anyOutage
+      ? 'Partial system outage'
+      : anyDegraded
+        ? 'Degraded performance'
+        : 'All systems operational';
+    document.getElementById('overallSub').textContent = anyOutage
+      ? 'One or more services are currently unavailable.'
+      : anyDegraded
+        ? 'One or more services are experiencing slower than normal response times.'
+        : 'No incidents or outages detected.';
+    document.getElementById('updatedAt').textContent = 'Updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    const list = document.getElementById('componentsList');
+    list.innerHTML = components.map(c => `
+      <div class="component-row">
+        <div>
+          <div class="component-name">${esc(c.name)}</div>
+          <div class="component-desc">${esc(c.description || '')}</div>
+        </div>
+        <div class="uptime-wrap">
+          <div class="uptime-bars">${renderBars()}</div>
+          <span class="uptime-pct">${fmtLatency(c.latency_ms)}</span>
+        </div>
+        <div class="component-status">
+          <span class="status-dot-sm ${esc(c.status)}"></span>
+          <span class="status-label ${esc(c.status)}">${statusLabel(c.status)}</span>
+        </div>
+      </div>`).join('') || '<div class="component-row" style="color:var(--text-3);font-size:13px;">No components configured.</div>';
+
+    const incidents = data.incidents || [];
+    const incList = document.getElementById('incidentsList');
+    if (!incidents.length) {
+      incList.innerHTML = '<div style="padding:16px 0;font-size:13px;color:var(--text-3);">No incidents in the last 30 days.</div>';
+      return;
+    }
+    incList.innerHTML = incidents.map(i => `
+      <div class="incident-item">
+        <div class="incident-header">
+          <span class="incident-title">${esc(i.title)}</span>
+          <span class="incident-date">${fmtDate(i.created_at)}</span>
+        </div>
+        <span class="incident-badge ${esc(i.badge)}">${esc(i.badge)}</span>
+        <div class="incident-updates">
+          ${(i.updates || []).map(u => `
+            <div class="incident-update-row">
+              <span class="incident-update-time">${esc(u.time_label || '')}</span>
+              <span class="incident-update">${esc(u.content)}</span>
+            </div>`).join('')}
+        </div>
+      </div>`).join('');
+  }
+
+  async function loadStatus() {
+    try {
+      const r = await fetch('/api/status');
+      if (r.ok) renderStatus(await r.json());
+    } catch {}
+  }
+
+  // ── Subscribe ──
+  document.getElementById('subscribeForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const result = document.getElementById('subResult');
+    const email = document.getElementById('subEmail').value.trim();
+    const webhookUrl = document.getElementById('subWebhook').value.trim();
+    result.textContent = 'Subscribing…';
+
+    try {
+      const r = await fetch('/api/status/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email || undefined, webhook_url: webhookUrl || undefined })
+      });
+      const d = await r.json();
+      if (r.ok) {
+        result.style.color = 'var(--text-2)';
+        result.textContent = d.verified
+          ? `Subscribed — webhook verified (received ${d.status_code} in ${d.latency_ms} ms).`
+          : 'Subscribed. You will receive incident notifications.';
+      } else {
+        result.style.color = 'var(--danger)';
+        result.textContent = d.error || 'Subscription failed.';
+      }
+    } catch {
+      result.style.color = 'var(--danger)';
+      result.textContent = 'Subscription failed.';
+    }
+  });
+
+  loadStatus();
+  setInterval(loadStatus, 30000);
 </script>
 </body>
 </html>

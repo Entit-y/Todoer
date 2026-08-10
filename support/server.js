@@ -58,6 +58,78 @@ db.serialize(() => {
       FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
     )
   `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS components (
+      id          INTEGER  PRIMARY KEY AUTOINCREMENT,
+      name        TEXT     NOT NULL UNIQUE,
+      description TEXT,
+      check_url   TEXT     NOT NULL,
+      status      TEXT     DEFAULT 'operational',
+      latency_ms  INTEGER,
+      checked_at  DATETIME
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS incidents (
+      id         INTEGER  PRIMARY KEY AUTOINCREMENT,
+      title      TEXT     NOT NULL,
+      badge      TEXT     DEFAULT 'resolved',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS incident_updates (
+      id          INTEGER  PRIMARY KEY AUTOINCREMENT,
+      incident_id INTEGER  NOT NULL,
+      time_label  TEXT,
+      content     TEXT     NOT NULL,
+      created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (incident_id) REFERENCES incidents(id) ON DELETE CASCADE
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS subscribers (
+      id          INTEGER  PRIMARY KEY AUTOINCREMENT,
+      email       TEXT,
+      webhook_url TEXT,
+      created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // ── Seed status components and incident history ──
+  const seedComponents = [
+    { name: 'Web Application',   description: `${TODOER_APP_URL.replace(/^https?:\/\//, '')} — tasks, files, feed, workspaces`, check_url: `${TODOER_APP_URL}/` },
+    { name: 'API',               description: 'REST endpoints and WebSocket connections', check_url: `${TODOER_APP_URL}/api/auth/check-email?email=status@todoer.site` },
+    { name: 'Authentication',    description: 'Sign in, OAuth, and session management', check_url: `${SUPPORT_URL}/login` },
+    { name: 'File Storage',      description: 'Upload, download, and archive extraction', check_url: `${TODOER_APP_URL}/assets/logo.svg` },
+    { name: 'Email Delivery',    description: 'Verification, password reset, and invitations', check_url: `${TODOER_APP_URL}/forgot-password` },
+    { name: 'Support Chat',      description: SUPPORT_URL.replace(/^https?:\/\//, ''), check_url: `${SUPPORT_URL}/chat` }
+  ];
+  seedComponents.forEach(c => {
+    db.run('INSERT OR IGNORE INTO components (name, description, check_url) VALUES (?, ?, ?)', [c.name, c.description, c.check_url]);
+  });
+
+  db.run(`INSERT OR IGNORE INTO incidents (id, title, badge, created_at)
+          VALUES (1, 'Email delivery delays — SMTP relay', 'resolved', '2026-06-03 09:41:00')`);
+  db.run(`
+    INSERT INTO incident_updates (incident_id, time_label, content)
+    SELECT 1, '09:41 UTC', 'Monitoring — transactional emails (verification codes, password resets) are experiencing delays of up to 8 minutes due to upstream relay congestion.'
+    WHERE NOT EXISTS (SELECT 1 FROM incident_updates WHERE incident_id = 1)
+  `);
+  db.run(`
+    INSERT INTO incident_updates (incident_id, time_label, content)
+    SELECT 1, '10:17 UTC', 'Identified — congestion traced to an SMTP provider regional relay. Failover to secondary relay initiated.'
+    WHERE NOT EXISTS (SELECT 1 FROM incident_updates WHERE incident_id = 1 AND time_label = '10:17 UTC')
+  `);
+  db.run(`
+    INSERT INTO incident_updates (incident_id, time_label, content)
+    SELECT 1, '10:44 UTC', 'Resolved — email delivery operating normally. No emails were lost; delayed messages delivered.'
+    WHERE NOT EXISTS (SELECT 1 FROM incident_updates WHERE incident_id = 1 AND time_label = '10:44 UTC')
+  `);
 });
 
 // ============ HELPERS ============
@@ -476,6 +548,106 @@ app.get('/api/conversation/:id/unread', requireAuth, (req, res) => {
       );
     }
   );
+});
+
+// ============ STATUS PAGE API ============
+
+// Probe a single component's check URL and record the result.
+function checkComponent(comp) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+  const start = Date.now();
+
+  fetch(comp.check_url, { method: 'GET', redirect: 'follow', signal: controller.signal })
+    .then(r => {
+      const latency = Date.now() - start;
+      const status = latency > 3000 ? 'degraded' : 'operational';
+      db.run('UPDATE components SET status = ?, latency_ms = ?, checked_at = CURRENT_TIMESTAMP WHERE id = ?',
+        [status, latency, comp.id]);
+    })
+    .catch(() => {
+      db.run('UPDATE components SET status = ?, latency_ms = NULL, checked_at = CURRENT_TIMESTAMP WHERE id = ?',
+        ['outage', comp.id]);
+    })
+    .finally(() => clearTimeout(timer));
+}
+
+// Run an initial check shortly after boot, then every 60 seconds.
+function checkAllComponents() {
+  db.all('SELECT * FROM components', (err, rows) => {
+    (rows || []).forEach(checkComponent);
+  });
+}
+setTimeout(checkAllComponents, 1500);
+setInterval(checkAllComponents, 60 * 1000);
+
+// Live status — components and incident history for the public status page.
+app.get('/api/status', (req, res) => {
+  db.all('SELECT name, description, status, latency_ms, checked_at FROM components ORDER BY id', (err, components) => {
+    if (err) return res.status(500).json({ error: 'Failed to fetch components' });
+
+    db.all(`
+      SELECT i.id, i.title, i.badge, i.created_at, u.time_label, u.content
+      FROM incidents i
+      LEFT JOIN incident_updates u ON u.incident_id = i.id
+      ORDER BY i.created_at DESC, u.id ASC
+    `, (err2, rows) => {
+      if (err2) return res.status(500).json({ error: 'Failed to fetch incidents' });
+
+      const incidents = [];
+      const byId = {};
+      (rows || []).forEach(r => {
+        if (!byId[r.id]) {
+          byId[r.id] = { id: r.id, title: r.title, badge: r.badge, created_at: r.created_at, updates: [] };
+          incidents.push(byId[r.id]);
+        }
+        if (r.time_label || r.content) byId[r.id].updates.push({ time_label: r.time_label, content: r.content });
+      });
+
+      res.json({ components: components || [], incidents, generated_at: new Date().toISOString() });
+    });
+  });
+});
+
+// Subscribe to status updates. When a webhook URL is provided, a test
+// notification is sent to the subscriber's endpoint so they can confirm
+// their webhook is wired up correctly before the subscription is stored.
+app.post('/api/status/subscribe', (req, res) => {
+  const { email, webhook_url } = req.body;
+  const cleanEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+  const cleanUrl   = typeof webhook_url === 'string' ? webhook_url.trim() : '';
+
+  if (!cleanEmail && !cleanUrl) return res.status(400).json({ error: 'Email or webhook URL is required' });
+  if (cleanEmail && !cleanEmail.includes('@')) return res.status(400).json({ error: 'Invalid email address' });
+  if (cleanUrl && !/^https?:\/\//.test(cleanUrl)) return res.status(400).json({ error: 'Webhook URL must start with http:// or https://' });
+
+  db.run('INSERT INTO subscribers (email, webhook_url) VALUES (?, ?)', [cleanEmail || null, cleanUrl || null], function(err) {
+    if (err) return res.status(500).json({ error: 'Failed to save subscription' });
+    if (!cleanUrl) return res.json({ message: 'Subscribed', verified: null });
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+    const start = Date.now();
+
+    fetch(cleanUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'status.test',
+        message: 'This is a test notification from the Todoer status page.',
+        timestamp: new Date().toISOString()
+      }),
+      signal: controller.signal
+    })
+      .then(r => r.text().then(() => {
+        clearTimeout(timer);
+        res.json({ message: 'Subscribed — webhook verified', verified: true, status_code: r.status, latency_ms: Date.now() - start });
+      }))
+      .catch(e => {
+        clearTimeout(timer);
+        res.status(502).json({ error: 'Webhook verification failed', verified: false, detail: e.message });
+      });
+  });
 });
 
 // ============ PAGE ROUTES ============
