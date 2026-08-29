@@ -8,147 +8,151 @@
   <link rel="stylesheet" href="/styles.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
-    .report-wrap {
-      max-width: 880px;
-      margin: 0 auto;
-      padding: 36px 24px 64px;
+    body { background: var(--bg); color: var(--text-1); font-family: var(--font); }
+
+    /* ── Public page header (matches vdp.html) ── */
+    .public-header {
+      border-bottom: 1px solid var(--border);
+      padding: 0 32px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--surface);
+      position: sticky;
+      top: 0;
+      z-index: 100;
     }
+    .public-header-brand { display: flex; align-items: center; gap: 8px; text-decoration: none; }
+    .public-header-brand-text { font-size: 14px; font-weight: 700; letter-spacing: -0.03em; color: var(--text-1); }
+    .public-header-actions { display: flex; align-items: center; gap: 10px; }
+    .public-header-link { font-size: 13px; color: var(--text-2); text-decoration: none; font-weight: 500; transition: color 0.15s; }
+    .public-header-link:hover { color: var(--text-1); }
+
+    /* ── Page shell ── */
+    .report-shell { max-width: 1040px; margin: 0 auto; padding: 40px 24px 72px; }
     .report-eyebrow {
-      font-size: 12px;
-      font-weight: 600;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--accent, #6366f1);
+      font-size: 12px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase;
+      color: var(--accent); margin-bottom: 8px;
     }
-    .report-wrap h1 {
-      font-size: 28px;
-      font-weight: 700;
-      letter-spacing: -0.03em;
-      color: var(--text-1);
-      margin: 6px 0 8px;
-    }
-    .report-sub {
-      color: var(--text-3);
-      font-size: 14px;
-      margin-bottom: 28px;
-    }
-    .report-card {
+    .report-shell h1 { font-size: 30px; font-weight: 700; letter-spacing: -0.03em; color: var(--text-1); margin: 0 0 8px; }
+    .report-intro { color: var(--text-3); font-size: 14px; max-width: 640px; line-height: 1.55; margin-bottom: 28px; }
+
+    .report-layout { display: grid; grid-template-columns: 1.08fr 0.92fr; gap: 22px; align-items: start; }
+
+    /* ── Cards ── */
+    .card {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 14px;
-      padding: 24px;
+      padding: 22px;
+      position: relative;
     }
-    .field { margin-bottom: 20px; }
-    .field label {
-      display: block;
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text-2);
-      margin-bottom: 8px;
+    .card-accent::before {
+      content: ""; position: absolute; left: 0; top: 14px; bottom: 14px; width: 3px;
+      border-radius: 3px; background: var(--accent); transition: background 0.2s;
     }
-    .field input, .field select, .field textarea {
-      width: 100%;
-      background: var(--bg, #0f1115);
-      border: 1px solid var(--border);
-      border-radius: 9px;
-      color: var(--text-1);
-      font-size: 14px;
-      padding: 11px 12px;
-      font-family: inherit;
+    .card-title { font-size: 13px; font-weight: 600; color: var(--text-2); margin: 0 0 16px; letter-spacing: 0.01em; }
+
+    /* ── Severity segmented control ── */
+    .sev-control { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .sev-btn {
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
+      padding: 10px 6px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border); background: var(--surface-2);
+      color: var(--text-2); font-weight: 600; font-size: 13px; cursor: pointer;
+      transition: all 0.15s; font-family: var(--font);
     }
-    .field input:focus, .field select:focus, .field textarea:focus {
-      outline: none;
-      border-color: var(--accent, #6366f1);
+    .sev-btn .sev-sub { font-size: 10.5px; font-weight: 500; opacity: 0.75; letter-spacing: 0.01em; }
+    .sev-btn:hover { border-color: var(--border-light); color: var(--text-1); }
+    .sev-btn[data-active="true"] { color: #fff; border-color: transparent; }
+    .sev-btn[data-sev="P1"][data-active="true"] { background: #f87171; box-shadow: 0 2px 10px rgba(248,113,113,0.35); }
+    .sev-btn[data-sev="P2"][data-active="true"] { background: #fb923c; box-shadow: 0 2px 10px rgba(251,146,60,0.35); }
+    .sev-btn[data-sev="P3"][data-active="true"] { background: #34d399; box-shadow: 0 2px 10px rgba(52,211,153,0.35); }
+    .sev-btn[data-sev="P4"][data-active="true"] { background: #9ca3af; box-shadow: 0 2px 10px rgba(156,163,175,0.35); }
+
+    /* ── Editor toolbar + textarea ── */
+    .editor-toolbar { display: flex; gap: 2px; padding: 6px; border: 1px solid var(--border); border-bottom: none; border-radius: var(--radius-sm) var(--radius-sm) 0 0; background: var(--surface-2); flex-wrap: wrap; }
+    .editor-toolbar .btn-icon { width: 30px; height: 30px; }
+    .composer-textarea {
+      border-radius: 0 0 var(--radius-sm) var(--radius-sm) !important;
+      border-top: none !important; margin-top: 0;
+      min-height: 268px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 13px; line-height: 1.6;
     }
-    .row { display: flex; gap: 16px; }
-    .row .field { flex: 1; }
-    .editor-split {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 14px;
+    .char-count { text-align: right; font-size: 12px; color: var(--text-3); margin-top: 6px; }
+    .char-count.over { color: var(--danger); }
+    .field-hint { font-size: 12px; color: var(--text-3); margin-top: 6px; }
+
+    /* ── Config banner ── */
+    .banner {
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(251,146,60,0.1); border: 1px solid rgba(251,146,60,0.35);
+      color: #fdba74; border-radius: var(--radius-sm); padding: 11px 14px; font-size: 13px;
+      margin-bottom: 18px;
     }
-    .editor-split textarea {
-      min-height: 300px;
-      resize: vertical;
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      font-size: 13px;
-      line-height: 1.55;
+    .banner svg { flex-shrink: 0; }
+
+    /* ── Discord live preview ── */
+    .preview-col { position: sticky; top: 76px; }
+    .discord-card {
+      background: #2b2d31; border-radius: 8px; padding: 14px 16px 16px;
+      border-left: 4px solid var(--accent); color: #dbdee1;
     }
-    .preview {
-      border: 1px solid var(--border);
-      border-radius: 9px;
-      background: var(--bg, #0f1115);
-      padding: 12px 14px;
-      min-height: 300px;
-      overflow: auto;
-      font-size: 14px;
-      line-height: 1.6;
-      color: var(--text-1);
+    .embed-author { display: flex; align-items: center; gap: 9px; margin-bottom: 10px; }
+    .embed-avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; }
+    .embed-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .embed-name { color: #f2f3f5; font-weight: 600; font-size: 13px; line-height: 1.2; }
+    .embed-time { color: #949ba4; font-size: 11px; }
+    .embed-title { color: #fff; font-weight: 600; font-size: 15px; margin: 2px 0 10px; word-break: break-word; }
+    .embed-fields { display: flex; gap: 22px; margin-bottom: 10px; flex-wrap: wrap; }
+    .embed-field .k { color: #949ba4; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+    .embed-field .v { color: #dbdee1; font-size: 13px; margin-top: 3px; }
+    .sev-pill { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+    .embed-body { color: #dbdee1; font-size: 13.5px; line-height: 1.55; word-break: break-word; }
+    .embed-body h1, .embed-body h2, .embed-body h3 { color: #fff; margin: 10px 0 6px; line-height: 1.3; }
+    .embed-body h1 { font-size: 18px; } .embed-body h2 { font-size: 16px; } .embed-body h3 { font-size: 14px; }
+    .embed-body p { margin: 0 0 8px; }
+    .embed-body code { background: #1e1f22; padding: 1px 5px; border-radius: 4px; font-family: ui-monospace, monospace; font-size: 12.5px; }
+    .embed-body pre { background: #1e1f22; padding: 11px 13px; border-radius: 7px; overflow: auto; margin: 8px 0; }
+    .embed-body pre code { background: none; padding: 0; }
+    .embed-body a { color: #00a8fc; text-decoration: none; }
+    .embed-body a:hover { text-decoration: underline; }
+    .embed-body blockquote { border-left: 3px solid #4a4d52; margin: 6px 0; padding-left: 11px; color: #b5bac1; }
+    .embed-body ul, .embed-body ol { margin: 0 0 8px; padding-left: 20px; }
+    .embed-body li { margin: 2px 0; }
+    .embed-empty { color: #80848e; font-style: italic; font-size: 13px; }
+
+    /* ── Success panel ── */
+    .success-panel { text-align: center; padding: 30px 16px; }
+    .success-check {
+      width: 54px; height: 54px; border-radius: 50%; background: rgba(52,211,153,0.12);
+      border: 1px solid rgba(52,211,153,0.4); color: #34d399; display: flex; align-items: center;
+      justify-content: center; margin: 0 auto 16px;
     }
-    .preview:empty::before {
-      content: "Preview will appear here…";
-      color: var(--text-3);
-      font-size: 13px;
-    }
-    .preview h1, .preview h2, .preview h3 { color: var(--text-1); }
-    .preview code {
-      background: rgba(255,255,255,0.06);
-      padding: 1px 5px;
-      border-radius: 4px;
-      font-family: ui-monospace, monospace;
-      font-size: 12.5px;
-    }
-    .preview pre {
-      background: rgba(255,255,255,0.06);
-      padding: 12px;
-      border-radius: 8px;
-      overflow: auto;
-    }
-    .preview pre code { background: none; padding: 0; }
-    .preview a { color: var(--accent, #6366f1); }
-    .preview blockquote {
-      border-left: 3px solid var(--border);
-      margin: 0;
-      padding-left: 12px;
-      color: var(--text-2);
-    }
-    .toolbar {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-top: 4px;
-    }
-    .btn-report {
-      background: var(--accent, #6366f1);
-      color: #fff;
-      border: none;
-      border-radius: 9px;
-      padding: 12px 22px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    .btn-report:disabled { opacity: 0.55; cursor: not-allowed; }
-    .status { font-size: 13px; }
-    .status.ok { color: #34d399; }
-    .status.err { color: #f87171; }
-    .hint { font-size: 12px; color: var(--text-3); margin-top: 6px; }
-    @media (max-width: 640px) {
-      .editor-split { grid-template-columns: 1fr; }
-      .row { flex-direction: column; gap: 0; }
+    .success-panel h2 { font-size: 19px; color: var(--text-1); margin: 0 0 8px; }
+    .success-panel p { color: var(--text-3); font-size: 13.5px; line-height: 1.55; margin: 0 0 20px; }
+
+    .spinner { width: 15px; height: 15px; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: spin 0.6s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+
+    @media (max-width: 880px) {
+      .report-layout { grid-template-columns: 1fr; }
+      .preview-col { position: static; }
     }
   </style>
 </head>
 <body>
   <header class="public-header">
     <a href="/vdp" class="public-header-brand">
-      <img src="/assets/logo.svg" alt="Todoer" width="22" height="22">
+      <object data="/assets/logo.svg" type="image/svg+xml" style="width:22px;height:22px;pointer-events:none;"></object>
       <span class="public-header-brand-text">Todoer</span>
     </a>
     <div class="public-header-actions">
       <a href="/vdp" class="public-header-link">← Back to VDP</a>
-      <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
-        <svg id="iconSun" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <button class="theme-toggle" id="themeToggle" title="Toggle theme">
+        <svg id="iconSun" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
           <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
           <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
           <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
@@ -161,45 +165,103 @@
     </div>
   </header>
 
-  <div class="report-wrap">
+  <div class="report-shell">
     <div class="report-eyebrow">Security</div>
     <h1>Report a Vulnerability</h1>
-    <p class="report-sub">Send us the details below. Your report is forwarded straight to the Todoer security team via Discord — no account needed.</p>
+    <p class="report-intro">Found something in Todoer? Send the details below — it's forwarded straight to our security team on Discord. No account needed. The preview on the right shows exactly what we'll receive.</p>
 
-    <div class="report-card">
-      <div class="row">
-        <div class="field">
-          <label for="title">Title</label>
-          <input type="text" id="title" maxlength="256" placeholder="Short summary of the vulnerability" autocomplete="off">
+    <div id="statusBanner" class="banner" style="display:none">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+      <span>Reporting isn't set up yet on our side. The form is disabled until an admin configures a Discord webhook.</span>
+    </div>
+
+    <div class="report-layout">
+      <!-- Composer -->
+      <div class="card card-accent" id="composerCard">
+        <div id="composerForm">
+          <p class="card-title">Report details</p>
+
+          <div class="form-group">
+            <label>Severity</label>
+            <div class="sev-control" id="sevControl">
+              <button type="button" class="sev-btn" data-sev="P1" data-active="true">P1<span class="sev-sub">Critical</span></button>
+              <button type="button" class="sev-btn" data-sev="P2">P2<span class="sev-sub">High</span></button>
+              <button type="button" class="sev-btn" data-sev="P3">P3<span class="sev-sub">Medium</span></button>
+              <button type="button" class="sev-btn" data-sev="P4">P4<span class="sev-sub">Low</span></button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="title">Title</label>
+            <input type="text" id="title" maxlength="256" placeholder="Short summary of the vulnerability" autocomplete="off">
+          </div>
+
+          <div class="form-group">
+            <div class="label-row">
+              <label for="discord">Your Discord username</label>
+            </div>
+            <input type="text" id="discord" maxlength="64" placeholder="e.g. researcher#1234 or @researcher" autocomplete="off">
+            <div class="field-hint">So our team can follow up or ask clarifying questions.</div>
+          </div>
+
+          <div class="form-group">
+            <div class="label-row">
+              <label for="body">Report details</label>
+              <span style="font-size:12px;color:var(--text-3)">Markdown supported</span>
+            </div>
+            <div class="editor-toolbar">
+              <button type="button" class="btn-icon" data-md="bold" title="Bold"><b>B</b></button>
+              <button type="button" class="btn-icon" data-md="italic" title="Italic"><i>I</i></button>
+              <button type="button" class="btn-icon" data-md="code" title="Code">&lt;/&gt;</button>
+              <button type="button" class="btn-icon" data-md="h2" title="Heading">H</button>
+              <button type="button" class="btn-icon" data-md="link" title="Link">🔗</button>
+              <button type="button" class="btn-icon" data-md="list" title="List">≡</button>
+              <button type="button" class="btn-icon" data-md="quote" title="Quote">❝</button>
+            </div>
+            <textarea id="body" class="composer-textarea" placeholder="## Steps to reproduce&#10;1. …&#10;&#10;## Impact&#10;…&#10;&#10;## Proof of concept&#10;```&#10;…&#10;```"></textarea>
+            <div class="char-count" id="charCount">0 / 4000</div>
+          </div>
+
+          <div class="error-message" id="errorMsg" style="display:none;margin-bottom:14px;"></div>
+          <button type="button" class="btn btn-primary btn-full" id="submitBtn">Send report</button>
         </div>
-        <div class="field" style="max-width:200px">
-          <label for="severity">Severity</label>
-          <select id="severity">
-            <option value="P1">P1 — Critical</option>
-            <option value="P2">P2 — High</option>
-            <option value="P3">P3 — Medium</option>
-            <option value="P4">P4 — Low</option>
-          </select>
+
+        <div id="successPanel" class="success-panel" style="display:none">
+          <div class="success-check">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <h2>Report sent</h2>
+          <p>Thank you — your report is on its way to the Todoer security team via Discord. If you left a Discord username, we'll reach out there.</p>
+          <a href="/vdp" class="btn btn-secondary">Back to VDP</a>
         </div>
       </div>
 
-      <div class="field">
-        <label for="discord">Your Discord username <span style="font-weight:400;color:var(--text-3)">(so we can follow up)</span></label>
-        <input type="text" id="discord" maxlength="64" placeholder="e.g. researcher#1234 or @researcher" autocomplete="off">
-      </div>
-
-      <div class="field">
-        <label for="body">Report details <span style="font-weight:400;color:var(--text-3)">(Markdown supported)</span></label>
-        <div class="editor-split">
-          <textarea id="body" placeholder="## Steps to reproduce&#10;1. …&#10;&#10;## Impact&#10;…&#10;&#10;## Proof of concept&#10;```&#10;…&#10;```"></textarea>
-          <div class="preview" id="preview"></div>
+      <!-- Live Discord preview -->
+      <div class="preview-col">
+        <div class="card">
+          <p class="card-title">What gets sent to Discord</p>
+          <div class="discord-card" id="discordCard">
+            <div class="embed-author">
+              <span class="embed-avatar"><img src="/assets/logo.svg" alt=""></span>
+              <div>
+                <div class="embed-name">Todoer VDP</div>
+                <div class="embed-time" id="embedTime">today</div>
+              </div>
+            </div>
+            <div class="embed-title" id="embedTitle">Your report title</div>
+            <div class="embed-fields">
+              <div class="embed-field">
+                <div class="k">Severity</div>
+                <div class="v"><span class="sev-pill" id="embedSev" style="background:rgba(99,102,241,0.18);color:#a5b4fc">P1</span></div>
+              </div>
+              <div class="embed-field">
+                <div class="k">Reporter</div>
+                <div class="v" id="embedReporter">Anonymous</div>
+              </div>
+            </div>
+            <div class="embed-body" id="embedBody"><span class="embed-empty">Your formatted report will appear here…</span></div>
+          </div>
         </div>
-        <div class="hint">Supports headings, lists, code blocks, bold/italic and links. Rendered live on the right.</div>
-      </div>
-
-      <div class="toolbar">
-        <button class="btn-report" id="submitBtn">Send report</button>
-        <span class="status" id="status"></span>
       </div>
     </div>
   </div>
@@ -219,53 +281,124 @@
       document.getElementById('iconMoon').style.display = theme === 'dark'  ? 'block' : 'none';
     }
 
+    const sevColors = { P1: '#f87171', P2: '#fb923c', P3: '#34d399', P4: '#9ca3af' };
+    const sevTints  = { P1: 'rgba(248,113,113,0.18)', P2: 'rgba(251,146,60,0.18)', P3: 'rgba(52,211,153,0.18)', P4: 'rgba(156,163,175,0.18)' };
+    let severity = 'P1';
+
+    const title = document.getElementById('title');
+    const discord = document.getElementById('discord');
     const body = document.getElementById('body');
-    const preview = document.getElementById('preview');
-    function renderPreview() {
-      try {
-        preview.innerHTML = marked.parse(body.value || '');
-      } catch (e) {
-        preview.textContent = body.value;
-      }
+    const charCount = document.getElementById('charCount');
+    const discordCard = document.getElementById('discordCard');
+
+    // ── Severity selection ──
+    document.getElementById('sevControl').addEventListener('click', (e) => {
+      const btn = e.target.closest('.sev-btn');
+      if (!btn) return;
+      severity = btn.dataset.sev;
+      document.querySelectorAll('.sev-btn').forEach(b => b.dataset.active = (b === btn));
+      document.querySelector('.card-accent').style.setProperty('--accent', sevColors[severity]);
+      updatePreview();
+    });
+
+    // ── Editor toolbar ──
+    function surround(before, after, placeholder) {
+      const s = body.selectionStart, en = body.selectionEnd;
+      const sel = body.value.slice(s, en) || placeholder;
+      body.value = body.value.slice(0, s) + before + sel + after + body.value.slice(en);
+      body.focus();
+      body.selectionStart = s + before.length;
+      body.selectionEnd = s + before.length + sel.length;
+      updatePreview();
     }
-    body.addEventListener('input', renderPreview);
-    renderPreview();
+    function linePrefix(prefix) {
+      const s = body.selectionStart;
+      const lineStart = body.value.lastIndexOf('\n', s - 1) + 1;
+      body.value = body.value.slice(0, lineStart) + prefix + body.value.slice(lineStart);
+      body.focus();
+      body.selectionStart = body.selectionEnd = lineStart + prefix.length;
+      updatePreview();
+    }
+    document.querySelector('.editor-toolbar').addEventListener('click', (e) => {
+      const btn = e.target.closest('.btn-icon'); if (!btn) return;
+      switch (btn.dataset.md) {
+        case 'bold':   surround('**', '**', 'bold'); break;
+        case 'italic': surround('*', '*', 'italic'); break;
+        case 'code':   surround('`', '`', 'code'); break;
+        case 'h2':     linePrefix('## '); break;
+        case 'link':   surround('[', '](https://)', 'text'); break;
+        case 'list':   linePrefix('- '); break;
+        case 'quote':  linePrefix('> '); break;
+      }
+    });
 
+    body.addEventListener('input', updatePreview);
+    title.addEventListener('input', updatePreview);
+    discord.addEventListener('input', updatePreview);
+
+    function updatePreview() {
+      const sev = sevColors[severity];
+      discordCard.style.borderLeftColor = sev;
+      const pill = document.getElementById('embedSev');
+      pill.textContent = severity;
+      pill.style.background = sevTints[severity];
+      pill.style.color = sev;
+      document.getElementById('embedTitle').textContent = title.value.trim() || 'Your report title';
+      document.getElementById('embedReporter').textContent = discord.value.trim() || 'Anonymous';
+      const raw = body.value.trim();
+      document.getElementById('embedBody').innerHTML = raw
+        ? marked.parse(raw)
+        : '<span class="embed-empty">Your formatted report will appear here…</span>';
+      const len = body.value.length;
+      charCount.textContent = len + ' / 4000';
+      charCount.classList.toggle('over', len > 4000);
+    }
+    (function setTime(){ document.getElementById('embedTime').textContent = new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); })();
+    updatePreview();
+
+    // ── Config status ──
+    let configured = true;
+    fetch('/api/vdp/status').then(r => r.json()).then(d => {
+      configured = !!d.configured;
+      if (!configured) {
+        document.getElementById('statusBanner').style.display = 'flex';
+        document.getElementById('submitBtn').disabled = true;
+        document.getElementById('discordCard').querySelector('.embed-body').innerHTML =
+          '<span class="embed-empty">Reporting is disabled — an admin hasn’t configured a Discord webhook yet.</span>';
+      }
+    }).catch(() => {});
+
+    // ── Submit ──
     const submitBtn = document.getElementById('submitBtn');
-    const status = document.getElementById('status');
+    const errorMsg = document.getElementById('errorMsg');
     submitBtn.addEventListener('click', async () => {
-      const title = document.getElementById('title').value.trim();
-      const severity = document.getElementById('severity').value;
-      const text = body.value.trim();
-      const discord = document.getElementById('discord').value.trim();
-      if (!title) { status.className = 'status err'; status.textContent = 'Please add a title.'; return; }
-      if (!text) { status.className = 'status err'; status.textContent = 'Please describe the vulnerability.'; return; }
-
+      errorMsg.style.display = 'none';
+      const t = title.value.trim(), b = body.value.trim();
+      if (!t) { errorMsg.textContent = 'Please add a title.'; errorMsg.style.display = 'block'; title.focus(); return; }
+      if (!b) { errorMsg.textContent = 'Please describe the vulnerability.'; errorMsg.style.display = 'block'; body.focus(); return; }
       submitBtn.disabled = true;
-      status.className = 'status'; status.textContent = 'Sending…';
+      submitBtn.innerHTML = '<span class="spinner"></span> Sending…';
       try {
         const r = await fetch('/api/vdp/report', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title, severity, body: text, discord })
+          body: JSON.stringify({ title: t, severity, body: b, discord: discord.value.trim() })
         });
         const data = await r.json().catch(() => ({}));
         if (r.ok) {
-          status.className = 'status ok';
-          status.textContent = 'Report sent — thank you! Our team will follow up on Discord if provided.';
-          document.getElementById('title').value = '';
-          body.value = '';
-          document.getElementById('discord').value = '';
-          renderPreview();
+          document.getElementById('composerForm').style.display = 'none';
+          document.getElementById('successPanel').style.display = 'block';
         } else {
-          status.className = 'status err';
-          status.textContent = data.error || 'Failed to send report.';
+          errorMsg.textContent = data.error || 'Failed to send report.';
+          errorMsg.style.display = 'block';
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Send report';
         }
       } catch (e) {
-        status.className = 'status err';
-        status.textContent = 'Network error — please try again.';
-      } finally {
+        errorMsg.textContent = 'Network error — please try again.';
+        errorMsg.style.display = 'block';
         submitBtn.disabled = false;
+        submitBtn.textContent = 'Send report';
       }
     });
   </script>

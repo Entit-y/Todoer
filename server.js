@@ -2351,6 +2351,15 @@ app.get('/feed', (req, res) => serveWithConfig(res, 'feed.html'));app.get('/invi
 app.get('/vdp', (req, res) => serveWithConfig(res, 'vdp.html'));
 app.get('/vdp/report', (req, res) => serveWithConfig(res, 'report.html'));
 
+// Public: tells the report page whether submission is currently enabled,
+// without leaking the configured webhook URL.
+app.get('/api/vdp/status', (req, res) => {
+  db.get("SELECT value FROM settings WHERE key = 'vdp_discord_webhook'", (err, row) => {
+    if (err) return res.status(500).json({ error: 'Failed to read status' });
+    res.json({ configured: !!(row && row.value) });
+  });
+});
+
 // Public vulnerability report submission — forwarded to the admin Discord webhook.
 app.post('/api/vdp/report', vdpReportLimiter, async (req, res) => {
   const { title, severity, body, discord } = req.body || {};
