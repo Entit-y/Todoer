@@ -77,9 +77,20 @@
     .composer-textarea {
       border-radius: 0 0 var(--radius-sm) var(--radius-sm) !important;
       border-top: none !important; margin-top: 0;
-      min-height: 268px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      font-size: 13px; line-height: 1.6;
+      min-height: 340px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 13px; line-height: 1.6; resize: none !important; overflow-y: auto;
     }
+    .composer-textarea:focus { outline: none; }
+    /* ── Fullscreen focus mode ── */
+    body.fs-mode .preview-col { display: none; }
+    .editor-fullscreen {
+      position: fixed; inset: 20px; z-index: 1000; max-width: none; margin: 0;
+      display: flex; flex-direction: column;
+    }
+    .editor-fullscreen .card-title { display: flex; align-items: center; justify-content: space-between; }
+    .editor-fullscreen #composerForm { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+    .editor-fullscreen .form-group:last-of-type { flex: 1; display: flex; flex-direction: column; min-height: 0; margin-bottom: 14px; }
+    .editor-fullscreen .composer-textarea { flex: 1; min-height: 0; resize: none; }
     .char-count { text-align: right; font-size: 12px; color: var(--text-3); margin-top: 6px; }
     .char-count.over { color: var(--danger); }
     .field-hint { font-size: 12px; color: var(--text-3); margin-top: 6px; }
@@ -217,6 +228,7 @@
               <button type="button" class="btn-icon" data-md="link" title="Link">🔗</button>
               <button type="button" class="btn-icon" data-md="list" title="List">≡</button>
               <button type="button" class="btn-icon" data-md="quote" title="Quote">❝</button>
+              <button type="button" class="btn-icon" data-md="expand" title="Expand editor" style="margin-left:auto">⤢</button>
             </div>
             <textarea id="body" class="composer-textarea" placeholder="## Steps to reproduce&#10;1. …&#10;&#10;## Impact&#10;…&#10;&#10;## Proof of concept&#10;```&#10;…&#10;```"></textarea>
             <div class="char-count" id="charCount">0 / 4000</div>
@@ -329,8 +341,27 @@
         case 'link':   surround('[', '](https://)', 'text'); break;
         case 'list':   linePrefix('- '); break;
         case 'quote':  linePrefix('> '); break;
+        case 'expand': toggleFullscreen(); break;
       }
     });
+
+    // ── Auto-grow textarea (when not in fullscreen) ──
+    function autoGrow() {
+      if (document.body.classList.contains('fs-mode')) return;
+      body.style.height = 'auto';
+      body.style.height = Math.min(body.scrollHeight, 560) + 'px';
+    }
+    body.addEventListener('input', autoGrow);
+
+    // ── Fullscreen focus mode ──
+    function toggleFullscreen() {
+      const on = document.body.classList.toggle('fs-mode');
+      document.getElementById('composerCard').classList.toggle('editor-fullscreen', on);
+      document.querySelector('.btn-icon[data-md="expand"]').textContent = on ? '⤡' : '⤢';
+      document.querySelector('.btn-icon[data-md="expand"]').title = on ? 'Exit fullscreen' : 'Expand editor';
+      if (!on) autoGrow();
+      body.focus();
+    }
 
     body.addEventListener('input', updatePreview);
     title.addEventListener('input', updatePreview);
