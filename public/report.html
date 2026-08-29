@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Report a Vulnerability — Todoer</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    .report-wrap {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 36px 24px 64px;
+    }
+    .report-eyebrow {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent, #6366f1);
+    }
+    .report-wrap h1 {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: var(--text-1);
+      margin: 6px 0 8px;
+    }
+    .report-sub {
+      color: var(--text-3);
+      font-size: 14px;
+      margin-bottom: 28px;
+    }
+    .report-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+    }
+    .field { margin-bottom: 20px; }
+    .field label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-2);
+      margin-bottom: 8px;
+    }
+    .field input, .field select, .field textarea {
+      width: 100%;
+      background: var(--bg, #0f1115);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      color: var(--text-1);
+      font-size: 14px;
+      padding: 11px 12px;
+      font-family: inherit;
+    }
+    .field input:focus, .field select:focus, .field textarea:focus {
+      outline: none;
+      border-color: var(--accent, #6366f1);
+    }
+    .row { display: flex; gap: 16px; }
+    .row .field { flex: 1; }
+    .editor-split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .editor-split textarea {
+      min-height: 300px;
+      resize: vertical;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+    .preview {
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: var(--bg, #0f1115);
+      padding: 12px 14px;
+      min-height: 300px;
+      overflow: auto;
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--text-1);
+    }
+    .preview:empty::before {
+      content: "Preview will appear here…";
+      color: var(--text-3);
+      font-size: 13px;
+    }
+    .preview h1, .preview h2, .preview h3 { color: var(--text-1); }
+    .preview code {
+      background: rgba(255,255,255,0.06);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: ui-monospace, monospace;
+      font-size: 12.5px;
+    }
+    .preview pre {
+      background: rgba(255,255,255,0.06);
+      padding: 12px;
+      border-radius: 8px;
+      overflow: auto;
+    }
+    .preview pre code { background: none; padding: 0; }
+    .preview a { color: var(--accent, #6366f1); }
+    .preview blockquote {
+      border-left: 3px solid var(--border);
+      margin: 0;
+      padding-left: 12px;
+      color: var(--text-2);
+    }
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 4px;
+    }
+    .btn-report {
+      background: var(--accent, #6366f1);
+      color: #fff;
+      border: none;
+      border-radius: 9px;
+      padding: 12px 22px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-report:disabled { opacity: 0.55; cursor: not-allowed; }
+    .status { font-size: 13px; }
+    .status.ok { color: #34d399; }
+    .status.err { color: #f87171; }
+    .hint { font-size: 12px; color: var(--text-3); margin-top: 6px; }
+    @media (max-width: 640px) {
+      .editor-split { grid-template-columns: 1fr; }
+      .row { flex-direction: column; gap: 0; }
+    }
+  </style>
+</head>
+<body>
+  <header class="public-header">
+    <a href="/vdp" class="public-header-brand">
+      <img src="/assets/logo.svg" alt="Todoer" width="22" height="22">
+      <span class="public-header-brand-text">Todoer</span>
+    </a>
+    <div class="public-header-actions">
+      <a href="/vdp" class="public-header-link">← Back to VDP</a>
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+        <svg id="iconSun" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+          <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+        </svg>
+        <svg id="iconMoon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="report-wrap">
+    <div class="report-eyebrow">Security</div>
+    <h1>Report a Vulnerability</h1>
+    <p class="report-sub">Send us the details below. Your report is forwarded straight to the Todoer security team via Discord — no account needed.</p>
+
+    <div class="report-card">
+      <div class="row">
+        <div class="field">
+          <label for="title">Title</label>
+          <input type="text" id="title" maxlength="256" placeholder="Short summary of the vulnerability" autocomplete="off">
+        </div>
+        <div class="field" style="max-width:200px">
+          <label for="severity">Severity</label>
+          <select id="severity">
+            <option value="P1">P1 — Critical</option>
+            <option value="P2">P2 — High</option>
+            <option value="P3">P3 — Medium</option>
+            <option value="P4">P4 — Low</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="discord">Your Discord username <span style="font-weight:400;color:var(--text-3)">(so we can follow up)</span></label>
+        <input type="text" id="discord" maxlength="64" placeholder="e.g. researcher#1234 or @researcher" autocomplete="off">
+      </div>
+
+      <div class="field">
+        <label for="body">Report details <span style="font-weight:400;color:var(--text-3)">(Markdown supported)</span></label>
+        <div class="editor-split">
+          <textarea id="body" placeholder="## Steps to reproduce&#10;1. …&#10;&#10;## Impact&#10;…&#10;&#10;## Proof of concept&#10;```&#10;…&#10;```"></textarea>
+          <div class="preview" id="preview"></div>
+        </div>
+        <div class="hint">Supports headings, lists, code blocks, bold/italic and links. Rendered live on the right.</div>
+      </div>
+
+      <div class="toolbar">
+        <button class="btn-report" id="submitBtn">Send report</button>
+        <span class="status" id="status"></span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const saved = localStorage.getItem('theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', saved);
+    updateThemeIcon(saved);
+    document.getElementById('themeToggle').addEventListener('click', () => {
+      const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+      updateThemeIcon(next);
+    });
+    function updateThemeIcon(theme) {
+      document.getElementById('iconSun').style.display  = theme === 'light' ? 'block' : 'none';
+      document.getElementById('iconMoon').style.display = theme === 'dark'  ? 'block' : 'none';
+    }
+
+    const body = document.getElementById('body');
+    const preview = document.getElementById('preview');
+    function renderPreview() {
+      try {
+        preview.innerHTML = marked.parse(body.value || '');
+      } catch (e) {
+        preview.textContent = body.value;
+      }
+    }
+    body.addEventListener('input', renderPreview);
+    renderPreview();
+
+    const submitBtn = document.getElementById('submitBtn');
+    const status = document.getElementById('status');
+    submitBtn.addEventListener('click', async () => {
+      const title = document.getElementById('title').value.trim();
+      const severity = document.getElementById('severity').value;
+      const text = body.value.trim();
+      const discord = document.getElementById('discord').value.trim();
+      if (!title) { status.className = 'status err'; status.textContent = 'Please add a title.'; return; }
+      if (!text) { status.className = 'status err'; status.textContent = 'Please describe the vulnerability.'; return; }
+
+      submitBtn.disabled = true;
+      status.className = 'status'; status.textContent = 'Sending…';
+      try {
+        const r = await fetch('/api/vdp/report', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, severity, body: text, discord })
+        });
+        const data = await r.json().catch(() => ({}));
+        if (r.ok) {
+          status.className = 'status ok';
+          status.textContent = 'Report sent — thank you! Our team will follow up on Discord if provided.';
+          document.getElementById('title').value = '';
+          body.value = '';
+          document.getElementById('discord').value = '';
+          renderPreview();
+        } else {
+          status.className = 'status err';
+          status.textContent = data.error || 'Failed to send report.';
+        }
+      } catch (e) {
+        status.className = 'status err';
+        status.textContent = 'Network error — please try again.';
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

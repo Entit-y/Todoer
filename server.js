@@ -108,7 +108,49 @@ const verificationLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false
 });
- 
+
+const vdpReportLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,  // 1 hour
+  max: 10,
+  message: { error: 'Too many reports submitted. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+// Forward a vulnerability report to the admin-configured Discord webhook.
+// The webhook URL lives in the `settings` table under `vdp_discord_webhook`.
+function forwardVdpReport(report) {
+  return new Promise((resolve, reject) => {
+    db.get("SELECT value FROM settings WHERE key = 'vdp_discord_webhook'", (err, row) => {
+      if (err) return reject(err);
+      const webhook = row && row.value;
+      if (!webhook) return reject(new Error('not-configured'));
+
+      const severityColors = { P1: 15158332, P2: 15105570, P3: 5763719, P4: 9807270 };
+      const color = severityColors[report.severity] || 9807270;
+      const body = (report.body || '').slice(0, 4000);
+      const embed = {
+        title: report.title || 'Vulnerability report',
+        color,
+        fields: [
+          { name: 'Severity', value: report.severity || 'Unspecified', inline: true },
+          { name: 'Reporter Discord', value: report.discord || 'Anonymous', inline: true }
+        ],
+        description: body || '_(no details provided)_',
+        timestamp: new Date().toISOString(),
+        footer: { text: 'Todoer VDP' }
+      };
+      fetch(webhook, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ embeds: [embed] })
+      })
+        .then(r => resolve(r.status))
+        .catch(reject);
+    });
+  });
+}
+
 wss.on('connection', (ws, req) => {
   const ip = req.socket.remoteAddress;
   const isInternal = ip === '::1' || ip === '127.0.0.1' || /^::ffff:172\.\d+\.\d+\.\d+$/.test(ip) || /^172\.\d+\.\d+\.\d+$/.test(ip);
@@ -2307,6 +2349,32 @@ app.get('/reset-password', (req, res) => res.sendFile(path.join(__dirname, 'publ
 app.get('/workspaces', (req, res) => serveWithConfig(res, 'workspaces.html'));
 app.get('/feed', (req, res) => serveWithConfig(res, 'feed.html'));app.get('/invite', (req, res) => res.sendFile(path.join(__dirname, 'public', 'invite.html')));
 app.get('/vdp', (req, res) => serveWithConfig(res, 'vdp.html'));
+app.get('/vdp/report', (req, res) => serveWithConfig(res, 'report.html'));
+
+// Public vulnerability report submission — forwarded to the admin Discord webhook.
+app.post('/api/vdp/report', vdpReportLimiter, async (req, res) => {
+  const { title, severity, body, discord } = req.body || {};
+  if (!title || typeof title !== 'string' || !title.trim())
+    return res.status(400).json({ error: 'A title is required' });
+  if (!body || typeof body !== 'string' || !body.trim())
+    return res.status(400).json({ error: 'Report details are required' });
+  const sev = (typeof severity === 'string' && ['P1', 'P2', 'P3', 'P4'].includes(severity)) ? severity : 'Unspecified';
+  try {
+    const status = await forwardVdpReport({
+      title: title.trim().slice(0, 256),
+      severity: sev,
+      body: body.trim(),
+      discord: (typeof discord === 'string' && discord.trim()) ? discord.trim().slice(0, 64) : ''
+    });
+    res.json({ ok: true, delivered: status });
+  } catch (e) {
+    if (e.message === 'not-configured')
+      return res.status(503).json({ error: 'Reporting is not configured yet. Please contact the admin.' });
+    console.error('[VDP] failed to forward report:', e.message);
+    res.status(502).json({ error: 'Failed to deliver report. Please try again later.' });
+  }
+});
+
 app.get('/', (req, res) => {
   const token = req.cookies.token;
   if (token) res.redirect('/home');

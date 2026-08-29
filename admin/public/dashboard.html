@@ -375,6 +375,23 @@
           </div>
         </div>
 
+        <div class="info-card">
+          <div class="info-card-header">
+            <div class="info-card-title">VDP Discord webhook</div>
+            <div class="info-card-desc">Reports submitted via the "Report Vulnerability" button on the VDP page are forwarded here. Create a webhook in any Discord server (Server Settings → Integrations → Webhooks) and paste the URL. Leave empty to disable reporting.</div>
+          </div>
+          <div class="info-card-body">
+            <div class="form-group" style="margin-bottom:0">
+              <label>Webhook URL</label>
+              <div style="display:flex;gap:8px;align-items:center">
+                <input type="url" id="setting-vdp-discord-webhook" style="flex:1;min-width:0" placeholder="https://discord.com/api/webhooks/…">
+                <button class="btn-primary" style="width:auto;padding:9px 16px;margin-left:4px" onclick="saveSetting('vdp_discord_webhook')">Save</button>
+              </div>
+            </div>
+            <div style="margin-top:8px;font-size:12px;color:var(--text-3)" id="setting-vdp-webhook-current"></div>
+          </div>
+        </div>
+
         <div class="info-card" style="border-color:rgba(248,113,113,0.25);">
           <div class="info-card-header">
             <div class="info-card-title" style="color:var(--red)">Danger zone</div>
@@ -856,6 +873,11 @@
         const mb = bytes / (1024 * 1024);
         document.getElementById('setting-max-upload-mb').value = mb;
         document.getElementById('setting-max-upload-current').textContent = `Currently ${mb} MB (${bytes.toLocaleString()} bytes)`;
+        const wh = settings.vdp_discord_webhook || '';
+        document.getElementById('setting-vdp-discord-webhook').value = wh;
+        document.getElementById('setting-vdp-webhook-current').textContent = wh
+          ? 'Reports are being forwarded to the configured webhook.'
+          : 'No webhook configured — reporting is disabled.';
       } catch (e) { console.error(e); }
     }
 
@@ -871,6 +893,24 @@
         if (res.ok) {
           toast(`Max upload size set to ${mb} MB`, 'success');
           document.getElementById('setting-max-upload-current').textContent = `Currently ${mb} MB (${bytes.toLocaleString()} bytes)`;
+        } else {
+          toast('Failed to save setting', 'error');
+        }
+      }
+      if (key === 'vdp_discord_webhook') {
+        const val = document.getElementById('setting-vdp-discord-webhook').value.trim();
+        if (val && !/^https:\/\/discord\.com\/api\/webhooks\//.test(val)) {
+          toast('Enter a valid Discord webhook URL', 'error'); return;
+        }
+        const res = await fetch(`/api/settings/${key}`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ value: val })
+        });
+        if (res.ok) {
+          toast(val ? 'VDP webhook saved' : 'VDP webhook cleared', 'success');
+          document.getElementById('setting-vdp-webhook-current').textContent = val
+            ? 'Reports are being forwarded to the configured webhook.'
+            : 'No webhook configured — reporting is disabled.';
         } else {
           toast('Failed to save setting', 'error');
         }
