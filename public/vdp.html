@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Vulnerability Disclosure Policy — Todoer</title>
   <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/design-system.css">
   <style>
     /* ── Public page header ── */
     .public-header {
@@ -32,7 +33,7 @@
       font-size: 14px;
       font-weight: 700;
       letter-spacing: -0.03em;
-      color: var(--text-1);
+      color: var(--ink);
     }
 
     .public-header-actions {
@@ -43,13 +44,13 @@
 
     .public-header-link {
       font-size: 13px;
-      color: var(--text-2);
+      color: var(--ink-soft);
       text-decoration: none;
       font-weight: 500;
       transition: color 0.15s;
     }
 
-    .public-header-link:hover { color: var(--text-1); }
+    .public-header-link:hover { color: var(--ink); }
 
     /* ── VDP layout ── */
     .vdp-wrap {
@@ -90,7 +91,7 @@
       font-weight: 600;
       letter-spacing: 0.1em;
       text-transform: uppercase;
-      color: var(--text-3);
+      color: var(--ink-faint);
       margin-bottom: 10px;
     }
 
@@ -98,13 +99,13 @@
       font-size: 26px;
       font-weight: 700;
       letter-spacing: -0.03em;
-      color: var(--text-1);
+      color: var(--ink);
       margin-bottom: 12px;
     }
 
     .vdp-hero-desc {
       font-size: 14px;
-      color: var(--text-2);
+      color: var(--ink-soft);
       max-width: 520px;
       line-height: 1.7;
       margin-bottom: 24px;
@@ -127,12 +128,12 @@
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      color: var(--text-3);
+      color: var(--ink-faint);
     }
 
     .meta-value {
       font-size: 13px;
-      color: var(--text-1);
+      color: var(--ink);
       font-weight: 500;
     }
 
@@ -151,7 +152,7 @@
     .badge-green  { background: rgba(34,197,94,0.08);  color: #22c55e; border: 1px solid rgba(34,197,94,0.18); }
     .badge-yellow { background: rgba(234,179,8,0.08);  color: #ca8a04; border: 1px solid rgba(234,179,8,0.18); }
     .badge-red    { background: rgba(239,68,68,0.08);  color: #ef4444; border: 1px solid rgba(239,68,68,0.18); }
-    .badge-gray   { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border); }
+    .badge-gray   { background: var(--surface-2); color: var(--ink-soft); border: 1px solid var(--border); }
 
     [data-theme="light"] .badge-yellow { color: #92400e; }
 
@@ -169,7 +170,7 @@
     .vdp-content h2 {
       font-size: 14px;
       font-weight: 600;
-      color: var(--text-1);
+      color: var(--ink);
       letter-spacing: -0.01em;
       margin-bottom: 12px;
       padding-bottom: 10px;
@@ -178,7 +179,7 @@
 
     .vdp-content p {
       font-size: 13.5px;
-      color: var(--text-2);
+      color: var(--ink-soft);
       line-height: 1.75;
       margin-bottom: 10px;
     }
@@ -191,12 +192,12 @@
 
     .vdp-content li {
       font-size: 13.5px;
-      color: var(--text-2);
+      color: var(--ink-soft);
       line-height: 1.75;
       margin-bottom: 5px;
     }
 
-    .vdp-content li strong { color: var(--text-1); font-weight: 500; }
+    .vdp-content li strong { color: var(--ink); font-weight: 500; }
 
     .vdp-content code {
       font-family: 'Fira Code', 'Courier New', monospace;
@@ -205,11 +206,11 @@
       border: 1px solid var(--border);
       padding: 1px 6px;
       border-radius: 4px;
-      color: var(--text-1);
+      color: var(--ink);
     }
 
     .in-scope-list li::before  { content: '✓ '; color: #22c55e; font-size: 11px; }
-    .out-of-scope-list li { color: var(--text-3) !important; }
+    .out-of-scope-list li { color: var(--ink-faint) !important; }
     .out-of-scope-list li::before { content: '✕ '; color: #ef4444; font-size: 11px; }
 
     /* ── Scope table ── */
@@ -224,7 +225,7 @@
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      color: var(--text-3);
+      color: var(--ink-faint);
       text-align: left;
       padding: 8px 12px;
       background: var(--surface-2);
@@ -233,7 +234,7 @@
 
     .scope-table td {
       font-size: 13px;
-      color: var(--text-2);
+      color: var(--ink-soft);
       padding: 9px 12px;
       border: 1px solid var(--border);
       vertical-align: top;
@@ -242,7 +243,7 @@
     .scope-table td:first-child {
       font-family: 'Fira Code', 'Courier New', monospace;
       font-size: 12px;
-      color: var(--text-1);
+      color: var(--ink);
       white-space: nowrap;
     }
 
@@ -269,7 +270,7 @@
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      color: var(--text-3);
+      color: var(--ink-faint);
       margin-bottom: 12px;
     }
 
@@ -280,7 +281,7 @@
 
     .vdp-card li {
       font-size: 13px;
-      color: var(--text-2);
+      color: var(--ink-soft);
       padding: 6px 0;
       border-bottom: 1px solid var(--border);
       display: flex;
@@ -293,7 +294,7 @@
 
     .vdp-card p {
       font-size: 13px;
-      color: var(--text-2);
+      color: var(--ink-soft);
       line-height: 1.6;
       margin-bottom: 12px;
     }
@@ -320,7 +321,7 @@
       margin-top: 48px;
       padding-top: 20px;
       font-size: 12px;
-      color: var(--text-3);
+      color: var(--ink-faint);
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -328,8 +329,8 @@
       gap: 12px;
     }
 
-    .vdp-footer a { color: var(--text-2); text-decoration: none; }
-    .vdp-footer a:hover { color: var(--text-1); }
+    .vdp-footer a { color: var(--ink-soft); text-decoration: none; }
+    .vdp-footer a:hover { color: var(--ink); }
 
     @media (max-width: 768px) {
       .public-header { padding: 0 16px; }
@@ -538,10 +539,10 @@
           <h3>Program details</h3>
           <ul>
             <li><span>Type</span><span class="badge badge-gray">VDP</span></li>
-            <li><span>Rewards</span><span style="color:var(--text-3);font-size:12px;">None</span></li>
+            <li><span>Rewards</span><span style="color:var(--ink-faint);font-size:12px;">None</span></li>
             <li><span>Status</span><span class="badge badge-green">Open</span></li>
-            <li><span>Disclosure</span><span style="color:var(--text-2);font-size:12px;">90 days</span></li>
-            <li><span>Response</span><span style="color:var(--text-2);font-size:12px;">Best effort</span></li>
+            <li><span>Disclosure</span><span style="color:var(--ink-soft);font-size:12px;">90 days</span></li>
+            <li><span>Response</span><span style="color:var(--ink-soft);font-size:12px;">Best effort</span></li>
           </ul>
         </div>
 
@@ -573,10 +574,10 @@
       align-items: center;
       gap: 20px;
     ">
-      <span style="font-size:13px;color:var(--text-3);white-space:nowrap;">Built in partnership with Nimbus Vault</span>
+      <span style="font-size:13px;color:var(--ink-faint);white-space:nowrap;">Built in partnership with Nimbus Vault</span>
       <img src="/assets/nimbus-logo.svg" alt="Nimbus Vault" style="height:28px;width:auto;display:block;">
       <a href="https://nimbusvault.app" target="_blank" rel="noopener"
-        style="font-size:13px;color:var(--text-2);text-decoration:none;margin-left:auto;">
+        style="font-size:13px;color:var(--ink-soft);text-decoration:none;margin-left:auto;">
         nimbusvault.app →
       </a>
     </div>
