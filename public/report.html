@@ -1,437 +1,744 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Report a Vulnerability — Todoer</title>
-  <link rel="stylesheet" href="/styles.css">
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <style>
-    body { background: var(--bg); color: var(--text-1); font-family: var(--font); }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Report a vulnerability — Todoer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#FAF9F6;
+    --paper-2:#F1EFE9;
+    --ink:#17181C;
+    --ink-soft:#68666f;
+    --ink-faint:#a9a7ad;
+    --rule:#E2DFD6;
+    --hairline-wash:rgba(0,0,0,.06);
+    --hairline-wash-2:rgba(0,0,0,.12);
 
-    /* ── Public page header (matches vdp.html) ── */
-    .public-header {
-      border-bottom: 1px solid var(--border);
-      padding: 0 32px;
-      height: 52px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: var(--surface);
-      position: sticky;
-      top: 0;
-      z-index: 100;
-    }
-    .public-header-brand { display: flex; align-items: center; gap: 8px; text-decoration: none; }
-    .public-header-brand-text { font-size: 14px; font-weight: 700; letter-spacing: -0.03em; color: var(--text-1); }
-    .public-header-actions { display: flex; align-items: center; gap: 10px; }
-    .public-header-link { font-size: 13px; color: var(--text-2); text-decoration: none; font-weight: 500; transition: color 0.15s; }
-    .public-header-link:hover { color: var(--text-1); }
+    --accent:#4A3AB0;
+    --accent-hi:#2C2170;
+    --accent-soft:#ECE9FA;
+    --accent-wash:#F5F3FC;
 
-    /* ── Page shell ── */
-    .report-shell { max-width: 1040px; margin: 0 auto; padding: 40px 24px 72px; }
-    .report-eyebrow {
-      font-size: 12px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase;
-      color: var(--accent); margin-bottom: 8px;
-    }
-    .report-shell h1 { font-size: 30px; font-weight: 700; letter-spacing: -0.03em; color: var(--text-1); margin: 0 0 8px; }
-    .report-intro { color: var(--text-3); font-size: 14px; max-width: 640px; line-height: 1.55; margin-bottom: 28px; }
+    --serif:'Fraunces', Georgia, serif;
+    --sans:'Archivo', ui-sans-serif, system-ui, sans-serif;
+    --mono:'JetBrains Mono', ui-monospace, monospace;
+  }
 
-    .report-layout { display: grid; grid-template-columns: 1.08fr 0.92fr; gap: 22px; align-items: start; }
+  html[data-theme="dark"]{
+    --paper:#262624;
+    --paper-2:#2D2D2B;
+    --ink:#F4F3EE;
+    --ink-soft:#B7B4AC;
+    --ink-faint:#84817A;
+    --rule:#3E3E3B;
+    --hairline-wash:rgba(255,255,255,.06);
+    --hairline-wash-2:rgba(255,255,255,.14);
 
-    /* ── Cards ── */
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 22px;
-      position: relative;
-    }
-    .card-accent::before {
-      content: ""; position: absolute; left: 0; top: 14px; bottom: 14px; width: 3px;
-      border-radius: 3px; background: var(--accent); transition: background 0.2s;
-    }
-    .card-title { font-size: 13px; font-weight: 600; color: var(--text-2); margin: 0 0 16px; letter-spacing: 0.01em; }
+    --accent:#8A7BEA;
+    --accent-hi:#B3A8F5;
+    --accent-soft:#39335F;
+    --accent-wash:#2E2A48;
+  }
 
-    /* ── Severity segmented control ── */
-    .sev-control { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-    .sev-btn {
-      display: flex; flex-direction: column; align-items: center; gap: 3px;
-      padding: 10px 6px; border-radius: var(--radius-sm);
-      border: 1px solid var(--border); background: var(--surface-2);
-      color: var(--text-2); font-weight: 600; font-size: 13px; cursor: pointer;
-      transition: all 0.15s; font-family: var(--font);
-    }
-    .sev-btn .sev-sub { font-size: 10.5px; font-weight: 500; opacity: 0.75; letter-spacing: 0.01em; }
-    .sev-btn:hover { border-color: var(--border-light); color: var(--text-1); }
-    .sev-btn[data-active="true"] { color: #fff; border-color: transparent; }
-    .sev-btn[data-sev="P1"][data-active="true"] { background: #f87171; box-shadow: 0 2px 10px rgba(248,113,113,0.35); }
-    .sev-btn[data-sev="P2"][data-active="true"] { background: #fb923c; box-shadow: 0 2px 10px rgba(251,146,60,0.35); }
-    .sev-btn[data-sev="P3"][data-active="true"] { background: #34d399; box-shadow: 0 2px 10px rgba(52,211,153,0.35); }
-    .sev-btn[data-sev="P4"][data-active="true"] { background: #9ca3af; box-shadow: 0 2px 10px rgba(156,163,175,0.35); }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  html{transition:background .25s ease;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--sans);
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+    transition:background .25s ease, color .25s ease;
+  }
 
-    /* ── Editor toolbar + textarea ── */
-    .editor-toolbar { display: flex; gap: 2px; padding: 6px; border: 1px solid var(--border); border-bottom: none; border-radius: var(--radius-sm) var(--radius-sm) 0 0; background: var(--surface-2); flex-wrap: wrap; }
-    .editor-toolbar .btn-icon { width: 30px; height: 30px; }
-    .composer-textarea {
-      border-radius: 0 0 var(--radius-sm) var(--radius-sm) !important;
-      border-top: none !important; margin-top: 0;
-      min-height: 340px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      font-size: 13px; line-height: 1.6; resize: none !important; overflow-y: auto;
-    }
-    .composer-textarea:focus { outline: none; }
-    /* ── Fullscreen focus mode ── */
-    body.fs-mode .preview-col { display: none; }
-    .editor-fullscreen {
-      position: fixed; inset: 20px; z-index: 1000; max-width: none; margin: 0;
-      display: flex; flex-direction: column;
-    }
-    .editor-fullscreen .card-title { display: flex; align-items: center; justify-content: space-between; }
-    .editor-fullscreen #composerForm { display: flex; flex-direction: column; flex: 1; min-height: 0; }
-    .editor-fullscreen .form-group:last-of-type { flex: 1; display: flex; flex-direction: column; min-height: 0; margin-bottom: 14px; }
-    .editor-fullscreen .composer-textarea { flex: 1; min-height: 0; resize: none; }
-    .char-count { text-align: right; font-size: 12px; color: var(--text-3); margin-top: 6px; }
-    .char-count.over { color: var(--danger); }
-    .field-hint { font-size: 12px; color: var(--text-3); margin-top: 6px; }
+  .page{
+    max-width:640px;
+    margin:0 auto;
+    padding:64px 24px 120px;
+  }
 
-    /* ── Config banner ── */
-    .banner {
-      display: flex; align-items: center; gap: 10px;
-      background: rgba(251,146,60,0.1); border: 1px solid rgba(251,146,60,0.35);
-      color: #fdba74; border-radius: var(--radius-sm); padding: 11px 14px; font-size: 13px;
-      margin-bottom: 18px;
-    }
-    .banner svg { flex-shrink: 0; }
+  @keyframes rise{
+    from{opacity:0; transform:translateY(10px);}
+    to{opacity:1; transform:translateY(0);}
+  }
+  .rise{animation:rise .6s cubic-bezier(.16,.8,.3,1) both;}
+  .d1{animation-delay:.02s;}
+  .d2{animation-delay:.09s;}
+  .d3{animation-delay:.16s;}
+  .d4{animation-delay:.23s;}
+  .d5{animation-delay:.3s;}
 
-    /* ── Discord live preview ── */
-    .preview-col { position: sticky; top: 76px; }
-    .discord-card {
-      background: #2b2d31; border-radius: 8px; padding: 14px 16px 16px;
-      border-left: 4px solid var(--accent); color: #dbdee1;
-    }
-    .embed-author { display: flex; align-items: center; gap: 9px; margin-bottom: 10px; }
-    .embed-avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; }
-    .embed-avatar img { width: 100%; height: 100%; object-fit: cover; }
-    .embed-name { color: #f2f3f5; font-weight: 600; font-size: 13px; line-height: 1.2; }
-    .embed-time { color: #949ba4; font-size: 11px; }
-    .embed-title { color: #fff; font-weight: 600; font-size: 15px; margin: 2px 0 10px; word-break: break-word; }
-    .embed-fields { display: flex; gap: 22px; margin-bottom: 10px; flex-wrap: wrap; }
-    .embed-field .k { color: #949ba4; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
-    .embed-field .v { color: #dbdee1; font-size: 13px; margin-top: 3px; }
-    .sev-pill { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; }
-    .embed-body { color: #dbdee1; font-size: 13.5px; line-height: 1.55; word-break: break-word; }
-    .embed-body h1, .embed-body h2, .embed-body h3 { color: #fff; margin: 10px 0 6px; line-height: 1.3; }
-    .embed-body h1 { font-size: 18px; } .embed-body h2 { font-size: 16px; } .embed-body h3 { font-size: 14px; }
-    .embed-body p { margin: 0 0 8px; }
-    .embed-body code { background: #1e1f22; padding: 1px 5px; border-radius: 4px; font-family: ui-monospace, monospace; font-size: 12.5px; }
-    .embed-body pre { background: #1e1f22; padding: 11px 13px; border-radius: 7px; overflow: auto; margin: 8px 0; }
-    .embed-body pre code { background: none; padding: 0; }
-    .embed-body a { color: #00a8fc; text-decoration: none; }
-    .embed-body a:hover { text-decoration: underline; }
-    .embed-body blockquote { border-left: 3px solid #4a4d52; margin: 6px 0; padding-left: 11px; color: #b5bac1; }
-    .embed-body ul, .embed-body ol { margin: 0 0 8px; padding-left: 20px; }
-    .embed-body li { margin: 2px 0; }
-    .embed-empty { color: #80848e; font-style: italic; font-size: 13px; }
+  .nav{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:56px;
+  }
+  .nav a{
+    font-size:13px;
+    color:var(--ink-soft);
+    text-decoration:none;
+  }
+  .nav a:hover{color:var(--ink);}
+  .nav .wordmark{
+    font-family:var(--serif);
+    font-size:16px;
+    font-weight:600;
+    color:var(--ink);
+  }
+  .nav-right{
+    display:flex;
+    align-items:center;
+    gap:18px;
+  }
+  .theme-toggle{
+    width:30px; height:30px;
+    display:flex; align-items:center; justify-content:center;
+    background:transparent;
+    border:1px solid var(--rule);
+    border-radius:50%;
+    color:var(--ink-soft);
+    cursor:pointer;
+    transition:border-color .15s ease, color .15s ease, background .15s ease;
+  }
+  .theme-toggle:hover{border-color:var(--accent); color:var(--accent);}
+  .theme-toggle svg{width:15px; height:15px;}
+  .theme-toggle .moon{display:none;}
+  html[data-theme="dark"] .theme-toggle .sun{display:none;}
+  html[data-theme="dark"] .theme-toggle .moon{display:block;}
 
-    /* ── Success panel ── */
-    .success-panel { text-align: center; padding: 30px 16px; }
-    .success-check {
-      width: 54px; height: 54px; border-radius: 50%; background: rgba(52,211,153,0.12);
-      border: 1px solid rgba(52,211,153,0.4); color: #34d399; display: flex; align-items: center;
-      justify-content: center; margin: 0 auto 16px;
-    }
-    .success-panel h2 { font-size: 19px; color: var(--text-1); margin: 0 0 8px; }
-    .success-panel p { color: var(--text-3); font-size: 13.5px; line-height: 1.55; margin: 0 0 20px; }
+  .eyebrow{
+    font-family:var(--mono);
+    font-size:11.5px;
+    letter-spacing:.09em;
+    text-transform:uppercase;
+    color:var(--accent);
+    margin:0 0 14px;
+  }
+  h1{
+    font-family:var(--serif);
+    font-weight:500;
+    font-size:42px;
+    line-height:1.12;
+    letter-spacing:-.015em;
+    margin:0 0 18px;
+  }
+  .lede{
+    font-size:16px;
+    line-height:1.65;
+    color:var(--ink-soft);
+    max-width:52ch;
+    margin:0 0 8px;
+  }
+  .notice{
+    font-size:13.5px;
+    line-height:1.6;
+    color:var(--ink-faint);
+    margin:20px 0 0;
+    padding-left:14px;
+    border-left:2px solid var(--rule);
+  }
+  .notice b{color:var(--ink-soft); font-weight:600;}
 
-    .spinner { width: 15px; height: 15px; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: spin 0.6s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    @media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+  section{margin-top:56px;}
+  .section-label{
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--ink-faint);
+    margin:0 0 18px;
+  }
 
-    @media (max-width: 880px) {
-      .report-layout { grid-template-columns: 1fr; }
-      .preview-col { position: static; }
-    }
-  </style>
+  .dial-display{
+    display:flex;
+    align-items:baseline;
+    gap:16px;
+    margin-bottom:28px;
+  }
+  .dial-num{
+    font-family:var(--serif);
+    font-size:64px;
+    font-weight:500;
+    color:var(--accent);
+    line-height:1;
+    min-width:70px;
+    transition:color .2s ease;
+  }
+  .dial-copy .name{
+    font-size:20px;
+    font-weight:600;
+    margin:0 0 3px;
+  }
+  .dial-copy .desc{
+    font-size:13.5px;
+    color:var(--ink-soft);
+    margin:0;
+  }
+
+  .dial-track{
+    position:relative;
+    height:6px;
+    background:var(--rule);
+    border-radius:3px;
+    margin:0 6px 14px;
+    cursor:pointer;
+  }
+  .dial-fill{
+    position:absolute;
+    right:0; top:0; height:100%;
+    background:var(--accent);
+    border-radius:3px;
+    width:100%;
+    transition:width .25s cubic-bezier(.16,.8,.3,1);
+  }
+  .dial-stops{
+    position:relative;
+    display:flex;
+    justify-content:space-between;
+    padding:0 6px;
+  }
+  .dial-stop{
+    position:relative;
+    width:18px; height:18px;
+    margin-top:-12px;
+    border-radius:50%;
+    background:var(--paper);
+    border:2px solid var(--rule);
+    cursor:pointer;
+    transition:border-color .2s ease, transform .15s ease, background .2s ease;
+  }
+  .dial-stop:hover{transform:scale(1.12);}
+  .dial-stop.active{
+    border-color:var(--accent);
+    background:var(--accent);
+    box-shadow:0 0 0 4px var(--accent-soft);
+  }
+  .dial-labels{
+    display:flex;
+    justify-content:space-between;
+    padding:0 0;
+    margin-top:10px;
+  }
+  .dial-labels span{
+    font-family:var(--mono);
+    font-size:10.5px;
+    color:var(--ink-faint);
+    width:18px;
+    text-align:center;
+  }
+  .dial-labels span:first-child, .dial-labels span:last-child{width:auto;}
+
+  .field{margin-bottom:30px;}
+  .field-label{
+    display:block;
+    font-size:12.5px;
+    font-weight:600;
+    color:var(--ink-soft);
+    margin-bottom:9px;
+  }
+  .field-label .opt{
+    font-weight:400;
+    color:var(--ink-faint);
+  }
+  .field.invalid .underline-input{border-color:#d8553f;}
+  .underline-input{
+    width:100%;
+    border:none;
+    border-bottom:1.5px solid var(--rule);
+    background:transparent;
+    font-family:var(--sans);
+    font-size:18px;
+    color:var(--ink);
+    padding:8px 2px;
+    outline:none;
+    transition:border-color .15s ease;
+  }
+  .underline-input::placeholder{color:var(--ink-faint); font-weight:400;}
+  .underline-input:focus{border-color:var(--accent);}
+
+  .editor-toolbar{
+    display:flex;
+    align-items:center;
+    gap:2px;
+    margin-bottom:10px;
+  }
+  .tb{
+    width:30px; height:30px;
+    display:flex; align-items:center; justify-content:center;
+    background:transparent;
+    border:none;
+    border-radius:6px;
+    color:var(--ink-faint);
+    cursor:pointer;
+    transition:background .15s ease, color .15s ease;
+  }
+  .tb:hover{background:var(--accent-wash); color:var(--accent);}
+  .tb svg{width:15px; height:15px;}
+  .tb-sep{width:1px; height:16px; background:var(--rule); margin:0 6px;}
+
+  textarea{
+    width:100%;
+    min-height:240px;
+    border:none;
+    border-bottom:1.5px solid var(--rule);
+    background:transparent;
+    outline:none;
+    resize:vertical;
+    font-family:var(--mono);
+    font-size:14px;
+    line-height:1.75;
+    color:var(--ink);
+    padding:4px 2px 14px;
+    transition:border-color .15s ease;
+  }
+  textarea::placeholder{color:var(--ink-faint);}
+  textarea:focus{border-color:var(--accent);}
+
+  .editor-foot{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-top:8px;
+  }
+  .char-count{
+    font-family:var(--mono);
+    font-size:11px;
+    color:var(--ink-faint);
+  }
+  .char-count.warn{color:var(--accent);}
+
+  .preview-toggle{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:none;
+    border:none;
+    padding:0;
+    font-family:var(--sans);
+    font-size:13.5px;
+    font-weight:600;
+    color:var(--accent);
+    cursor:pointer;
+  }
+  .preview-toggle svg{
+    width:13px; height:13px;
+    transition:transform .2s ease;
+  }
+  .preview-toggle.open svg{transform:rotate(90deg);}
+
+  .preview-panel{
+    max-height:0;
+    overflow:hidden;
+    transition:max-height .35s ease;
+  }
+  .preview-panel.open{max-height:2000px;}
+
+  .ticket{
+    margin-top:20px;
+    background:var(--accent-wash);
+    border-radius:14px;
+    padding:22px 24px;
+  }
+  .ticket-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:14px;
+  }
+  .ticket-sev{
+    font-family:var(--mono);
+    font-size:11px;
+    font-weight:500;
+    color:var(--accent);
+    background:var(--accent-soft);
+    padding:4px 9px;
+    border-radius:20px;
+  }
+  .ticket-time{
+    font-family:var(--mono);
+    font-size:11px;
+    color:var(--ink-faint);
+  }
+  .ticket-title{
+    font-family:var(--serif);
+    font-size:19px;
+    font-weight:500;
+    margin:0 0 12px;
+    color:var(--ink);
+  }
+  .ticket-title.ph{color:var(--ink-faint);}
+  .ticket-meta{
+    font-size:12.5px;
+    color:var(--ink-soft);
+    margin-bottom:14px;
+    padding-bottom:14px;
+    border-bottom:1px solid var(--hairline-wash);
+  }
+  .ticket-body{
+    font-size:14px;
+    line-height:1.7;
+    color:var(--ink);
+  }
+  .ticket-body.ph{color:var(--ink-faint);}
+  .ticket-body strong{font-weight:600;}
+  .ticket-body em{font-style:italic;}
+  .ticket-body code{
+    background:var(--hairline-wash);
+    padding:1px 5px;
+    border-radius:4px;
+    font-family:var(--mono);
+    font-size:12.5px;
+  }
+  .ticket-body pre{
+    background:var(--hairline-wash);
+    padding:12px 14px;
+    border-radius:8px;
+    overflow:auto;
+    font-family:var(--mono);
+    font-size:12.5px;
+    margin:8px 0;
+  }
+  .ticket-body pre code{background:none; padding:0;}
+  .ticket-body h3{font-size:15px; margin:10px 0 4px;}
+  .ticket-body blockquote{margin:6px 0; padding-left:10px; border-left:2px solid var(--hairline-wash-2); color:var(--ink-soft);}
+  .ticket-body ul{margin:6px 0; padding-left:18px;}
+  .ticket-body a{color:var(--accent);}
+
+  .submit-area{
+    margin-top:56px;
+    padding-top:32px;
+    border-top:1px solid var(--rule);
+  }
+  .send-btn{
+    font-family:var(--sans);
+    font-weight:600;
+    font-size:15px;
+    color:var(--paper);
+    background:var(--ink);
+    border:none;
+    border-radius:100px;
+    padding:14px 28px;
+    cursor:pointer;
+    display:inline-flex;
+    align-items:center;
+    gap:9px;
+    transition:background .15s ease, transform .1s ease, opacity .15s ease;
+  }
+  .send-btn:hover{background:var(--accent);}
+  .send-btn:active{transform:scale(.97);}
+  .send-btn svg{width:15px; height:15px;}
+  .send-btn:disabled{opacity:.45; cursor:not-allowed;}
+  .submit-note{
+    font-size:12.5px;
+    color:var(--ink-faint);
+    margin-top:14px;
+  }
+  .submit-note.err{color:#d8553f;}
+
+  .success{
+    display:none;
+    padding:120px 0;
+    text-align:center;
+  }
+  .success.show{display:block;}
+  .success h1{font-size:38px; margin-bottom:14px;}
+  .success p{font-size:15px; color:var(--ink-soft); margin:0 0 28px;}
+  .success a{
+    font-size:13.5px;
+    font-weight:600;
+    color:var(--accent);
+    text-decoration:none;
+  }
+  .compose.hide{display:none;}
+
+  @media (max-width:520px){
+    h1{font-size:32px;}
+    .dial-num{font-size:48px;}
+  }
+</style>
 </head>
 <body>
-  <header class="public-header">
-    <a href="/vdp" class="public-header-brand">
-      <object data="/assets/logo.svg" type="image/svg+xml" style="width:22px;height:22px;pointer-events:none;"></object>
-      <span class="public-header-brand-text">Todoer</span>
-    </a>
-    <div class="public-header-actions">
-      <a href="/vdp" class="public-header-link">← Back to VDP</a>
-      <button class="theme-toggle" id="themeToggle" title="Toggle theme">
-        <svg id="iconSun" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
-          <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
-          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-          <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
-          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-        </svg>
-        <svg id="iconMoon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-        </svg>
+
+<div class="page">
+
+  <div class="compose" id="compose">
+
+    <div class="nav rise d1">
+      <span class="wordmark">Todoer</span>
+      <div class="nav-right">
+        <button type="button" class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
+          <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M3 12h2M19 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>
+          <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 14.5A8.5 8.5 0 019.5 4 8.5 8.5 0 1020 14.5z"/></svg>
+        </button>
+        <a href="/vdp">Back to VDP</a>
+      </div>
+    </div>
+
+    <p class="eyebrow rise d1">Security disclosure</p>
+    <h1 class="rise d2">Tell us what you found.</h1>
+    <p class="lede rise d2">No account, no ticket queue — this goes straight to the team on Discord. Walk through the details below; you'll see exactly what we receive before you send it.</p>
+    <p class="notice rise d2" id="disabledNotice" style="display:none"><b>Heads up —</b> reporting isn't switched on yet on our end, so sending is disabled for the moment. Everything else here works, so you can see how it'll feel once it is.</p>
+
+    <section class="rise d3">
+      <p class="section-label">01 — Severity</p>
+      <div class="dial-display">
+        <span class="dial-num" id="dialNum">01</span>
+        <div class="dial-copy">
+          <p class="name" id="dialName">Critical</p>
+          <p class="desc" id="dialDesc">Full compromise, data exposure, or account takeover.</p>
+        </div>
+      </div>
+      <div class="dial-track" id="dialTrack">
+        <div class="dial-fill" id="dialFill"></div>
+        <div class="dial-stops" id="dialStops">
+          <div class="dial-stop active" data-sev="1"></div>
+          <div class="dial-stop" data-sev="2"></div>
+          <div class="dial-stop" data-sev="3"></div>
+          <div class="dial-stop" data-sev="4"></div>
+        </div>
+      </div>
+      <div class="dial-labels">
+        <span>Critical</span><span></span><span></span><span>Low</span>
+      </div>
+    </section>
+
+    <section class="rise d3">
+      <div class="field" id="titleField">
+        <label class="field-label">Title</label>
+        <input class="underline-input" id="titleInput" type="text" placeholder="Reflected XSS in the admin login error page">
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label class="field-label">Your Discord username <span class="opt">— optional, so we can follow up</span></label>
+        <input class="underline-input" id="reporterInput" type="text" placeholder="entit_y">
+      </div>
+    </section>
+
+    <section class="rise d4">
+      <p class="section-label">02 — The details</p>
+      <div class="editor-toolbar">
+        <button type="button" class="tb" data-wrap="**" title="Bold"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 4h8a4 4 0 010 8H6zM6 12h9a4 4 0 010 8H6z"/></svg></button>
+        <button type="button" class="tb" data-wrap="*" title="Italic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M10 4h6M4 20h6M14 4l-4 16"/></svg></button>
+        <button type="button" class="tb" data-wrap="`" title="Code"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 6l-6 6 6 6M15 6l6 6-6 6"/></svg></button>
+        <div class="tb-sep"></div>
+        <button type="button" class="tb" data-line="### " title="Heading"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 4v16M14 4v16M4 12h10M18 8v8M18 8l-3 2M18 16l3-2"/></svg></button>
+        <button type="button" class="tb" data-line="- " title="List"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></button>
+        <button type="button" class="tb" data-line="&gt; " title="Quote"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M7 8a3 3 0 00-3 3v2h4v-5zM17 8a3 3 0 00-3 3v2h4v-5z"/></svg></button>
+      </div>
+      <textarea id="bodyInput" maxlength="4000" placeholder="Steps to reproduce, impact, anything that'll help us triage fast. Markdown supported."></textarea>
+      <div class="editor-foot">
+        <span class="char-count" id="charCount">0 / 4000</span>
+      </div>
+    </section>
+
+    <section class="rise d5">
+      <button type="button" class="preview-toggle" id="previewToggle">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M9 6l6 6-6 6"/></svg>
+        See what we'll receive
       </button>
-    </div>
-  </header>
-
-  <div class="report-shell">
-    <div class="report-eyebrow">Security</div>
-    <h1>Report a Vulnerability</h1>
-    <p class="report-intro">Found something in Todoer? Send the details below — it's forwarded straight to our security team on Discord. No account needed. The preview on the right shows exactly what we'll receive.</p>
-
-    <div id="statusBanner" class="banner" style="display:none">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
-      <span>Reporting isn't set up yet on our side. The form is disabled until an admin configures a Discord webhook.</span>
-    </div>
-
-    <div class="report-layout">
-      <!-- Composer -->
-      <div class="card card-accent" id="composerCard">
-        <div id="composerForm">
-          <p class="card-title">Report details</p>
-
-          <div class="form-group">
-            <label>Severity</label>
-            <div class="sev-control" id="sevControl">
-              <button type="button" class="sev-btn" data-sev="P1" data-active="true">P1<span class="sev-sub">Critical</span></button>
-              <button type="button" class="sev-btn" data-sev="P2">P2<span class="sev-sub">High</span></button>
-              <button type="button" class="sev-btn" data-sev="P3">P3<span class="sev-sub">Medium</span></button>
-              <button type="button" class="sev-btn" data-sev="P4">P4<span class="sev-sub">Low</span></button>
-            </div>
+      <div class="preview-panel" id="previewPanel">
+        <div class="ticket">
+          <div class="ticket-row">
+            <span class="ticket-sev" id="ticketSev">P1 · Critical</span>
+            <span class="ticket-time">today</span>
           </div>
-
-          <div class="form-group">
-            <label for="title">Title</label>
-            <input type="text" id="title" maxlength="256" placeholder="Short summary of the vulnerability" autocomplete="off">
-          </div>
-
-          <div class="form-group">
-            <div class="label-row">
-              <label for="discord">Your Discord username</label>
-            </div>
-            <input type="text" id="discord" maxlength="64" placeholder="e.g. researcher#1234 or @researcher" autocomplete="off">
-            <div class="field-hint">So our team can follow up or ask clarifying questions.</div>
-          </div>
-
-          <div class="form-group">
-            <div class="label-row">
-              <label for="body">Report details</label>
-              <span style="font-size:12px;color:var(--text-3)">Markdown supported</span>
-            </div>
-            <div class="editor-toolbar">
-              <button type="button" class="btn-icon" data-md="bold" title="Bold"><b>B</b></button>
-              <button type="button" class="btn-icon" data-md="italic" title="Italic"><i>I</i></button>
-              <button type="button" class="btn-icon" data-md="code" title="Code">&lt;/&gt;</button>
-              <button type="button" class="btn-icon" data-md="h2" title="Heading">H</button>
-              <button type="button" class="btn-icon" data-md="link" title="Link">🔗</button>
-              <button type="button" class="btn-icon" data-md="list" title="List">≡</button>
-              <button type="button" class="btn-icon" data-md="quote" title="Quote">❝</button>
-              <button type="button" class="btn-icon" data-md="expand" title="Expand editor" style="margin-left:auto">⤢</button>
-            </div>
-            <textarea id="body" class="composer-textarea" placeholder="## Steps to reproduce&#10;1. …&#10;&#10;## Impact&#10;…&#10;&#10;## Proof of concept&#10;```&#10;…&#10;```"></textarea>
-            <div class="char-count" id="charCount">0 / 4000</div>
-          </div>
-
-          <div class="error-message" id="errorMsg" style="display:none;margin-bottom:14px;"></div>
-          <button type="button" class="btn btn-primary btn-full" id="submitBtn">Send report</button>
-        </div>
-
-        <div id="successPanel" class="success-panel" style="display:none">
-          <div class="success-check">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-          </div>
-          <h2>Report sent</h2>
-          <p>Thank you — your report is on its way to the Todoer security team via Discord. If you left a Discord username, we'll reach out there.</p>
-          <a href="/vdp" class="btn btn-secondary">Back to VDP</a>
+          <p class="ticket-title ph" id="ticketTitle">Your report title</p>
+          <div class="ticket-meta">Reported by <span id="ticketReporter">Anonymous</span></div>
+          <div class="ticket-body ph" id="ticketBody">Your formatted report shows up here as you write it.</div>
         </div>
       </div>
+    </section>
 
-      <!-- Live Discord preview -->
-      <div class="preview-col">
-        <div class="card">
-          <p class="card-title">What gets sent to Discord</p>
-          <div class="discord-card" id="discordCard">
-            <div class="embed-author">
-              <span class="embed-avatar"><img src="/assets/logo.svg" alt=""></span>
-              <div>
-                <div class="embed-name">Todoer VDP</div>
-                <div class="embed-time" id="embedTime">today</div>
-              </div>
-            </div>
-            <div class="embed-title" id="embedTitle">Your report title</div>
-            <div class="embed-fields">
-              <div class="embed-field">
-                <div class="k">Severity</div>
-                <div class="v"><span class="sev-pill" id="embedSev" style="background:rgba(99,102,241,0.18);color:#a5b4fc">P1</span></div>
-              </div>
-              <div class="embed-field">
-                <div class="k">Reporter</div>
-                <div class="v" id="embedReporter">Anonymous</div>
-              </div>
-            </div>
-            <div class="embed-body" id="embedBody"><span class="embed-empty">Your formatted report will appear here…</span></div>
-          </div>
-        </div>
-      </div>
+    <div class="submit-area rise d5">
+      <button type="button" class="send-btn" id="sendBtn">
+        Send report
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
+      <p class="submit-note" id="submitNote">Reaches our security team's Discord within a minute or two.</p>
     </div>
+
   </div>
 
-  <script>
-    const saved = localStorage.getItem('theme') || 'dark';
-    document.documentElement.setAttribute('data-theme', saved);
-    updateThemeIcon(saved);
-    document.getElementById('themeToggle').addEventListener('click', () => {
-      const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-      document.documentElement.setAttribute('data-theme', next);
-      localStorage.setItem('theme', next);
-      updateThemeIcon(next);
-    });
-    function updateThemeIcon(theme) {
-      document.getElementById('iconSun').style.display  = theme === 'light' ? 'block' : 'none';
-      document.getElementById('iconMoon').style.display = theme === 'dark'  ? 'block' : 'none';
+  <div class="success" id="success">
+    <p class="eyebrow">Sent</p>
+    <h1>On its way.</h1>
+    <p>Thanks for taking the time to report this. If you left a Discord username, we'll reach out there.</p>
+    <a href="/vdp">← Back to VDP</a>
+  </div>
+
+</div>
+
+<script>
+  // ── Theme (persisted, matches the rest of the app) ──
+  const savedTheme = localStorage.getItem('theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', savedTheme);
+  const themeToggle = document.getElementById('themeToggle');
+  themeToggle.addEventListener('click', () => {
+    const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+  });
+
+  const sevInfo = {
+    1:{name:'Critical', desc:'Full compromise, data exposure, or account takeover.'},
+    2:{name:'High', desc:'Serious impact, but needs specific conditions to trigger.'},
+    3:{name:'Medium', desc:'Real risk with limited scope or requires user interaction.'},
+    4:{name:'Low', desc:'Minor issue — hardening or best-practice territory.'}
+  };
+  const fillPct = {1:100, 2:66.667, 3:33.333, 4:0};
+  let currentSev = 1;
+
+  const dialNum = document.getElementById('dialNum');
+  const dialName = document.getElementById('dialName');
+  const dialDesc = document.getElementById('dialDesc');
+  const dialFill = document.getElementById('dialFill');
+  const stops = document.querySelectorAll('.dial-stop');
+  const ticketSev = document.getElementById('ticketSev');
+
+  function selectSev(n){
+    currentSev = n;
+    dialNum.textContent = '0'+n;
+    dialName.textContent = sevInfo[n].name;
+    dialDesc.textContent = sevInfo[n].desc;
+    dialFill.style.width = fillPct[n] + '%';
+    stops.forEach(s => s.classList.toggle('active', s.dataset.sev === String(n)));
+    ticketSev.textContent = 'P'+n+' · '+sevInfo[n].name;
+  }
+  stops.forEach(s => s.addEventListener('click', () => selectSev(s.dataset.sev)));
+  selectSev(1);
+
+  const titleInput = document.getElementById('titleInput');
+  const reporterInput = document.getElementById('reporterInput');
+  const bodyInput = document.getElementById('bodyInput');
+  const ticketTitle = document.getElementById('ticketTitle');
+  const ticketReporter = document.getElementById('ticketReporter');
+  const ticketBody = document.getElementById('ticketBody');
+  const charCount = document.getElementById('charCount');
+  const titleField = document.getElementById('titleField');
+
+  titleInput.addEventListener('input', () => {
+    const v = titleInput.value.trim();
+    ticketTitle.textContent = v || 'Your report title';
+    ticketTitle.classList.toggle('ph', !v);
+    titleField.classList.remove('invalid');
+  });
+  reporterInput.addEventListener('input', () => {
+    ticketReporter.textContent = reporterInput.value.trim() || 'Anonymous';
+  });
+
+  function renderMd(src){
+    let esc = src.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    esc = esc.replace(/```[^\n]*\n([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+    esc = esc.replace(/^### (.*)$/gm, '<h3>$1</h3>');
+    esc = esc.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    esc = esc.replace(/\*(.+?)\*/g, '<em>$1</em>');
+    esc = esc.replace(/`([^`]+?)`/g, '<code>$1</code>');
+    esc = esc.replace(/^&gt; (.*)$/gm, '<blockquote>$1</blockquote>');
+    esc = esc.replace(/^- (.*)$/gm, '<li>$1</li>');
+    esc = esc.replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>');
+    esc = esc.replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    esc = esc.split(/\n{2,}/).map(p => p.trim() ? (p.startsWith('<') ? p : '<p style="margin:0 0 8px">'+p+'</p>') : '').join('');
+    return esc;
+  }
+
+  bodyInput.addEventListener('input', () => {
+    const len = bodyInput.value.length;
+    charCount.textContent = len + ' / 4000';
+    charCount.classList.toggle('warn', len > 3600);
+    bodyInput.parentElement.classList.remove('invalid');
+    const v = bodyInput.value.trim();
+    if(v){
+      ticketBody.innerHTML = renderMd(bodyInput.value);
+      ticketBody.classList.remove('ph');
+    } else {
+      ticketBody.textContent = "Your formatted report shows up here as you write it.";
+      ticketBody.classList.add('ph');
     }
+  });
 
-    const sevColors = { P1: '#f87171', P2: '#fb923c', P3: '#34d399', P4: '#9ca3af' };
-    const sevTints  = { P1: 'rgba(248,113,113,0.18)', P2: 'rgba(251,146,60,0.18)', P3: 'rgba(52,211,153,0.18)', P4: 'rgba(156,163,175,0.18)' };
-    let severity = 'P1';
-
-    const title = document.getElementById('title');
-    const discord = document.getElementById('discord');
-    const body = document.getElementById('body');
-    const charCount = document.getElementById('charCount');
-    const discordCard = document.getElementById('discordCard');
-
-    // ── Severity selection ──
-    document.getElementById('sevControl').addEventListener('click', (e) => {
-      const btn = e.target.closest('.sev-btn');
-      if (!btn) return;
-      severity = btn.dataset.sev;
-      document.querySelectorAll('.sev-btn').forEach(b => b.dataset.active = (b === btn));
-      document.querySelector('.card-accent').style.setProperty('--accent', sevColors[severity]);
-      updatePreview();
-    });
-
-    // ── Editor toolbar ──
-    function surround(before, after, placeholder) {
-      const s = body.selectionStart, en = body.selectionEnd;
-      const sel = body.value.slice(s, en) || placeholder;
-      body.value = body.value.slice(0, s) + before + sel + after + body.value.slice(en);
-      body.focus();
-      body.selectionStart = s + before.length;
-      body.selectionEnd = s + before.length + sel.length;
-      updatePreview();
-    }
-    function linePrefix(prefix) {
-      const s = body.selectionStart;
-      const lineStart = body.value.lastIndexOf('\n', s - 1) + 1;
-      body.value = body.value.slice(0, lineStart) + prefix + body.value.slice(lineStart);
-      body.focus();
-      body.selectionStart = body.selectionEnd = lineStart + prefix.length;
-      updatePreview();
-    }
-    document.querySelector('.editor-toolbar').addEventListener('click', (e) => {
-      const btn = e.target.closest('.btn-icon'); if (!btn) return;
-      switch (btn.dataset.md) {
-        case 'bold':   surround('**', '**', 'bold'); break;
-        case 'italic': surround('*', '*', 'italic'); break;
-        case 'code':   surround('`', '`', 'code'); break;
-        case 'h2':     linePrefix('## '); break;
-        case 'link':   surround('[', '](https://)', 'text'); break;
-        case 'list':   linePrefix('- '); break;
-        case 'quote':  linePrefix('> '); break;
-        case 'expand': toggleFullscreen(); break;
+  document.querySelectorAll('.tb').forEach(btn => {
+    btn.addEventListener('click', () => {
+      bodyInput.focus();
+      const start = bodyInput.selectionStart;
+      const end = bodyInput.selectionEnd;
+      const val = bodyInput.value;
+      const selected = val.slice(start, end);
+      if(btn.dataset.wrap){
+        const w = btn.dataset.wrap;
+        const insert = w + (selected || 'text') + w;
+        bodyInput.value = val.slice(0,start) + insert + val.slice(end);
+        bodyInput.selectionStart = start + w.length;
+        bodyInput.selectionEnd = start + w.length + (selected || 'text').length;
+      } else if(btn.dataset.line){
+        const lineStart = val.lastIndexOf('\n', start-1) + 1;
+        bodyInput.value = val.slice(0,lineStart) + btn.dataset.line + val.slice(lineStart);
+        bodyInput.selectionStart = bodyInput.selectionEnd = start + btn.dataset.line.length;
       }
+      bodyInput.dispatchEvent(new Event('input'));
     });
+  });
 
-    // ── Auto-grow textarea (when not in fullscreen) ──
-    function autoGrow() {
-      if (document.body.classList.contains('fs-mode')) return;
-      body.style.height = 'auto';
-      body.style.height = Math.min(body.scrollHeight, 560) + 'px';
+  const previewToggle = document.getElementById('previewToggle');
+  const previewPanel = document.getElementById('previewPanel');
+  previewToggle.addEventListener('click', () => {
+    previewToggle.classList.toggle('open');
+    previewPanel.classList.toggle('open');
+  });
+
+  // ── Config status (disables send until admin sets a webhook) ──
+  let configured = true;
+  const sendBtn = document.getElementById('sendBtn');
+  const submitNote = document.getElementById('submitNote');
+  fetch('/api/vdp/status').then(r => r.json().catch(() => ({configured:true}))).then(d => {
+    configured = !!d.configured;
+    if (!configured) {
+      document.getElementById('disabledNotice').style.display = 'block';
+      sendBtn.disabled = true;
     }
-    body.addEventListener('input', autoGrow);
+  }).catch(() => {});
 
-    // ── Fullscreen focus mode ──
-    function toggleFullscreen() {
-      const on = document.body.classList.toggle('fs-mode');
-      document.getElementById('composerCard').classList.toggle('editor-fullscreen', on);
-      document.querySelector('.btn-icon[data-md="expand"]').textContent = on ? '⤡' : '⤢';
-      document.querySelector('.btn-icon[data-md="expand"]').title = on ? 'Exit fullscreen' : 'Expand editor';
-      if (!on) autoGrow();
-      body.focus();
-    }
+  // ── Submit ──
+  const sendOriginal = sendBtn.innerHTML;
+  sendBtn.addEventListener('click', async () => {
+    if (!configured) return;
+    const title = titleInput.value.trim();
+    const body = bodyInput.value.trim();
+    if (!title) { titleField.classList.add('invalid'); titleInput.focus(); return; }
+    if (!body) { bodyInput.parentElement.classList.add('invalid'); bodyInput.focus(); return; }
 
-    body.addEventListener('input', updatePreview);
-    title.addEventListener('input', updatePreview);
-    discord.addEventListener('input', updatePreview);
-
-    function updatePreview() {
-      const sev = sevColors[severity];
-      discordCard.style.borderLeftColor = sev;
-      const pill = document.getElementById('embedSev');
-      pill.textContent = severity;
-      pill.style.background = sevTints[severity];
-      pill.style.color = sev;
-      document.getElementById('embedTitle').textContent = title.value.trim() || 'Your report title';
-      document.getElementById('embedReporter').textContent = discord.value.trim() || 'Anonymous';
-      const raw = body.value.trim();
-      document.getElementById('embedBody').innerHTML = raw
-        ? marked.parse(raw)
-        : '<span class="embed-empty">Your formatted report will appear here…</span>';
-      const len = body.value.length;
-      charCount.textContent = len + ' / 4000';
-      charCount.classList.toggle('over', len > 4000);
-    }
-    (function setTime(){ document.getElementById('embedTime').textContent = new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); })();
-    updatePreview();
-
-    // ── Config status ──
-    let configured = true;
-    fetch('/api/vdp/status').then(r => r.json()).then(d => {
-      configured = !!d.configured;
-      if (!configured) {
-        document.getElementById('statusBanner').style.display = 'flex';
-        document.getElementById('submitBtn').disabled = true;
-        document.getElementById('discordCard').querySelector('.embed-body').innerHTML =
-          '<span class="embed-empty">Reporting is disabled — an admin hasn’t configured a Discord webhook yet.</span>';
-      }
-    }).catch(() => {});
-
-    // ── Submit ──
-    const submitBtn = document.getElementById('submitBtn');
-    const errorMsg = document.getElementById('errorMsg');
-    submitBtn.addEventListener('click', async () => {
-      errorMsg.style.display = 'none';
-      const t = title.value.trim(), b = body.value.trim();
-      if (!t) { errorMsg.textContent = 'Please add a title.'; errorMsg.style.display = 'block'; title.focus(); return; }
-      if (!b) { errorMsg.textContent = 'Please describe the vulnerability.'; errorMsg.style.display = 'block'; body.focus(); return; }
-      submitBtn.disabled = true;
-      submitBtn.innerHTML = '<span class="spinner"></span> Sending…';
-      try {
-        const r = await fetch('/api/vdp/report', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title: t, severity, body: b, discord: discord.value.trim() })
-        });
+    sendBtn.disabled = true;
+    sendBtn.innerHTML = 'Sending…';
+    submitNote.classList.remove('err');
+    submitNote.textContent = 'Reaches our security team’s Discord within a minute or two.';
+    try {
+      const r = await fetch('/api/vdp/report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, severity: 'P' + currentSev, body, discord: reporterInput.value.trim() })
+      });
+      if (r.ok) {
+        document.getElementById('compose').classList.add('hide');
+        document.getElementById('success').classList.add('show');
+      } else {
         const data = await r.json().catch(() => ({}));
-        if (r.ok) {
-          document.getElementById('composerForm').style.display = 'none';
-          document.getElementById('successPanel').style.display = 'block';
-        } else {
-          errorMsg.textContent = data.error || 'Failed to send report.';
-          errorMsg.style.display = 'block';
-          submitBtn.disabled = false;
-          submitBtn.textContent = 'Send report';
-        }
-      } catch (e) {
-        errorMsg.textContent = 'Network error — please try again.';
-        errorMsg.style.display = 'block';
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Send report';
+        submitNote.classList.add('err');
+        submitNote.textContent = data.error || 'Failed to send report.';
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = sendOriginal;
       }
-    });
-  </script>
+    } catch (e) {
+      submitNote.classList.add('err');
+      submitNote.textContent = 'Network error — please try again.';
+      sendBtn.disabled = false;
+      sendBtn.innerHTML = sendOriginal;
+    }
+  });
+</script>
+
 </body>
 </html>
