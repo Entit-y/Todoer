@@ -371,3 +371,80 @@ tbody tr:last-child td{border-bottom:none;}
 .text-faint{color:var(--ink-faint);}
 .text-soft{color:var(--ink-soft);}
 .muted{color:var(--ink-faint);}
+
+/* ============================================================
+   Phase 2 — content component overrides (editorial restyle of
+   existing class names; presentational only, no markup change)
+   ============================================================ */
+
+/* Profile */
+.profile-section{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:20px; margin-bottom:18px;}
+.profile-section h2{font-family:var(--font); font-size:16px; font-weight:600; letter-spacing:-.01em; color:var(--ink); margin:0 0 14px;}
+.profile-form{max-width:520px;}
+
+/* Generic section headings inside cards should stay sans, not serif */
+.card h2, .detail-card h2, .info-card h2, .modal h2, .modal-box h2{font-family:var(--font);}
+
+.subtitle{color:var(--ink-soft); font-size:13px; line-height:1.5;}
+
+/* Stat / rule / scope lists (profile, 2FA, info) */
+.info-stat{display:flex; flex-direction:column; gap:2px;}
+.info-stat-label{font-size:11px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-faint);}
+.info-stat-value{font-size:18px; font-weight:600; color:var(--ink); font-family:var(--serif);}
+.info-rule{display:flex; gap:12px; padding:12px 0; border-bottom:1px solid var(--hairline-wash); align-items:flex-start;}
+.info-rule:last-child{border-bottom:none;}
+.info-rule-num{width:24px; height:24px; border-radius:50%; background:var(--accent-wash); color:var(--accent-hi); display:flex; align-items:center; justify-content:center; font-weight:600; font-size:12px; flex-shrink:0;}
+.scope-item{display:flex; align-items:center; gap:10px; padding:9px 0; color:var(--ink-soft); font-size:13.5px;}
+.scope-check{width:18px; height:18px; border-radius:6px; border:1.5px solid var(--border); display:flex; align-items:center; justify-content:center; color:var(--success); flex-shrink:0;}
+
+/* Task / workspace detail bits */
+.task-sep{height:1px; background:var(--hairline-wash); border:none; margin:14px 0;}
+.task-priority{display:inline-block; font-size:11px; font-weight:600; padding:2px 9px; border-radius:999px; background:var(--surface-2); color:var(--ink-soft);}
+.task-detail-section{margin-bottom:20px;}
+.task-detail-section-label{font-size:11px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-faint); margin-bottom:8px;}
+.workspace-detail{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:18px;}
+.ws-context-banner{display:flex; align-items:center; gap:9px; padding:10px 14px; background:var(--accent-wash); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--ink-soft); font-size:13px; margin-bottom:16px;}
+.ws-context-dot{width:8px; height:8px; border-radius:50%; background:var(--accent); flex-shrink:0;}
+
+/* Lists inside detail cards */
+.detail-card-list{list-style:none; margin:0; padding:0;}
+.detail-card-list li{padding:11px 16px; border-bottom:1px solid var(--hairline-wash); color:var(--ink-soft); font-size:13px;}
+.detail-card-list li:last-child{border-bottom:none;}
+
+/* Header controls (search / filters / role selects) */
+.filter-select, .role-select{
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm);
+  color:var(--ink); padding:8px 10px; font-family:var(--font); font-size:13px; cursor:pointer;
+}
+.search-input{
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm);
+  color:var(--ink); padding:9px 12px 9px 34px; font-size:13px; width:100%; font-family:var(--font);
+}
+.search-input:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-wash);}
+.search-icon{position:absolute; left:11px; top:50%; transform:translateY(-50%); color:var(--ink-faint); pointer-events:none;}
+.role-badge{display:inline-block; font-size:11px; font-weight:600; padding:2px 8px; border-radius:999px; background:var(--surface-2); color:var(--ink-soft);}
+.file-date{color:var(--ink-faint); font-size:12px;}
+
+/* Empty / placeholder states */
+.empty-state{text-align:center; padding:48px 20px; color:var(--ink-faint);}
+.empty-state-icon{margin-bottom:12px; opacity:.55;}
+.comments-empty{text-align:center; color:var(--ink-faint); padding:24px; font-size:13px;}
+.comments-empty-icon{margin-bottom:8px;}
+.no-selection{color:var(--ink-faint); text-align:center; padding:40px 20px; font-size:13.5px;}
+
+/* Modals (custom class names used across pages) */
+.confirm-modal, .modal-overlay{position:fixed; inset:0; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; padding:20px; z-index:1000;}
+.confirm-box, .modal-box{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:22px; max-width:440px; width:100%; box-shadow:var(--shadow);}
+.modal-content{padding:18px;}
+.modal-header{display:flex; align-items:center; justify-content:space-between; padding:16px 18px; border-bottom:1px solid var(--border);}
+.modal-header h2, .modal-box h2{font-family:var(--font); font-size:16px; font-weight:600; color:var(--ink);}
+.modal-close{background:transparent; border:none; color:var(--ink-faint); cursor:pointer; font-size:20px; line-height:1; padding:2px 6px; border-radius:var(--radius-sm);}
+.modal-close:hover{color:var(--ink); background:var(--surface-2);}
+.confirm-actions, .modal-actions{display:flex; gap:10px; justify-content:flex-end; margin-top:18px;}
+.drawer-close{background:transparent; border:none; color:var(--ink-faint); cursor:pointer; font-size:18px;}
+.drawer-close:hover{color:var(--ink);}
+
+/* Misc buttons */
+.btn-activate{background:var(--accent); color:var(--accent-text); border:none; border-radius:var(--radius-sm); padding:9px 15px; cursor:pointer; font-family:var(--font); font-weight:500; font-size:13px; transition:filter .15s, transform .1s;}
+.btn-activate:hover{filter:brightness(1.08);}
+.btn-activate:disabled{opacity:.45; cursor:not-allowed;}
