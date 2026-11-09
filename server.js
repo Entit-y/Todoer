@@ -21,6 +21,11 @@ const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI;
 const http = require('http');
 const WebSocket = require('ws');
+const {
+  generateRegistrationOptions,
+  verifyRegistrationResponse,
+  verifyAuthenticationResponse
+} = require('@simplewebauthn/server');
 
 const app = express();
 const server = http.createServer(app);
@@ -113,6 +118,17 @@ const vdpReportLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,  // 1 hour
   max: 10,
   message: { error: 'Too many reports submitted. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+// Passkey assertions are more expensive to verify than password attempts, but
+// they can carry a valid signature every time, so the limit is mostly there to
+// keep the endpoint from being used as a free CPU sink.
+const passkeyLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,  // 15 minutes
+  max: 30,
+  message: { error: 'Too many passkey sign-in attempts. Please try again in 15 minutes.' },
   standardHeaders: true,
   legacyHeaders: false
 });
@@ -419,6 +435,22 @@ db.serialize(() => {
     note       TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
+
+  // WebAuthn credentials. `credential_id` is the base64url rawId, `public_key`
+  // is the COSE key returned during attestation, and `counter` is the FIDO
+  // signature counter persisted between assertions.
+  db.run(`CREATE TABLE IF NOT EXISTS passkeys (
+    id            INTEGER  PRIMARY KEY AUTOINCREMENT,
+    user_id       INTEGER  NOT NULL,
+    credential_id TEXT     NOT NULL UNIQUE,
+    public_key    BLOB     NOT NULL,
+    counter       INTEGER  NOT NULL DEFAULT 0,
+    transports    TEXT,
+    name          TEXT,
+    created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
+    last_used_at  DATETIME,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  )`);
 });
 
 // File upload configuration
@@ -468,6 +500,60 @@ const authenticateToken = (req, res, next) => {
     next();
   });
 };
+
+// ============ PASSKEY HELPERS ============
+
+// Relying party identity for WebAuthn. APP_URL is the canonical deployment
+// origin; fall back to the request host for local development.
+function getRpConfig(req) {
+  const appUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
+  try {
+    const url = new URL(appUrl);
+    return { rpID: url.hostname, origin: url.origin, rpName: 'Todoer' };
+  } catch {
+    return {
+      rpID: req.hostname,
+      origin: `${req.protocol}://${req.get('host')}`,
+      rpName: 'Todoer'
+    };
+  }
+}
+
+function parsePasskeyTransports(raw) {
+  try {
+    const transports = JSON.parse(raw);
+    return Array.isArray(transports) ? transports : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+// Re-authentication for security-sensitive passkey changes, mirroring the
+// 2FA enable/disable and account-deletion flows.
+function verifyPasskeyStepUp(userId, password) {
+  return new Promise((resolve, reject) => {
+    db.get('SELECT password, has_password FROM users WHERE id = ?', [userId], (err, user) => {
+      if (err || !user) return reject(Object.assign(new Error('User not found'), { status: 404 }));
+      db.get('SELECT id FROM oauth_accounts WHERE user_id = ?', [userId], async (err2, oauthAccount) => {
+        if (err2) return reject(Object.assign(new Error('Verification failed'), { status: 500 }));
+        const needsPassword = !oauthAccount || user.has_password === 1;
+        if (!needsPassword) return resolve();
+        if (typeof password !== 'string' || !password) {
+          return reject(Object.assign(new Error('Password is required'), { status: 400 }));
+        }
+        try {
+          const validPassword = await bcrypt.compare(password, user.password);
+          if (!validPassword) {
+            return reject(Object.assign(new Error('Current password is incorrect'), { status: 401 }));
+          }
+          resolve();
+        } catch {
+          reject(Object.assign(new Error('Verification failed'), { status: 500 }));
+        }
+      });
+    });
+  });
+}
 
 // ============ TWO-FACTOR AUTH ============
 
@@ -738,6 +824,236 @@ app.get('/api/auth/validate-redirect', (req, res) => {
   // Blocks absolute URLs and protocol-relative URLs
   const isValid = next.startsWith('/') && !next.startsWith('//');
   res.json({ valid: isValid });
+});
+
+// ============ PASSKEY ROUTES ============
+
+// Start passkey registration. The challenge is generated server-side and bound
+// to the user in a short-lived signed token, as the WebAuthn spec requires.
+app.post('/api/passkey/register/options', authenticateToken, validateCsrf, async (req, res) => {
+  const rp = getRpConfig(req);
+  const { password } = req.body || {};
+
+  try {
+    await verifyPasskeyStepUp(req.user.id, password);
+  } catch (err) {
+    return res.status(err.status || 500).json({ error: err.message });
+  }
+
+  try {
+    const existing = await new Promise((resolve, reject) => {
+      db.all('SELECT credential_id, transports FROM passkeys WHERE user_id = ?', [req.user.id], (err, rows) => {
+        if (err) reject(err); else resolve(rows || []);
+      });
+    });
+
+    const options = await generateRegistrationOptions({
+      rpName: rp.rpName,
+      rpID: rp.rpID,
+      userID: Buffer.from(`todoer-user-${req.user.id}`),
+      userName: req.user.email,
+      userDisplayName: req.user.username || req.user.email,
+      attestationType: 'none',
+      excludeCredentials: existing.map(p => ({
+        id: p.credential_id.replace(/=+$/, ''),
+        transports: parsePasskeyTransports(p.transports)
+      })),
+      authenticatorSelection: {
+        residentKey: 'required',
+        userVerification: 'required'
+      }
+    });
+
+    const challengeToken = jwt.sign(
+      {
+        challenge: options.challenge,
+        purpose: 'passkey-registration-challenge',
+        userId: req.user.id
+      },
+      JWT_SECRET,
+      { expiresIn: '2m' }
+    );
+
+    res.json({ options, challengeToken });
+  } catch (err) {
+    console.error('[passkey] registration options failed:', err.message);
+    res.status(500).json({ error: 'Failed to start passkey registration' });
+  }
+});
+
+// Finish passkey registration. The signed challenge token is single-purpose and
+// short-lived; the credential itself is verified end to end before storage.
+app.post('/api/passkey/register', authenticateToken, validateCsrf, async (req, res) => {
+  const { response, challengeToken, password, name } = req.body || {};
+  if (!response || !challengeToken) {
+    return res.status(400).json({ error: 'Registration response is required' });
+  }
+
+  try {
+    await verifyPasskeyStepUp(req.user.id, password);
+  } catch (err) {
+    return res.status(err.status || 500).json({ error: err.message });
+  }
+
+  let payload;
+  try {
+    payload = jwt.verify(challengeToken, JWT_SECRET);
+  } catch {
+    return res.status(400).json({ error: 'Registration challenge expired or invalid' });
+  }
+  if (payload.purpose !== 'passkey-registration-challenge' || payload.userId !== req.user.id) {
+    return res.status(400).json({ error: 'Registration challenge expired or invalid' });
+  }
+
+  const rp = getRpConfig(req);
+  try {
+    const verification = await verifyRegistrationResponse({
+      response,
+      expectedChallenge: payload.challenge,
+      expectedOrigin: rp.origin,
+      expectedRPID: rp.rpID,
+      requireUserVerification: true
+    });
+
+    if (!verification.verified || !verification.registrationInfo) {
+      return res.status(401).json({ error: 'Passkey registration failed' });
+    }
+
+    const credential = verification.registrationInfo.credential;
+    const label = typeof name === 'string' && name.trim() ? name.trim().slice(0, 64) : 'Passkey';
+
+    db.run(
+      'INSERT INTO passkeys (user_id, credential_id, public_key, counter, transports, name) VALUES (?, ?, ?, ?, ?, ?)',
+      [
+        req.user.id,
+        credential.id,
+        Buffer.from(credential.publicKey),
+        credential.counter,
+        JSON.stringify(credential.transports || []),
+        label
+      ],
+      function (err) {
+        if (err) {
+          if (err.message.includes('UNIQUE')) {
+            return res.status(409).json({ error: 'This passkey is already registered' });
+          }
+          console.error('[passkey] registration failed:', err.message);
+          return res.status(500).json({ error: 'Failed to save passkey' });
+        }
+        res.status(204).end();
+      }
+    );
+  } catch (err) {
+    console.error('[passkey] registration verification failed:', err.message);
+    res.status(401).json({ error: 'Passkey registration failed' });
+  }
+});
+
+app.get('/api/passkey/list', authenticateToken, (req, res) => {
+  db.all(
+    'SELECT id, name, created_at, last_used_at, transports FROM passkeys WHERE user_id = ? ORDER BY created_at DESC',
+    [req.user.id],
+    (err, rows) => {
+      if (err) return res.status(500).json({ error: 'Failed to load passkeys' });
+      res.json({ passkeys: rows || [] });
+    }
+  );
+});
+
+app.delete('/api/passkey/:id', authenticateToken, validateCsrf, async (req, res) => {
+  const { password } = req.body || {};
+
+  try {
+    await verifyPasskeyStepUp(req.user.id, password);
+  } catch (err) {
+    return res.status(err.status || 500).json({ error: err.message });
+  }
+
+  db.run('DELETE FROM passkeys WHERE id = ? AND user_id = ?', [req.params.id, req.user.id], function (err) {
+    if (err) return res.status(500).json({ error: 'Failed to remove passkey' });
+    if (this.changes === 0) return res.status(404).json({ error: 'Passkey not found' });
+    res.json({ message: 'Passkey removed' });
+  });
+});
+
+// VULNERABLE (Vuln 3d): the authentication ceremony never issues or consumes a
+// server-side challenge. There is no /api/auth/passkey/login/options route; the
+// client invents the challenge and this endpoint takes the same value straight
+// out of clientDataJSON as the expected challenge. Every other WebAuthn check
+// still runs — signature, rpIdHash, origin and user verification — so the defect
+// is isolated to the challenge. A captured assertion therefore mints a fresh
+// session on every replay. Credentials whose authenticator reports signCount 0
+// (Apple and Android platform passkeys) never trip the signature counter.
+app.post('/api/auth/passkey/login', passkeyLoginLimiter, async (req, res) => {
+  const { response } = req.body || {};
+  if (!response || typeof response !== 'object' || !response.id) {
+    return res.status(400).json({ error: 'Assertion is required' });
+  }
+
+  db.get('SELECT * FROM passkeys WHERE credential_id = ?', [response.id], async (err, passkey) => {
+    if (err || !passkey) return res.status(401).json({ error: 'Authentication failed' });
+
+    // VULNERABLE: the expected challenge is the client's own value.
+    let clientData;
+    try {
+      clientData = JSON.parse(Buffer.from(response.response?.clientDataJSON || '', 'base64url').toString('utf8'));
+    } catch {
+      return res.status(401).json({ error: 'Authentication failed' });
+    }
+    if (typeof clientData.challenge !== 'string') {
+      return res.status(401).json({ error: 'Authentication failed' });
+    }
+
+    const rp = getRpConfig(req);
+    try {
+      const verification = await verifyAuthenticationResponse({
+        response,
+        expectedChallenge: clientData.challenge,
+        expectedOrigin: rp.origin,
+        expectedRPID: rp.rpID,
+        credential: {
+          id: passkey.credential_id,
+          publicKey: passkey.public_key,
+          counter: passkey.counter,
+          transports: parsePasskeyTransports(passkey.transports)
+        },
+        requireUserVerification: true
+      });
+
+      if (!verification.verified) {
+        return res.status(401).json({ error: 'Authentication failed' });
+      }
+
+      db.run(
+        'UPDATE passkeys SET counter = ?, last_used_at = CURRENT_TIMESTAMP WHERE id = ?',
+        [verification.authenticationInfo.newCounter, passkey.id]
+      );
+
+      db.get('SELECT * FROM users WHERE id = ?', [passkey.user_id], (err, user) => {
+        if (err || !user) return res.status(401).json({ error: 'Authentication failed' });
+        if (!user.verified) return res.status(403).json({ error: 'Email not verified' });
+
+        // A passkey is already multi-factor; the SMS second factor only applies
+        // to password sign-in.
+        const token = jwt.sign(
+          {
+            id: user.id,
+            email: user.email,
+            username: user.username || null,
+            jti: crypto.randomBytes(16).toString('hex')
+          },
+          JWT_SECRET,
+          { expiresIn: '7d' }
+        );
+        res.cookie('token', token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 });
+        setCsrfCookie(res, generateCsrfToken());
+        res.json({ message: 'Login successful', user: { id: user.id, email: user.email, username: user.username || null } });
+      });
+    } catch (err) {
+      console.error('[passkey] login verification failed:', err.message);
+      res.status(401).json({ error: 'Authentication failed' });
+    }
+  });
 });
 
 // ============ PROFILE ROUTES ============

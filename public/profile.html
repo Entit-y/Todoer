@@ -209,6 +209,26 @@
         <p style="font-size:13px;color:var(--text-3);margin-bottom:16px;">Loading…</p>
       </section>
 
+      <section class="profile-section" id="passkeysSection">
+        <h2>Passkeys</h2>
+        <p style="font-size:13px;color:var(--text-3);margin-bottom:16px;">Sign in without a password using Face ID, Touch ID, Windows Hello, or a security key.</p>
+        <div id="passkeyList">
+          <p style="font-size:13px;color:var(--text-3);">Loading…</p>
+        </div>
+        <form id="passkeyForm" class="profile-form" style="margin-top:16px;">
+          <div class="form-group">
+            <label for="passkeyName">Passkey name</label>
+            <input type="text" id="passkeyName" maxlength="64" placeholder="e.g. MacBook Touch ID">
+          </div>
+          <div class="form-group" id="passkeyPasswordGroup" style="display:none;">
+            <label for="passkeyPassword">Current password</label>
+            <input type="password" id="passkeyPassword" autocomplete="current-password" placeholder="Enter current password">
+          </div>
+          <div id="passkeyMessage" class="message" style="display:none;"></div>
+          <button type="submit" class="btn btn-primary" id="addPasskeyBtn">Add a passkey</button>
+        </form>
+      </section>
+
       <section class="profile-section" id="dateFormatSection">
         <h2>Date format</h2>
         <p style="font-size:13px;color:var(--text-3);margin-bottom:16px;">Custom display format for the timestamps on your feed messages (moment.js tokens).</p>
@@ -272,6 +292,21 @@
     </div>
   </div>
 
+  <div id="passwordModal" class="confirm-modal">
+    <div class="confirm-box">
+      <h3 id="passwordModalTitle"></h3>
+      <p id="passwordModalMessage"></p>
+      <div class="form-group">
+        <input type="password" id="passwordModalInput" autocomplete="current-password" placeholder="Current password">
+      </div>
+      <div class="confirm-actions">
+        <button class="btn btn-secondary" id="passwordModalCancel">Cancel</button>
+        <button class="btn btn-primary" id="passwordModalOk">Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/vendor/simplewebauthn-browser.umd.min.js"></script>
   <script>
     // ── Theme ──
     const saved = localStorage.getItem('theme') || 'dark';
@@ -337,6 +372,76 @@
       if (e.key === 'Escape') document.getElementById('confirmModal').style.display = 'none';
     });
 
+    let passkeyStepUpNeeded = false;
+
+    // ── Password prompt for security-sensitive passkey changes ──
+    function showPasswordPrompt({ title, message }) {
+      return new Promise(resolve => {
+        const modal = document.getElementById('passwordModal');
+        const input = document.getElementById('passwordModalInput');
+        const okBtn = document.getElementById('passwordModalOk');
+        const cancelBtn = document.getElementById('passwordModalCancel');
+
+        document.getElementById('passwordModalTitle').textContent = title;
+        document.getElementById('passwordModalMessage').textContent = message;
+        input.value = '';
+        modal.style.display = 'flex';
+        input.focus();
+
+        const cleanup = (value) => {
+          modal.style.display = 'none';
+          okBtn.removeEventListener('click', onOk);
+          cancelBtn.removeEventListener('click', onCancel);
+          input.removeEventListener('keydown', onInputKey);
+          document.removeEventListener('keydown', onDocKey);
+          resolve(value);
+        };
+        const onOk = () => cleanup(input.value);
+        const onCancel = () => cleanup(null);
+        const onInputKey = (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            cleanup(input.value);
+          }
+        };
+        const onDocKey = (e) => {
+          if (e.key === 'Escape') {
+            e.preventDefault();
+            cleanup(null);
+          }
+        };
+
+        okBtn.addEventListener('click', onOk);
+        cancelBtn.addEventListener('click', onCancel);
+        input.addEventListener('keydown', onInputKey);
+        document.addEventListener('keydown', onDocKey);
+      });
+    }
+
+    async function loadPasskeys() {
+      const list = document.getElementById('passkeyList');
+      try {
+        const r = await fetch('/api/passkey/list');
+        if (!r.ok) throw new Error();
+        const data = await r.json();
+        const passkeys = data.passkeys || [];
+        if (!passkeys.length) {
+          list.innerHTML = '<p style="font-size:13px;color:var(--text-3);">No passkeys registered yet.</p>';
+          return;
+        }
+        list.innerHTML = passkeys.map(p => `
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid var(--border);border-radius:var(--radius-md);padding:10px 12px;margin-bottom:8px;">
+            <div style="min-width:0;">
+              <div style="font-size:13.5px;font-weight:500;color:var(--text-1);">${escapeHtml(p.name || 'Passkey')}</div>
+              <div style="font-size:12px;color:var(--text-3);">Added ${formatDate(p.created_at)}${p.last_used_at ? ' · Last used ' + formatDate(p.last_used_at) : ''}</div>
+            </div>
+            <button type="button" class="btn btn-danger" data-remove-passkey="${p.id}" style="font-size:12px;padding:5px 12px;">Remove</button>
+          </div>`).join('');
+      } catch {
+        list.innerHTML = '<p style="font-size:13px;color:var(--text-3);">Could not load passkeys.</p>';
+      }
+    }
+
     // ── Auth ──
     async function checkAuth() {
       try {
@@ -377,6 +482,10 @@
         const googleAccount = oauthAccounts.find(a => a.provider === 'google');
         const hasOAuth = oauthAccounts.length > 0;
         const hasPassword = data.has_password === 1;
+
+        passkeyStepUpNeeded = !hasOAuth || hasPassword;
+        document.getElementById('passkeyPasswordGroup').style.display = passkeyStepUpNeeded ? 'block' : 'none';
+        loadPasskeys();
 
         // ── Connected accounts UI ──
         list.innerHTML = `
@@ -645,6 +754,106 @@
       });
     }
     attachChangePasswordHandler();
+
+    // ── Passkeys ──
+    document.getElementById('passkeyForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('passkeyMessage');
+      const btn = document.getElementById('addPasskeyBtn');
+      const name = document.getElementById('passkeyName').value.trim();
+      const password = document.getElementById('passkeyPassword').value;
+
+      msg.style.display = 'none'; msg.className = 'message';
+      if (passkeyStepUpNeeded && !password) {
+        msg.textContent = 'Enter your current password';
+        msg.className = 'message error';
+        msg.style.display = 'block';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Starting…';
+      try {
+        const optionsRes = await fetch('/api/passkey/register/options', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+          body: JSON.stringify({ password })
+        });
+        const optionsData = await optionsRes.json();
+        if (!optionsRes.ok) throw new Error(optionsData.error || 'Failed to start registration');
+
+        btn.textContent = 'Waiting for authenticator…';
+        let attestation;
+        try {
+          attestation = await SimpleWebAuthnBrowser.startRegistration({ optionsJSON: optionsData.options });
+        } catch (err) {
+          if (err.name === 'NotAllowedError') throw new Error('Passkey creation was cancelled or timed out');
+          throw new Error(err.message || 'Passkey creation failed');
+        }
+
+        btn.textContent = 'Saving…';
+        const registerRes = await fetch('/api/passkey/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+          body: JSON.stringify({ response: attestation, challengeToken: optionsData.challengeToken, password, name })
+        });
+        if (!registerRes.ok) {
+          let data = {};
+          try { data = await registerRes.json(); } catch {}
+          throw new Error(data.error || 'Failed to register passkey');
+        }
+
+        showToast('Passkey added.', 'success');
+        document.getElementById('passkeyForm').reset();
+        loadPasskeys();
+      } catch (err) {
+        msg.textContent = err.message || 'An error occurred.';
+        msg.className = 'message error';
+        msg.style.display = 'block';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Add a passkey';
+      }
+    });
+
+    document.getElementById('passkeyList').addEventListener('click', async (e) => {
+      const btn = e.target.closest('[data-remove-passkey]');
+      if (!btn) return;
+
+      const confirmed = await showConfirm({
+        title: 'Remove passkey',
+        message: 'You will no longer be able to use this passkey to sign in.',
+        confirmText: 'Remove passkey',
+        danger: true
+      });
+      if (!confirmed) return;
+
+      let password = '';
+      if (passkeyStepUpNeeded) {
+        password = await showPasswordPrompt({
+          title: 'Confirm your password',
+          message: 'Enter your current password to remove this passkey.'
+        });
+        if (password === null) return;
+      }
+
+      try {
+        const r = await fetch('/api/passkey/' + encodeURIComponent(btn.dataset.removePasskey), {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+          body: JSON.stringify({ password })
+        });
+        if (!r.ok) {
+          let data = {};
+          try { data = await r.json(); } catch {}
+          throw new Error(data.error || 'Failed to remove passkey');
+        }
+        showToast('Passkey removed.', 'success');
+        loadPasskeys();
+      } catch (err) {
+        showToast(err.message || 'Could not remove passkey.', 'error');
+      }
+    });
 
     document.getElementById('deleteForm').addEventListener('submit', async (e) => {
       e.preventDefault();

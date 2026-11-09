@@ -18,7 +18,7 @@ Built for ethical hackers who are done with toy labs.
 
 Most practice labs feel like practice labs — labelled boxes, obvious hints, unrealistic setups. Todoer doesn't.
 
-It's a real task management app: workspaces, file uploads, public feed, real-time collaboration over WebSockets, Google OAuth, email verification, password reset, two-factor auth, and a separate admin panel. Enough attack surface to keep you busy. It also has real defences — CSRF protection, rate limiting, output sanitisation, JWT auth. Some of them work correctly. Others don't, and a few of the ones that do make the bugs worse in ways worth understanding.
+It's a real task management app: workspaces, file uploads, public feed, real-time collaboration over WebSockets, Google OAuth, passkeys, email verification, password reset, two-factor auth, and a separate admin panel. Enough attack surface to keep you busy. It also has real defences — CSRF protection, rate limiting, output sanitisation, JWT auth. Some of them work correctly. Others don't, and a few of the ones that do make the bugs worse in ways worth understanding.
 
 > There are no flags. No hints. No labels. Approach it like a real target.
 
@@ -34,7 +34,7 @@ It's a real task management app: workspaces, file uploads, public feed, real-tim
 |---|---|
 | Backend | Node.js + Express (3 services: app, admin, support chat) |
 | Database | SQLite |
-| Auth | JWT + cookies, Google OAuth, first-party OAuth server |
+| Auth | JWT + cookies, Google OAuth, WebAuthn passkeys, first-party OAuth server |
 | Real-time | WebSocket |
 | Frontend | Vanilla HTML/CSS/JS + client-side templating |
 | File handling | `unzipper`, `tar-stream`, `multer` |
